@@ -8,9 +8,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fishing.model.*
-import com.example.fishing.ui.screens.MainScreen
-import com.example.fishing.ui.screens.ReportDetailScreen
 import com.example.fishing.ui.screens.ExperimentalFishingDetailReport
+import com.example.fishing.ui.screens.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.MainScreen
 import com.example.fishing.ui.screens.ReportDetailScreen
 import com.example.fishing.ui.theme.FishingTheme
@@ -28,15 +27,30 @@ class MainActivity : ComponentActivity() {
 
                 var selectedReport by remember { mutableStateOf<FishingReport?>(null) }
                 var showExperimental by remember { mutableStateOf(false) }
+                var fullScreenPhotoIndex by remember { mutableStateOf<Int?>(null) }
 
                 when {
+                    fullScreenPhotoIndex != null && reports.isNotEmpty() -> {
+                        val currentReport = if (showExperimental) reports.first() else selectedReport
+                        if (currentReport != null) {
+                            BackHandler { fullScreenPhotoIndex = null }
+                            FullScreenPhotoScreen(
+                                photos = currentReport.photo,
+                                initialPage = fullScreenPhotoIndex!!,
+                                onBackClick = { fullScreenPhotoIndex = null }
+                            )
+                        }
+                    }
+
                     showExperimental && reports.isNotEmpty() -> {
                         BackHandler { showExperimental = false }
                         ExperimentalFishingDetailReport(
                             report = reports.first(),
-                            onBackClick = { showExperimental = false }
+                            onBackClick = { showExperimental = false },
+                            onPhotoClick = { fullScreenPhotoIndex = it }
                         )
                     }
+
                     selectedReport != null -> {
                         BackHandler { selectedReport = null }
                         ReportDetailScreen(
@@ -44,6 +58,7 @@ class MainActivity : ComponentActivity() {
                             onBackClick = { selectedReport = null }
                         )
                     }
+
                     else -> {
                         MainScreen(
                             reports = reports,
