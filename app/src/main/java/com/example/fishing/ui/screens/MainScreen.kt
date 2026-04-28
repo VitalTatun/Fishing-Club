@@ -29,7 +29,11 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(reports: List<FishingReport>, onReportClick: (FishingReport) -> Unit) {
+fun MainScreen(
+    reports: List<FishingReport>,
+    isLoading: Boolean = false,
+    onReportClick: (FishingReport) -> Unit
+) {
     var selectedItem by remember { mutableIntStateOf(0) }
     val items = listOf(
         BottomNavItem.Home,
@@ -59,15 +63,21 @@ fun MainScreen(reports: List<FishingReport>, onReportClick: (FishingReport) -> U
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedItem) {
                 0 -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color(0xFFF5F5F5)),
-                        contentPadding = PaddingValues(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(reports) { report ->
-                            FishingReportItem(report = report, onClick = { onReportClick(report) })
+                    if (isLoading) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFFF5F5F5)),
+                            contentPadding = PaddingValues(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(reports) { report ->
+                                FishingReportItem(report = report, onClick = { onReportClick(report) })
+                            }
                         }
                     }
                 }
