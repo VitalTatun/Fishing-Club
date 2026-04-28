@@ -10,9 +10,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fishing.model.*
 import com.example.fishing.ui.screens.MainScreen
 import com.example.fishing.ui.screens.ReportDetailScreen
+import com.example.fishing.ui.screens.ExperimentalFishingDetailReport
+import com.example.fishing.ui.screens.MainScreen
+import com.example.fishing.ui.screens.ReportDetailScreen
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
-import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,19 +27,31 @@ class MainActivity : ComponentActivity() {
                 val isLoading by viewModel.isLoading.collectAsState()
 
                 var selectedReport by remember { mutableStateOf<FishingReport?>(null) }
+                var showExperimental by remember { mutableStateOf(false) }
 
-                if (selectedReport == null) {
-                    MainScreen(
-                        reports = reports,
-                        isLoading = isLoading,
-                        onReportClick = { selectedReport = it }
-                    )
-                } else {
-                    BackHandler { selectedReport = null }
-                    ReportDetailScreen(
-                        report = selectedReport!!,
-                        onBackClick = { selectedReport = null }
-                    )
+                when {
+                    showExperimental && reports.isNotEmpty() -> {
+                        BackHandler { showExperimental = false }
+                        ExperimentalFishingDetailReport(
+                            report = reports.first(),
+                            onBackClick = { showExperimental = false }
+                        )
+                    }
+                    selectedReport != null -> {
+                        BackHandler { selectedReport = null }
+                        ReportDetailScreen(
+                            report = selectedReport!!,
+                            onBackClick = { selectedReport = null }
+                        )
+                    }
+                    else -> {
+                        MainScreen(
+                            reports = reports,
+                            isLoading = isLoading,
+                            onReportClick = { selectedReport = it },
+                            onExperimentalClick = { showExperimental = true }
+                        )
+                    }
                 }
             }
         }

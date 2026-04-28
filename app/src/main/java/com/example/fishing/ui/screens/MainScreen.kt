@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
@@ -32,7 +33,8 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 fun MainScreen(
     reports: List<FishingReport>,
     isLoading: Boolean = false,
-    onReportClick: (FishingReport) -> Unit
+    onReportClick: (FishingReport) -> Unit,
+    onExperimentalClick: () -> Unit = {}
 ) {
     var selectedItem by remember { mutableIntStateOf(0) }
     val items = listOf(
@@ -44,7 +46,14 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(items[selectedItem].title) }
+                title = { Text(items[selectedItem].title) },
+                actions = {
+                    if (selectedItem == 0) {
+                        IconButton(onClick = onExperimentalClick) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = "Эксперимент")
+                        }
+                    }
+                }
             )
         },
         bottomBar = {
