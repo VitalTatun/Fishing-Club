@@ -12,8 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.fishing.model.FishingReport
+import com.example.fishing.model.*
+import com.example.fishing.ui.theme.FishingTheme
+import java.util.*
 
 @Composable
 fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
@@ -56,5 +59,35 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
                 color = Color.Gray
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ReportLocationSectionPreview() {
+    FishingTheme {
+        val sampleReport = FishingReport(
+            type = FishingType.FISHING_LOG,
+            name = "Тестовый отчет",
+            water = Water(
+                waterName = "Озеро Нарочь",
+                latitude = 54.8510,
+                longitude = 26.7086
+            ),
+            photo = listOf(),
+            fishingTime = Date(),
+            weight = 0.0,
+            fish = listOf(),
+            fishingMethod = FishingMethod.BOBBER,
+            bait = listOf(),
+            comment = "",
+            user = User(name = "Иван Иванов", image = "", email = ""),
+            fishingFromTheShore = true,
+            isPublic = true
+        )
+        ReportLocationSection(
+            report = sampleReport,
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }
