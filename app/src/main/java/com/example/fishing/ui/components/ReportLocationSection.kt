@@ -28,7 +28,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -74,6 +74,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 8.dp)
                 .height(120.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFFE3F2FD))
