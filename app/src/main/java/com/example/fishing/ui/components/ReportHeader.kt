@@ -33,22 +33,21 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White),
+            .background(Color.White)
+            .padding(vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         )
     {
         // Фото карусель
         ReportPhotoCarousel(photos = report.photo)
-
         Column(
             modifier = Modifier.padding(horizontal = 8.dp),
-        ) {
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
             // Основная информация (Теги + Автор/Название)
             ReportSummary(report = report)
-
             // Баннер публикации (если черновик)
             if (!report.isPublic) {
-                Spacer(modifier = Modifier.height(16.dp))
                 PublishBanner()
             }
         }

@@ -82,7 +82,7 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(bottom = 32.dp, top = 8.dp)
+                .padding(bottom = 32.dp)
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(report = report)

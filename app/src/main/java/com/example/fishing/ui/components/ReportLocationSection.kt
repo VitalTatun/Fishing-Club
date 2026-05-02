@@ -1,96 +1,54 @@
 package com.example.fishing.ui.components
 
+import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
+import kotlinx.coroutines.launch
 import java.util.*
 
 @Composable
 fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
     val primaryColor = Color(0xFF3E5481)
-    val clipboardManager = LocalClipboardManager.current
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
+            .padding(vertical = 10.dp)
     ) {
-        Row(
+        LocationInfoRow(
+            report = report,
+            primaryColor = primaryColor,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = report.water.waterName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "GPS координаты: ",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "${report.water.latitude} - ${report.water.longitude}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = primaryColor
-                    )
-                    IconButton(
-                        onClick = {
-                            clipboardManager.setText(AnnotatedString("${report.water.latitude}, ${report.water.longitude}"))
-                        },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Копировать",
-                            tint = primaryColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = primaryColor
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
+                .padding(horizontal = 16.dp)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
         // Map Placeholder
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
                 .height(120.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(Color(0xFFE3F2FD))
         ) {
             Icon(
@@ -101,6 +59,62 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
                     .size(40.dp)
                     .align(Alignment.Center)
             )
+        }
+    }
+}
+
+@Composable
+fun LocationInfoRow(
+    report: FishingReport,
+    primaryColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = report.water.waterName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "GPS координаты: ",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "${report.water.latitude} - ${report.water.longitude}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = primaryColor
+                )
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Coordinates", "${report.water.latitude}, ${report.water.longitude}")))
+                        }
+                    },
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Копировать",
+                        tint = primaryColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+
+            }
         }
     }
 }
