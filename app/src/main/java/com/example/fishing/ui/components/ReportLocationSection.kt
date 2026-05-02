@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,7 @@ import java.util.*
 @Composable
 fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
     val primaryColor = Color(0xFF3E5481)
+    val clipboardManager = LocalClipboardManager.current
 
     Column(
         modifier = modifier
@@ -32,9 +35,9 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -56,12 +59,19 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
                         style = MaterialTheme.typography.bodyMedium,
                         color = primaryColor
                     )
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Копировать",
-                        tint = primaryColor,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString("${report.water.latitude}, ${report.water.longitude}"))
+                        },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Копировать",
+                            tint = primaryColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
 
