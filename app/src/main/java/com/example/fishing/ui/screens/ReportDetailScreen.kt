@@ -5,16 +5,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BorderColor
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.BorderColor
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
+import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,12 +29,50 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                title = {
+                    Column {
+                        Text(
+                            text = report.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru")).format(report.fishingTime),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
                     }
                 },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад",
+                            tint = Color.White
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: Редактировать */ }) {
+                        Icon(
+                            imageVector = Icons.Outlined.BorderColor,
+                            contentDescription = "Редактировать",
+                            tint = Color.White
+                        )
+                    }
+                    IconButton(onClick = { /* TODO: Удалить */ }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Удалить",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF3E5481),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         },
         containerColor = Color.White
@@ -40,42 +84,42 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                 .padding(paddingValues)
                 .padding(bottom = 32.dp, top = 8.dp)
         ) {
-            // 1. Hero Carousel (MD3)
+            // 1. Фото Карусель
             ReportPhotoCarousel(photos = report.photo)
 
             Column(modifier = Modifier.padding(horizontal = 8.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // 2. Header (Title, Date, Status)
+                // 2. Шапка отчета (Заголовок, Дата, Статус)
                 ReportHeader(report = report)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Combined Info Container
+                // Контейнер для основной информации
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     color = Color(0xFFE5E5E5).copy(alpha = 0.3f)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // 3. Info List
+                        // 3. Список характеристик (время, метод, наживка и т.д.)
                         ReportInfoList(report = report)
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // 4. Catch Section
+                        // 4. Секция улова
                         ReportCatchSection(report = report)
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // 5. Location Section
+                        // 5. Секция местоположения
                         ReportLocationSection(report = report)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 6. Description Section
+                // 6. Секция описания
                 ReportDescriptionSection(report = report)
             }
         }
