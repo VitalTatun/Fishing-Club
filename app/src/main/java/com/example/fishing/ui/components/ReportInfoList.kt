@@ -8,10 +8,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun ReportInfoList(report: FishingReport, modifier: Modifier = Modifier) {
+    val dateFormatter = SimpleDateFormat("dd MMMM yyyy • HH:mm", Locale.forLanguageTag("ru"))
     Column(modifier = modifier) {
+        DetailRow("Дата отчета", dateFormatter.format(report.fishingTime))
         DetailRow(
             label = "Способ ловли",
             value = when (report.fishingMethod) {

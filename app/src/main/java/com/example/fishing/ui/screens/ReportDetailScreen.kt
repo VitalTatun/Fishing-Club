@@ -26,6 +26,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
+    val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru"))
     Scaffold(
         topBar = {
             TopAppBar(
@@ -37,9 +38,9 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru")).format(report.fishingTime),
+                            text = "${dateFormatter.format(report.fishingTime)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f)
+                            color = Color(0xFFB6C3E5)
                         )
                     }
                 },
@@ -84,15 +85,10 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                 .padding(paddingValues)
                 .padding(bottom = 32.dp, top = 8.dp)
         ) {
-            // 1. Фото Карусель
-            ReportPhotoCarousel(photos = report.photo)
+            // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
+            ReportHeader(report = report)
 
             Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 2. Шапка отчета (Заголовок, Дата, Статус)
-                ReportHeader(report = report)
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Контейнер для основной информации
@@ -102,24 +98,24 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                     color = Color(0xFFE5E5E5).copy(alpha = 0.3f)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        // 3. Список характеристик (время, метод, наживка и т.д.)
+                        // 2. Список характеристик (время, метод, наживка и т.д.)
                         ReportInfoList(report = report)
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // 4. Секция улова
+                        // 3. Секция улова
                         ReportCatchSection(report = report)
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // 5. Секция местоположения
+                        // 4. Секция местоположения
                         ReportLocationSection(report = report)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 6. Секция описания
+                // 5. Секция описания
                 ReportDescriptionSection(report = report)
             }
         }
