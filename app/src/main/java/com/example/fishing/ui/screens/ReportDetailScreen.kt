@@ -87,6 +87,9 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(report = report)
+            // 4. Секция местоположения
+            ReportLocationSection(report = report)
+
 
             Column(modifier = Modifier.padding(horizontal = 8.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -108,8 +111,6 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // 4. Секция местоположения
-                        ReportLocationSection(report = report)
                     }
                 }
 

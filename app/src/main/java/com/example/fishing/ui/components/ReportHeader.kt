@@ -41,16 +41,16 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
         ReportPhotoCarousel(photos = report.photo)
 
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 8.dp),
         ) {
             // Основная информация (Теги + Автор/Название)
             ReportSummary(report = report)
 
-
-        }
-        // Баннер публикации (если черновик)
-        if (!report.isPublic) {
-            PublishBanner()
+            // Баннер публикации (если черновик)
+            if (!report.isPublic) {
+                Spacer(modifier = Modifier.height(16.dp))
+                PublishBanner()
+            }
         }
     }
 }
@@ -209,6 +209,32 @@ fun StatusChip(text: String, containerColor: Color, contentColor: Color) {
             color = contentColor,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ReportSummaryPreview() {
+    FishingTheme {
+        val sampleReport = FishingReport(
+            type = FishingType.FISHING_LOG,
+            name = "Смеркалось",
+            water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
+            photo = listOf(android.R.drawable.ic_menu_gallery),
+            fishingTime = Date(),
+            weight = 3.2,
+            fish = listOf(),
+            fishingMethod = FishingMethod.BOBBER,
+            bait = listOf(),
+            comment = "",
+            user = User(name = "Никита Белозерцев", image = "", email = ""),
+            fishingFromTheShore = true,
+            isPublic = false
+        )
+        ReportSummary(
+            report = sampleReport,
+            modifier = Modifier.padding(16.dp)
         )
     }
 }
