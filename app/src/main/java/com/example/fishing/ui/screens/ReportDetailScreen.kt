@@ -76,7 +76,6 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                 )
             )
         },
-        containerColor = Color.White
     ) { paddingValues ->
         Column(
             modifier = Modifier

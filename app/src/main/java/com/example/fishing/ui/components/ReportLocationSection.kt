@@ -24,7 +24,11 @@ import java.util.*
 fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
     val primaryColor = Color(0xFF3E5481)
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.White)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
