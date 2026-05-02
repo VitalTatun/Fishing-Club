@@ -2,7 +2,6 @@ package com.example.fishing.ui.screens
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BorderColor
@@ -91,34 +90,11 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
 
             ReportLocationSection(report = report)
 
+            Column() {
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Контейнер для основной информации
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFE5E5E5).copy(alpha = 0.3f)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        // 2. Список характеристик (время, метод, наживка и т.д.)
-                        ReportInfoList(report = report)
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // 3. Секция улова
-                        ReportCatchSection(report = report)
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // 5. Секция описания
-                ReportDescriptionSection(report = report)
+                // Общая информация (Mood, Details, Catch)
+                ReportGeneralInfo(report = report)
             }
         }
     }

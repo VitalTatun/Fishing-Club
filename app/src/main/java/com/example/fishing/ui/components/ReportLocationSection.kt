@@ -78,6 +78,7 @@ fun LocationInfoRow(
     ) {
         Column(
             modifier = Modifier.weight(1f)
+
         ) {
             Text(
                 text = report.water.waterName,
