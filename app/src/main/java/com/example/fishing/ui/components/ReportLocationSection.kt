@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,43 +22,67 @@ import java.util.*
 
 @Composable
 fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
-    Column(modifier = modifier) {
-        Surface(
+    val primaryColor = Color(0xFF3E5481)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = Color.Transparent // Changed to transparent to blend with parent
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(vertical = 12.dp), // Adjusted padding
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.Gray)
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = report.water.waterName, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = report.water.waterName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "GPS координаты: ",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
                     Text(
                         text = "${report.water.latitude} - ${report.water.longitude}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = primaryColor
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Копировать",
+                        tint = primaryColor,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = primaryColor
+            )
         }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // Map Placeholder
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(120.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFE0E0E0))
+                .background(Color(0xFFE3F2FD))
         ) {
-            Text(
-                text = "Карта",
-                modifier = Modifier.align(Alignment.Center),
-                color = Color.Gray
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = primaryColor,
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.Center)
             )
         }
     }
