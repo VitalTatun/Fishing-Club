@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -24,7 +23,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.util.*
@@ -33,131 +31,26 @@ import java.util.*
 @Composable
 fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.White),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         )
     {
         // Фото карусель
         ReportPhotoCarousel(photos = report.photo)
 
-        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-            // Теги
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                StatusChip(
-                    text = report.type.displayName,
-                    containerColor = Color(0xFFE8EAF6),
-                    contentColor = Color(0xFF3F51B5)
-                )
-                if (report.isPublic) {
-                    StatusChip(
-                        text = "Опубликован",
-                        containerColor = Color(0xFFDCEDC8),
-                        contentColor = Color(0xFF689F38)
-                    )
-                } else {
-                    StatusChip(
-                        text = "Черновик",
-                        containerColor = Color(0xFFF5F5F5),
-                        contentColor = Color(0xFF757575)
-                    )
-                }
-            }
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp)
+        ) {
+            // Основная информация (Теги + Автор/Название)
+            ReportSummary(report = report)
 
-            Spacer(modifier = Modifier.height(8.dp))
 
-            // Инфо об отчете и авторе (Аватар + Вертикальный стек текстов)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // Аватар пользователя
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
-                        .border(2.dp, Color.White, CircleShape)
-                        .border(1.dp, Color.Gray.copy(alpha = 0.1f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // Вертикальный стек (Название + Имя)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = report.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = report.user.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Black.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-
-                if (!report.isPublic) {
-                    IconButton(onClick = { } ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = "Опубликовать",
-                        )
-                    }
-                }
-                IconButton(onClick = { } ) {
-                    Icon(
-                        imageVector = Icons.Default.Bookmark,
-                        contentDescription = "Сохранить",
-                    )
-                }
-            }
-
-            // Баннер публикации (если черновик)
-            if (!report.isPublic) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFF3E5481)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Отчет не опубликован",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "Об этой рыбалке знаете только вы и рыба",
-                                color = Color.White.copy(alpha = 0.8f),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.CloudUpload,
-                            contentDescription = null,
-                            tint = Color.White
-                        )
-                    }
-                }
-            }
+        }
+        // Баннер публикации (если черновик)
+        if (!report.isPublic) {
+            PublishBanner()
         }
     }
 }
@@ -203,6 +96,101 @@ fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 color = Color.White,
                 style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
+}
+
+@Composable
+fun ReportSummary(report: FishingReport, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ReportStatusTags(report = report)
+        ReportInfoRow(report = report)
+    }
+}
+
+@Composable
+fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Аватар пользователя
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.LightGray)
+                .border(2.dp, Color.White, CircleShape)
+                .border(1.dp, Color.Gray.copy(alpha = 0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        // Вертикальный стек (Название + Имя)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = report.name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = report.user.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Black.copy(alpha = 0.6f)
+                )
+            }
+        }
+
+        if (!report.isPublic) {
+            IconButton(onClick = { }) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "Опубликовать",
+                )
+            }
+        }
+        IconButton(onClick = { }) {
+            Icon(
+                imageVector = Icons.Default.Bookmark,
+                contentDescription = "Сохранить",
+            )
+        }
+    }
+}
+
+@Composable
+fun ReportStatusTags(report: FishingReport, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StatusChip(
+            text = report.type.displayName,
+            containerColor = Color(0xFFE8EAF6),
+            contentColor = Color(0xFF3F51B5)
+        )
+        if (report.isPublic) {
+            StatusChip(
+                text = "Опубликован",
+                containerColor = Color(0xFFDCEDC8),
+                contentColor = Color(0xFF689F38)
+            )
+        } else {
+            StatusChip(
+                text = "Не опубликован",
+                containerColor = Color(0xFFF5F5F5),
+                contentColor = Color(0xFF757575)
             )
         }
     }
