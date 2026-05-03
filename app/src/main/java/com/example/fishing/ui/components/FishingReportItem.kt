@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +68,7 @@ fun FishingReportItem(
 @Composable
 private fun FishingReportHeader(report: FishingReport) {
     val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru"))
+    val interactionSource = remember { MutableInteractionSource() }
     
     Column {
         Row(
@@ -75,24 +78,29 @@ private fun FishingReportHeader(report: FishingReport) {
         ) {
             Text(
                 text = report.name,
-                style = MaterialTheme.typography.titleMedium.copy(
+                style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Medium,
                 ),
-                color = Color.Black
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
             )
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!report.isPublic) {
-                    StatusBadge(text = "Не опубликовано")
-                }
-                IconButton(onClick = { /* TODO */ }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Menu",
-                        tint = Color.Black
-                    )
-                }
+            if (!report.isPublic) {
+                StatusBadge(text = "Не опубликовано")
+                Spacer(modifier = Modifier.width(8.dp))
             }
+
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {  }
+            )
         }
 
         Text(
@@ -175,7 +183,7 @@ private fun FishingReportFooter(report: FishingReport) {
             imageVector = Icons.Default.Bookmark,
             contentDescription = "Bookmark",
             tint = Color(0xFFC62828),
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(24.dp)
         )
     }
 }
@@ -184,13 +192,13 @@ private fun FishingReportFooter(report: FishingReport) {
 fun StatusBadge(text: String) {
     Surface(
         color = Color(0xFFE8EAF6),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(5.dp)
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             color = Color(0xFF3F51B5),
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium
         )
     }
