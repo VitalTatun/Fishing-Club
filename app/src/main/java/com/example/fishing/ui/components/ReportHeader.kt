@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
+import java.text.SimpleDateFormat
 import java.util.*
 
 // 1. Модуль заголовка отчета (Фото + Инфо)
@@ -35,14 +36,14 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .background(Color.White)
             .padding(vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         )
     {
         // Фото карусель
         ReportPhotoCarousel(photos = report.photo)
         Column(
             modifier = Modifier.padding(horizontal = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
             // Основная информация (Теги + Автор/Название)
             ReportSummary(report = report)
@@ -103,68 +104,53 @@ fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
 @Composable
 fun ReportSummary(report: FishingReport, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ReportStatusTags(report = report)
         ReportInfoRow(report = report)
     }
 }
 
 @Composable
 fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Аватар пользователя
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.LightGray)
-                .border(2.dp, Color.White, CircleShape)
-                .border(1.dp, Color.Gray.copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+
+    val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru"))
+
+
 
         // Вертикальный стек (Название + Имя)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = report.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = report.user.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Black.copy(alpha = 0.6f)
+                    text = report.name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = Color.Black,
+                    modifier = Modifier.weight(1f)
                 )
-            }
-        }
 
-        if (!report.isPublic) {
-            IconButton(onClick = { }) {
+                if (!report.isPublic) {
+                    StatusBadge(text = "Не опубликовано")
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "Опубликовать",
+                    imageVector = Icons.Default.Bookmark,
+                    contentDescription = "Bookmark",
+                    tint = Color(0xFFFF3E00),
+                    modifier = Modifier.size(24.dp)
                 )
+
             }
-        }
-        IconButton(onClick = { }) {
-            Icon(
-                imageVector = Icons.Default.Bookmark,
-                contentDescription = "Сохранить",
+
+            Text(
+                text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 10.dp)
             )
         }
-    }
 }
 
 @Composable
@@ -259,9 +245,9 @@ fun ReportHeaderPreview() {
         )
         Column(modifier = Modifier.padding(16.dp)) {
             ReportHeader(report = sampleReport)
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             ReportHeader(report = sampleReport.copy(isPublic = true))
         }
     }

@@ -53,13 +53,12 @@ fun FishingReportItem(
         Column(
             modifier = Modifier.padding(vertical = 10.dp)
         ) {
-            FishingReportHeader(report = report)
 
             if (report.photo.isNotEmpty()) {
                 FishingReportPhotos(photos = report.photo)
                 Spacer(modifier = Modifier.height(10.dp))
             }
-            
+            FishingReportHeader(report = report)
             FishingReportFooter(report = report)
         }
     }
@@ -68,9 +67,8 @@ fun FishingReportItem(
 @Composable
 private fun FishingReportHeader(report: FishingReport) {
     val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru"))
-    val interactionSource = remember { MutableInteractionSource() }
-    
-    Column {
+
+    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -89,18 +87,13 @@ private fun FishingReportHeader(report: FishingReport) {
                 StatusBadge(text = "Не опубликовано")
                 Spacer(modifier = Modifier.width(8.dp))
             }
-
             Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null
-                    ) {  }
+                imageVector = Icons.Default.Bookmark,
+                contentDescription = "Bookmark",
+                tint = Color(0xFFFF3E00),
+                modifier = Modifier.size(24.dp)
             )
+
         }
 
         Text(
@@ -119,17 +112,20 @@ private fun FishingReportPhotos(photos: List<Int>) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1.8f)
-            .clip(RoundedCornerShape(16.dp))
+            .height(250.dp)
     ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            pageSpacing = 8.dp
         ) { index ->
             Image(
                 painter = painterResource(id = photos[index]),
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.Crop
             )
         }
@@ -138,15 +134,15 @@ private fun FishingReportPhotos(photos: List<Int>) {
         Surface(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp),
-            color = Color.Black.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(12.dp)
+                .padding(top = 12.dp, end = 20.dp),
+            color = Color.Black.copy(alpha = 0.6f),
+            shape = RoundedCornerShape(8.dp)
         ) {
             Text(
-                text = "${pagerState.currentPage + 1}/${photos.size}",
+                text = "${pagerState.currentPage + 1} из ${photos.size}",
                 color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                style = MaterialTheme.typography.labelMedium
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.labelLarge
             )
         }
     }
@@ -154,8 +150,12 @@ private fun FishingReportPhotos(photos: List<Int>) {
 
 @Composable
 private fun FishingReportFooter(report: FishingReport) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
@@ -178,12 +178,16 @@ private fun FishingReportFooter(report: FishingReport) {
                 icon = Icons.Default.Phishing
             )
         }
-
         Icon(
-            imageVector = Icons.Default.Bookmark,
-            contentDescription = "Bookmark",
-            tint = Color(0xFFC62828),
-            modifier = Modifier.size(24.dp)
+            imageVector = Icons.Default.MoreVert,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(24.dp)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null
+                ) {  }
         )
     }
 }
