@@ -1,5 +1,6 @@
 package com.example.fishing.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,6 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Phishing
+import androidx.compose.material.icons.filled.SetMeal
+import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,11 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.fishing.model.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -32,162 +38,188 @@ fun FishingReportItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
-    val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru"))
-    
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RectangleShape,
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 0.dp)
+            modifier = Modifier.padding(vertical = 10.dp)
         ) {
-            // Top Image Area
+            FishingReportHeader(report = report)
+
             if (report.photo.isNotEmpty()) {
-                val pagerState = rememberPagerState { report.photo.size }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.5f)
-                        .clip(RoundedCornerShape(12.dp))
-                ) {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize()
-                    ) { index ->
-                        Image(
-                            painter = painterResource(id = report.photo[index]),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    
-                    // Photo count overlay
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp),
-                        color = Color.Black.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "${pagerState.currentPage + 1}/${report.photo.size}",
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.5f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF0F0F0)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Нет фото", color = Color.Gray)
-                }
+                FishingReportPhotos(photos = report.photo)
+                Spacer(modifier = Modifier.height(10.dp))
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Tags Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                TagChip(
-                    text = report.type.displayName,
-                    containerColor = Color(0xFFE8EAF6),
-                    contentColor = Color(0xFF3F51B5)
-                )
-                
-                TagChip(
-                    text = when(report.fishingMethod) {
-                        FishingMethod.SPINNING -> "Спиннинг"
-                        FishingMethod.BOBBER -> "Поплавок"
-                        FishingMethod.FEEDER -> "Фидер"
-                        FishingMethod.FLY_FISHING -> "Нахлыст"
-                        else -> "Не указан"
-                    },
-                    containerColor = Color(0xFFDCEDC8),
-                    contentColor = Color(0xFF33691E)
-                )
-
-                if (report.fish.isNotEmpty()) {
-                    TagChip(
-                        text = report.fish.first().name,
-                        containerColor = Color(0xFFDCEDC8),
-                        contentColor = Color(0xFF33691E)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Title and Actions Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = report.name,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Medium,
-                        ),
-                        color = Color.Black
-                    )
-                    Text(
-                        text = "${dateFormatter.format(report.fishingTime)} • ${report.water.waterName}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
-
-                // Bookmark Icon
-                Icon(
-                    imageVector = Icons.Default.Bookmark,
-                    contentDescription = "Bookmark",
-                    tint = Color(0xFFD32F2F),
-                    modifier = Modifier.size(20.dp)
-                )
-
-                IconButton(onClick = { /* TODO */ }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Menu",
-                        tint = Color.Gray
-                    )
-                }
-            }
+            
+            FishingReportFooter(report = report)
         }
     }
 }
 
 @Composable
-fun TagChip(text: String, containerColor: Color, contentColor: Color) {
+private fun FishingReportHeader(report: FishingReport) {
+    val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru"))
+    
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = report.name,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = Color.Black
+            )
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!report.isPublic) {
+                    StatusBadge(text = "Не опубликовано")
+                }
+                IconButton(onClick = { /* TODO */ }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Menu",
+                        tint = Color.Black
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
+    }
+}
+
+@Composable
+private fun FishingReportPhotos(photos: List<Int>) {
+    val pagerState = rememberPagerState { photos.size }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1.8f)
+            .clip(RoundedCornerShape(16.dp))
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { index ->
+            Image(
+                painter = painterResource(id = photos[index]),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+        
+        // Photo count
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp),
+            color = Color.Black.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "${pagerState.currentPage + 1}/${photos.size}",
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun FishingReportFooter(report: FishingReport) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TagChip(text = "Отчет", icon = Icons.Outlined.Verified)
+            
+            if (report.fish.isNotEmpty()) {
+                TagChip(text = report.fish.first().name, icon = Icons.Default.SetMeal)
+            }
+
+            TagChip(
+                text = when(report.fishingMethod) {
+                    FishingMethod.SPINNING -> "Спиннинг"
+                    FishingMethod.BOBBER -> "Поплавок"
+                    FishingMethod.FEEDER -> "Фидер"
+                    else -> "Метод"
+                },
+                icon = Icons.Default.Phishing
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Default.Bookmark,
+            contentDescription = "Bookmark",
+            tint = Color(0xFFC62828),
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+fun StatusBadge(text: String) {
     Surface(
-        color = containerColor,
-        shape = RoundedCornerShape(5.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, contentColor.copy(alpha = 0.2f))
+        color = Color(0xFFE8EAF6),
+        shape = RoundedCornerShape(8.dp)
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 8.dp),
-            color = contentColor,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            color = Color(0xFF3F51B5),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Composable
+fun TagChip(text: String, icon: ImageVector) {
+    Surface(
+        color = Color.White,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = Color.Black
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Black
+            )
+        }
     }
 }
 
@@ -214,7 +246,7 @@ fun FishingReportItemPreview() {
         fishingFromTheShore = true,
         isPublic = false
     )
-    Box(modifier = Modifier.background(Color.White).padding(16.dp)) {
+    Box(modifier = Modifier.background(Color.White)) {
         FishingReportItem(report = sampleReport)
     }
 }
