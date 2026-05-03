@@ -3,7 +3,7 @@ package com.example.fishing.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
@@ -46,14 +46,19 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(items[selectedItem].title) },
+                title = { Text("Fishing Journal") },
                 actions = {
                     if (selectedItem == 0) {
                         IconButton(onClick = onExperimentalClick) {
                             Icon(Icons.Default.AutoAwesome, contentDescription = "Эксперимент")
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF3E5481),
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
             )
         },
         bottomBar = {
@@ -80,12 +85,19 @@ fun MainScreen(
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(0xFFF5F5F5)),
+                                .background(Color.White),
                             contentPadding = PaddingValues(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(reports) { report ->
+                            itemsIndexed(reports) { index, report ->
                                 FishingReportItem(report = report, onClick = { onReportClick(report) })
+                                if (index < reports.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                        thickness = 0.5.dp,
+                                        color = Color.LightGray.copy(alpha = 0.5f)
+                                    )
+                                }
                             }
                         }
                     }

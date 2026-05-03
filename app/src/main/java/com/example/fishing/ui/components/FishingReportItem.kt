@@ -4,7 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -47,19 +48,26 @@ fun FishingReportItem(
             modifier = Modifier.padding(vertical = 0.dp)
         ) {
             // Top Image Area
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.5f)
-                    .clip(RoundedCornerShape(12.dp))
-            ) {
-                if (report.photo.isNotEmpty()) {
-                    Image(
-                        painter = painterResource(id = report.photo.first()),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+            if (report.photo.isNotEmpty()) {
+                val pagerState = rememberPagerState { report.photo.size }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.5f)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { index ->
+                        Image(
+                            painter = painterResource(id = report.photo[index]),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                     
                     // Photo count overlay
                     Surface(
@@ -70,21 +78,23 @@ fun FishingReportItem(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "1/${report.photo.size}",
+                            text = "${pagerState.currentPage + 1}/${report.photo.size}",
                             color = Color.White,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color(0xFFF0F0F0)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Нет фото", color = Color.Gray)
-                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.5f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF0F0F0)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Нет фото", color = Color.Gray)
                 }
             }
 
@@ -204,7 +214,7 @@ fun FishingReportItemPreview() {
         fishingFromTheShore = true,
         isPublic = false
     )
-    Box(modifier = Modifier.background(Color(0xFFF5F5F5)).padding(16.dp)) {
+    Box(modifier = Modifier.background(Color.White).padding(16.dp)) {
         FishingReportItem(report = sampleReport)
     }
 }
