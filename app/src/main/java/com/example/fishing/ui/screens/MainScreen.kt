@@ -53,12 +53,12 @@ fun MainScreen(
                             Icon(Icons.Default.AutoAwesome, contentDescription = "Эксперимент")
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF3E5481),
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
+                }
+//                colors = TopAppBarDefaults.topAppBarColors(
+//                    containerColor = Color(0xFF3E5481),
+//                    titleContentColor = Color.White,
+//                    actionIconContentColor = Color.White
+//                )
             )
         },
         bottomBar = {
@@ -85,8 +85,8 @@ fun MainScreen(
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.White),
-                            contentPadding = PaddingValues(8.dp),
+                                .background(MaterialTheme.colorScheme.background),
+                            contentPadding = PaddingValues(0.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             itemsIndexed(reports) { index, report ->
@@ -94,7 +94,7 @@ fun MainScreen(
                                 if (index < reports.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 4.dp),
-                                        thickness = 0.5.dp,
+                                        thickness = 1.dp,
                                         color = Color.LightGray.copy(alpha = 0.5f)
                                     )
                                 }

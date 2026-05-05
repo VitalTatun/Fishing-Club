@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,19 +45,21 @@ fun FishingReportItem(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+
         shape = RectangleShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 10.dp)
+            modifier = Modifier.padding(vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
             if (report.photo.isNotEmpty()) {
                 FishingReportPhotos(photos = report.photo)
-                Spacer(modifier = Modifier.height(10.dp))
             }
             FishingReportHeader(report = report)
             FishingReportFooter(report = report)
@@ -98,7 +101,7 @@ private fun FishingReportHeader(report: FishingReport) {
 
         Text(
             text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = Color.Gray,
             modifier = Modifier.padding(bottom = 10.dp)
         )
@@ -160,7 +163,7 @@ private fun FishingReportFooter(report: FishingReport) {
     ) {
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             TagChip(text = "Отчет", icon = Icons.Outlined.Verified)
             
@@ -196,7 +199,7 @@ private fun FishingReportFooter(report: FishingReport) {
 fun StatusBadge(text: String) {
     Surface(
         color = Color(0xFFE8EAF6),
-        shape = RoundedCornerShape(5.dp)
+        shape = RoundedCornerShape(4.dp)
     ) {
         Text(
             text = text,
@@ -228,7 +231,7 @@ fun TagChip(text: String, icon: ImageVector) {
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = Color.Black
             )
         }

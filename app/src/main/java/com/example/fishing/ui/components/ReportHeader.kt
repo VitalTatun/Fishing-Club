@@ -36,7 +36,7 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .background(Color.White)
             .padding(vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
         )
     {
         // Фото карусель
@@ -135,20 +135,12 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                     StatusBadge(text = "Не опубликовано")
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Icon(
-                    imageVector = Icons.Default.Bookmark,
-                    contentDescription = "Bookmark",
-                    tint = Color(0xFFFF3E00),
-                    modifier = Modifier.size(24.dp)
-                )
-
             }
 
             Text(
                 text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
-                modifier = Modifier.padding(bottom = 10.dp)
             )
         }
 }

@@ -14,6 +14,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,13 +23,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fishing.model.FishingReport
+import android.content.ClipData
+import androidx.compose.ui.platform.ClipEntry
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,9 +42,11 @@ fun ExperimentalFishingDetailReport(
     onBackClick: () -> Unit,
     onPhotoClick: (Int) -> Unit = {}
 ) {
-    val dateFormat = SimpleDateFormat("dd MMMM yyyy", Locale("ru", "RU"))
-    val timeFormat = SimpleDateFormat("HH:mm", Locale("ru", "RU"))
-    val clipboardManager = LocalClipboardManager.current
+    val locale = remember { Locale.forLanguageTag("ru-RU") }
+    val dateFormat = remember { SimpleDateFormat("dd MMMM yyyy", locale) }
+    val timeFormat = remember { SimpleDateFormat("HH:mm", locale) }
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { report.photo.size })
 
     Scaffold(
@@ -383,7 +389,11 @@ fun ExperimentalFishingDetailReport(
                                     )
                                     IconButton(
                                         onClick = {
-                                            clipboardManager.setText(AnnotatedString(coords))
+                                            scope.launch {
+                                                clipboard.setClipEntry(
+                                                    ClipEntry(ClipData.newPlainText("coords", coords))
+                                                )
+                                            }
                                         },
                                         modifier = Modifier.size(32.dp)
                                     ) {

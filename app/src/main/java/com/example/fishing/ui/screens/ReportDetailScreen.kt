@@ -4,6 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BorderColor
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.BorderColor
@@ -30,25 +31,25 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = report.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "${dateFormatter.format(report.fishingTime)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFB6C3E5)
-                        )
-                    }
+//                    Column {
+//                        Text(
+//                            text = report.name,
+//                            style = MaterialTheme.typography.titleLarge,
+//                            fontWeight = FontWeight.Medium
+//                        )
+//                        Text(
+//                            text = "${dateFormatter.format(report.fishingTime)}",
+//                            style = MaterialTheme.typography.bodySmall,
+//                            color = Color(0xFFB6C3E5)
+//                        )
+//                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Назад",
-                            tint = Color.White
+//                            tint = Color.White
                         )
                     }
                 },
@@ -57,22 +58,32 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                         Icon(
                             imageVector = Icons.Outlined.BorderColor,
                             contentDescription = "Редактировать",
-                            tint = Color.White
+//                            tint = Color.White
                         )
                     }
                     IconButton(onClick = { /* TODO: Удалить */ }) {
                         Icon(
                             imageVector = Icons.Outlined.Delete,
                             contentDescription = "Удалить",
-                            tint = Color.White
+//                            tint = Color.White
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF3E5481),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.Default.Bookmark,
+                            contentDescription = "Сохранить",
+                            tint = Color.Red
+                        )
+                    }
+                }
+
+                // Цвета Appbar
+//                colors = TopAppBarDefaults.topAppBarColors(
+//                    containerColor = Color(0xFF3E5481),
+//                    titleContentColor = Color.White,
+//                    navigationIconContentColor = Color.White
+//                )
             )
         },
     ) { paddingValues ->
@@ -81,21 +92,17 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(report = report)
-            // 4. Секция местоположения
-            Spacer(modifier = Modifier.height(8.dp))
 
+            // 4. Секция местоположения
             ReportLocationSection(report = report)
 
-            Column() {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Общая информация (Mood, Details, Catch)
-                ReportGeneralInfo(report = report)
-            }
+            // Общая информация (Mood, Details, Catch)
+            ReportGeneralInfo(report = report)
         }
     }
 }

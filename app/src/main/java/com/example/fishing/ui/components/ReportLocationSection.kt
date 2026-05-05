@@ -2,13 +2,18 @@ package com.example.fishing.ui.components
 
 import android.content.ClipData
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,17 +36,11 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
-            .padding(vertical = 10.dp)
+            .background(Color.White),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+
     ) {
-        LocationInfoRow(
-            report = report,
-            primaryColor = primaryColor,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+
         // Map Placeholder
         Box(
             modifier = Modifier
@@ -59,7 +58,15 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
                     .size(40.dp)
                     .align(Alignment.Center)
             )
+
         }
+        LocationInfoRow(
+            report = report,
+            primaryColor = primaryColor,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
     }
 }
 
@@ -71,19 +78,18 @@ fun LocationInfoRow(
 ) {
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val interactionSource = remember { MutableInteractionSource() }
+
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Column(
-            modifier = Modifier.weight(1f)
-
         ) {
             Text(
                 text = report.water.waterName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                style = MaterialTheme.typography.titleMedium,
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -99,21 +105,22 @@ fun LocationInfoRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = primaryColor
                 )
-                IconButton(
-                    onClick = {
-                        scope.launch {
+
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            scope.launch {
                             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Coordinates", "${report.water.latitude}, ${report.water.longitude}")))
                         }
-                    },
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Копировать",
-                        tint = primaryColor,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
+                        }
+                )
 
             }
         }
