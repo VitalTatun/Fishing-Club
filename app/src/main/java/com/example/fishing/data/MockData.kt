@@ -58,6 +58,66 @@ object MockData {
             user = sampleUser,
             fishingFromTheShore = true,
             isPublic = true
+        ),
+        FishingReport(
+            type = FishingType.HAUL,
+            name = "Трофейный Сазан",
+            water = Water(waterName = "Озеро Нарочь", latitude = 54.8, longitude = 26.7),
+            photo = listOf(R.drawable.example),
+            fishingTime = calendar.apply { set(2024, Calendar.JULY, 15) }.time,
+            weight = 8.4,
+            fish = listOf(Fish(name = "Сазан", count = 1)),
+            fishingMethod = FishingMethod.FEEDER,
+            bait = listOf(Bait.CORN),
+            comment = "Боролся минут 20, но вытащил! Мой личный рекорд.",
+            user = sampleUser,
+            fishingFromTheShore = true,
+            isPublic = true
+        ),
+        FishingReport(
+            type = FishingType.HAUL,
+            name = "Ночной хищник",
+            water = Water(waterName = "Река Днепр", latitude = 52.1, longitude = 30.2),
+            photo = emptyList(),
+            fishingTime = calendar.apply { set(2024, Calendar.AUGUST, 5) }.time,
+            weight = 5.2,
+            fish = listOf(Fish(name = "Судак", count = 1)),
+            fishingMethod = FishingMethod.SPINNING,
+            bait = listOf(Bait.WOBBLER),
+            comment = "Взял на глубине, в самой темноте. Мощный удар!",
+            user = sampleUser,
+            fishingFromTheShore = false,
+            isPublic = false
+        ),
+        FishingReport(
+            type = FishingType.FISHING_LOG,
+            name = "Летний зной на Березине",
+            water = Water(waterName = "Река Березина", latitude = 53.9, longitude = 28.5),
+            photo = listOf(R.drawable.example, R.drawable.example),
+            fishingTime = calendar.apply { set(2024, Calendar.JULY, 20) }.time,
+            weight = 4.8,
+            fish = listOf(Fish(name = "Лещ", count = 5), Fish(name = "Густера", count = 10)),
+            fishingMethod = FishingMethod.FEEDER,
+            bait = listOf(Bait.BARLEY, Bait.MAGGOT),
+            comment = "Приехал на реку еще затемно, надеясь занять перспективное место, но, как оказалось, не я один такой предприимчивый. Пришлось обосноваться на менее знакомом участке. Начал с активного закорма: две пачки тяжелой речной прикормки, немного мелассы и резаный опарыш. Первые два часа — полная тишина, только мелкая верховодка периодически теребила кончик фидера. Но стоило солнцу подняться чуть выше деревьев, как последовал мощный отстрел квивертипа. Первый лещ на килограмм в подсаке! Следом пошла густера, да такая бойкая, что скучать не давала. К полудню жара стала невыносимой, рыба ушла на глубину, и поклевки прекратились. Тем не менее, выездом крайне доволен, река как всегда порадовала своей красотой и порцией адреналина. В следующий раз попробую приехать с вечера, чтобы захватить самый пик ночного клева.",
+            user = sampleUser,
+            fishingFromTheShore = true,
+            isPublic = true
+        ),
+        FishingReport(
+            type = FishingType.HAUL,
+            name = "Осенний монстр",
+            water = Water(waterName = "Заславское вдхр.", latitude = 54.0, longitude = 27.3),
+            photo = listOf(R.drawable.example),
+            fishingTime = calendar.apply { set(2024, Calendar.SEPTEMBER, 12) }.time,
+            weight = 12.5,
+            fish = listOf(Fish(name = "Карп", count = 1)),
+            fishingMethod = FishingMethod.FEEDER,
+            bait = listOf(Bait.CORN),
+            comment = "Это была одна из тех рыбалок, которые запоминаются на всю жизнь. Осень, легкий туман над водой, тишина, нарушаемая только всплесками далекой рыбы. Поклевка была совершенно неожиданной — фрикцион просто взвизгнул, и удилище согнулось в дугу. Я сразу понял, что на том конце серьезный противник. Минут 15 мы просто перетягивали канат: я отыгрывал метр, он забирал три. Руки начали дрожать от напряжения, а сердце билось где-то в горле. Когда в первый раз показался бок этого монстра, я даже испугался, что подсак окажется мал. Но удача была на моей стороне. Этот золотистый красавец на 12.5 кг заставил меня попотеть, как никогда раньше. После быстрой фотосессии и взвешивания, трофей был бережно отпущен обратно в родную стихию. Эмоции зашкаливают до сих пор, ради таких моментов мы и ездим на рыбалку!",
+            user = sampleUser,
+            fishingFromTheShore = true,
+            isPublic = true
         )
     )
 }
