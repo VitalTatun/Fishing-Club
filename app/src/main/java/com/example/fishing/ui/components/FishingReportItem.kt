@@ -78,8 +78,8 @@ private fun FishingReportHeader(report: FishingReport) {
             Text(
                 text = report.name,
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 18.sp
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 20.sp
                 ),
                 color = Color.Black,
                 modifier = Modifier.weight(1f)
@@ -100,7 +100,7 @@ private fun FishingReportHeader(report: FishingReport) {
         Text(
             text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
             style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray,
+            color = Color.Black,
             modifier = Modifier.padding(bottom = 10.dp)
         )
     }
@@ -137,13 +137,15 @@ private fun FishingReportPhotos(photos: List<Int>) {
                 .align(Alignment.TopEnd)
                 .padding(top = 12.dp, end = 20.dp),
             color = Color.Black.copy(alpha = 0.6f),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(30.dp)
         ) {
             Text(
-                text = "${pagerState.currentPage + 1} из ${photos.size}",
+                text = "${pagerState.currentPage + 1}/${photos.size}",
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
                 color = Color.White,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                )
             )
         }
     }

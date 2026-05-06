@@ -57,19 +57,15 @@ fun ReportGeneralInfo(report: FishingReport, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth()
             .background(Color.White)
-            .padding(all = 16.dp)
+            .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 16.dp)
     )
     {
+        MoodSection(selectedMood = 5)
         Text(
             text = "Общая информация",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(vertical = 16.dp)
         )
-
-        MoodSection(selectedMood = 5) // Dummy data
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         InfoDetailsList(report = report)
 
         Spacer(modifier = Modifier.height(13.dp))
@@ -79,6 +75,45 @@ fun ReportGeneralInfo(report: FishingReport, modifier: Modifier = Modifier) {
 
         ReportDescriptionSection(report = report)
 
+    }
+}
+
+@Composable
+private fun InfoDetailsList(report: FishingReport) {
+    val dateFormatter = SimpleDateFormat("d MMMM yyyy • H:mm", Locale.forLanguageTag("ru"))
+    
+    Column {
+        InfoRow(
+            label = "Способ ловли",
+            value = when (report.fishingMethod) {
+                FishingMethod.BOBBER -> "Поплавок"
+                FishingMethod.SPINNING -> "Спиннинг"
+                FishingMethod.FEEDER -> "Фидер"
+                FishingMethod.FLY_FISHING -> "Нахлыст"
+                else -> "Не указан"
+            }
+        )
+        InfoRow("Наживка", report.bait.joinToString(", ") { it.russianName })
+        InfoRow("Дата", dateFormatter.format(report.fishingTime))
+        InfoRow("Ловля с берега", if (report.fishingFromTheShore) "Да" else "Нет")
+        InfoRow("Общий вес", "${report.weight.toString().replace('.', ',')} кг.")
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 13.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = label, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+            Text(text = value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+        }
+        HorizontalDivider(color = Color(0xFFF0F0F0))
     }
 }
 
@@ -131,45 +166,6 @@ private fun MoodIcon(icon: ImageVector, isSelected: Boolean) {
         tint = if (isSelected) Color(0xFFFF5722) else Color(0xFF8E99BA),
         modifier = Modifier.size(40.dp)
     )
-}
-
-@Composable
-private fun InfoDetailsList(report: FishingReport) {
-    val dateFormatter = SimpleDateFormat("d MMMM yyyy • H:mm", Locale.forLanguageTag("ru"))
-    
-    Column {
-        InfoRow(
-            label = "Способ ловли",
-            value = when (report.fishingMethod) {
-                FishingMethod.BOBBER -> "Поплавок"
-                FishingMethod.SPINNING -> "Спиннинг"
-                FishingMethod.FEEDER -> "Фидер"
-                FishingMethod.FLY_FISHING -> "Нахлыст"
-                else -> "Не указан"
-            }
-        )
-        InfoRow("Наживка", report.bait.joinToString(", ") { it.russianName })
-        InfoRow("Дата", dateFormatter.format(report.fishingTime))
-        InfoRow("Ловля с берега", if (report.fishingFromTheShore) "Да" else "Нет")
-        InfoRow("Общий вес", "${report.weight.toString().replace('.', ',')} кг.")
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 13.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = label, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-            Text(text = value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-        }
-        HorizontalDivider(color = Color(0xFFF0F0F0))
-    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

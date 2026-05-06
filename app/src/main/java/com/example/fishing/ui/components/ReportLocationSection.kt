@@ -32,41 +32,48 @@ import java.util.*
 @Composable
 fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
     val primaryColor = Color(0xFF3E5481)
+    val cardBackground = Color(0xFFF2F5FA)
 
-    Column(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = cardBackground
     ) {
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
 
-        // Map Placeholder
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-                .height(120.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFE3F2FD))
         ) {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = null,
-                tint = primaryColor,
-                modifier = Modifier
-                    .size(40.dp)
-                    .align(Alignment.Center)
-            )
 
+            // Map Placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .height(130.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE3F2FD))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = primaryColor,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .align(Alignment.Center)
+                )
+
+            }
+            LocationInfoRow(
+                report = report,
+                primaryColor = primaryColor,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
         }
-        LocationInfoRow(
-            report = report,
-            primaryColor = primaryColor,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
     }
 }
 
@@ -80,49 +87,55 @@ fun LocationInfoRow(
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
 
-    Row(
+    Column(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Column(
+        Text(
+            text = report.water.waterName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.Black
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = report.water.waterName,
-                style = MaterialTheme.typography.titleMedium,
+                text = "GPS координаты: ",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "GPS координаты: ",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-                Text(
-                    text = "${report.water.latitude} - ${report.water.longitude}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = primaryColor
-                )
+            Text(
+                text = "${report.water.latitude} - ${report.water.longitude}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = primaryColor,
+                fontWeight = FontWeight.Medium
+            )
 
-                Icon(
-                    imageVector = Icons.Default.ContentCopy,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(14.dp)
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication = null
-                        ) {
-                            scope.launch {
-                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Coordinates", "${report.water.latitude}, ${report.water.longitude}")))
+            Icon(
+                imageVector = Icons.Default.ContentCopy,
+                contentDescription = null,
+                tint = primaryColor.copy(alpha = 0.8f),
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {
+                        scope.launch {
+                            clipboard.setClipEntry(
+                                ClipEntry(
+                                    ClipData.newPlainText(
+                                        "Coordinates",
+                                        "${report.water.latitude}, ${report.water.longitude}"
+                                    )
+                                )
+                            )
                         }
-                        }
-                )
+                    }
+            )
 
-            }
         }
     }
 }

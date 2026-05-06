@@ -23,6 +23,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -89,13 +90,15 @@ fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
                 .align(Alignment.TopEnd)
                 .padding(top = 12.dp, end = 20.dp),
             color = Color.Black.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(30.dp),
         ) {
             Text(
-                text = "${pagerState.currentPage + 1} из ${photos.size}",
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                text = "${pagerState.currentPage + 1}/${photos.size}",
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
                 color = Color.White,
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                )
             )
         }
     }
@@ -126,6 +129,7 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                     text = report.name,
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Medium,
+                        fontSize = 20.sp
                     ),
                     color = Color.Black,
                     modifier = Modifier.weight(1f)
@@ -139,8 +143,8 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
 
             Text(
                 text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Black,
             )
         }
 }

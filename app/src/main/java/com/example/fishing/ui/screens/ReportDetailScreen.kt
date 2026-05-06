@@ -89,12 +89,10 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(report = report)
-
             // 4. Секция местоположения
             ReportLocationSection(report = report)
-
             // Общая информация (Mood, Details, Catch)
-            ReportGeneralInfo(report = report)
+            ReportGeneralInfo(report = report) 
         }
     }
 }

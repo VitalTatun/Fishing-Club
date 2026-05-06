@@ -18,9 +18,9 @@ import com.example.fishing.ui.theme.FishingTheme
 @Composable
 fun PublishBanner(modifier: Modifier = Modifier) {
     Surface(
+        modifier = modifier.padding(horizontal = 8.dp),
         shape = RoundedCornerShape(10.dp),
         color = Color(0xFF3E5481),
-
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
