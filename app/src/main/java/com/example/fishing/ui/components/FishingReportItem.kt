@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Phishing
-import androidx.compose.material.icons.filled.SetMeal
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -80,14 +78,15 @@ private fun FishingReportHeader(report: FishingReport) {
             Text(
                 text = report.name,
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 18.sp
                 ),
                 color = Color.Black,
                 modifier = Modifier.weight(1f)
             )
             
-            if (!report.isPublic) {
-                StatusBadge(text = "Не опубликовано")
+            if (report.type == FishingType.HAUL) {
+                TrophyBadge()
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Icon(
@@ -96,7 +95,6 @@ private fun FishingReportHeader(report: FishingReport) {
                 tint = Color(0xFFFF3E00),
                 modifier = Modifier.size(24.dp)
             )
-
         }
 
         Text(
@@ -163,10 +161,24 @@ private fun FishingReportFooter(report: FishingReport) {
     ) {
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            TagChip(text = "Отчет", icon = Icons.Outlined.Verified)
-            
+            if (!report.isPublic) {
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = CircleShape,
+                    color = Color(0xFF3E5481)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.padding(6.dp)
+                    )
+                }
+            }
+
             if (report.fish.isNotEmpty()) {
                 TagChip(text = report.fish.first().name, icon = Icons.Default.SetMeal)
             }
@@ -184,7 +196,7 @@ private fun FishingReportFooter(report: FishingReport) {
         Icon(
             imageVector = Icons.Default.MoreVert,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.outlineVariant,
             modifier = Modifier
                 .size(24.dp)
                 .clickable(
@@ -196,15 +208,15 @@ private fun FishingReportFooter(report: FishingReport) {
 }
 
 @Composable
-fun StatusBadge(text: String) {
+fun TrophyBadge() {
     Surface(
-        color = Color(0xFFE8EAF6),
+        color = Color(0xFFFFD71D),
         shape = RoundedCornerShape(4.dp)
     ) {
         Text(
-            text = text,
+            text = "Трофей",
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            color = Color(0xFF3F51B5),
+            color = Color(0xFF50250A),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium
         )
@@ -212,11 +224,17 @@ fun StatusBadge(text: String) {
 }
 
 @Composable
-fun TagChip(text: String, icon: ImageVector) {
+fun TagChip(
+    text: String,
+    icon: ImageVector,
+    containerColor: Color = Color.White,
+    borderColor: Color = Color(0xFFB6C3E5),
+    contentColor: Color = Color(0xFF3E5481)
+) {
     Surface(
-        color = Color.White,
+        color = containerColor,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+        border = BorderStroke(1.dp, borderColor)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -226,13 +244,13 @@ fun TagChip(text: String, icon: ImageVector) {
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = Color.Black
+                tint = contentColor
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black
+                color = contentColor
             )
         }
     }
@@ -247,7 +265,7 @@ fun FishingReportItemPreview() {
         set(2023, Calendar.AUGUST, 22) 
     }
     val sampleReport = FishingReport(
-        type = FishingType.FISHING_LOG,
+        type = FishingType.HAUL,
         name = "Смеркалось...",
         water = sampleWater,
         photo = List(8) { android.R.drawable.ic_menu_gallery },

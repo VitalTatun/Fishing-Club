@@ -17,7 +17,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.fishing.ui.screens.ExperimentalFishingDetailReport
 import com.example.fishing.ui.screens.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.MainScreen
 import com.example.fishing.ui.screens.ReportDetailScreen
@@ -52,25 +51,25 @@ class MainActivity : ComponentActivity() {
 
                             slideInHorizontally(
                                 initialOffsetX = { it }, // Появляется справа
-                                animationSpec = tween(400)
+                                animationSpec = tween(300)
                             )
                         },
                         exitTransition = {
                             slideOutHorizontally(
-                                targetOffsetX = { -it / 3 }, // Уходит лишь на треть влево
-                                animationSpec = tween(400)
+                                targetOffsetX = { -it / 7 }, // Уходит лишь на треть влево
+                                animationSpec = tween(300)
                             )
                         },
                         popEnterTransition = {
                             slideInHorizontally(
-                                initialOffsetX = { -it / 3 }, // Возвращается из-за левого края
+                                initialOffsetX = { -it / 7 }, // Возвращается из-за левого края
                                 animationSpec = tween(300)
                             )
                         },
                         popExitTransition = {
                             slideOutHorizontally(
                                 targetOffsetX = { it }, // Уезжает вправо, открывая нижний
-                                animationSpec = tween(400)
+                                animationSpec = tween(300)
                             )
                         }
                     ) {
@@ -81,9 +80,6 @@ class MainActivity : ComponentActivity() {
                                 onReportClick = { report ->
                                     selectedReport = report
                                     navController.navigate("detail")
-                                },
-                                onExperimentalClick = {
-                                    navController.navigate("experimental")
                                 }
                             )
                         }
@@ -97,30 +93,12 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        composable("experimental") {
-                            reports.firstOrNull()?.let { report ->
-                                ExperimentalFishingDetailReport(
-                                    report = report,
-                                    onBackClick = { navController.popBackStack() },
-                                    onPhotoClick = { index ->
-                                        navController.navigate("full_screen_photo/$index")
-                                    }
-                                )
-                            }
-                        }
-
                         composable(
                             route = "full_screen_photo/{index}",
                             arguments = listOf(navArgument("index") { type = NavType.IntType })
                         ) { backStackEntry ->
                             val index = backStackEntry.arguments?.getInt("index") ?: 0
-                            val currentReport = if (navController.previousBackStackEntry?.destination?.route == "experimental") {
-                                reports.firstOrNull()
-                            } else {
-                                selectedReport
-                            }
-
-                            currentReport?.let { report ->
+                            selectedReport?.let { report ->
                                 FullScreenPhotoScreen(
                                     photos = report.photo,
                                     initialPage = index,

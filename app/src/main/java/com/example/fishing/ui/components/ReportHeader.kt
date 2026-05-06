@@ -131,8 +131,8 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                     modifier = Modifier.weight(1f)
                 )
 
-                if (!report.isPublic) {
-                    StatusBadge(text = "Не опубликовано")
+                if (report.type == FishingType.HAUL) {
+                    TrophyBadge()
                     Spacer(modifier = Modifier.width(8.dp))
                 }
             }
@@ -152,11 +152,20 @@ fun ReportStatusTags(report: FishingReport, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        StatusChip(
-            text = report.type.displayName,
-            containerColor = Color(0xFFE8EAF6),
-            contentColor = Color(0xFF3F51B5)
-        )
+        if (!report.isPublic) {
+            Surface(
+                modifier = Modifier.size(28.dp),
+                shape = CircleShape,
+                color = Color(0xFF5C78A3)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.padding(6.dp)
+                )
+            }
+        }
         if (report.isPublic) {
             StatusChip(
                 text = "Опубликован",
@@ -172,6 +181,8 @@ fun ReportStatusTags(report: FishingReport, modifier: Modifier = Modifier) {
         }
     }
 }
+
+
 
 @Composable
 fun StatusChip(text: String, containerColor: Color, contentColor: Color) {
@@ -195,7 +206,7 @@ fun StatusChip(text: String, containerColor: Color, contentColor: Color) {
 fun ReportSummaryPreview() {
     FishingTheme {
         val sampleReport = FishingReport(
-            type = FishingType.FISHING_LOG,
+            type = FishingType.HAUL,
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
             photo = listOf(android.R.drawable.ic_menu_gallery),

@@ -53,8 +53,9 @@ fun FishingTheme(
             val window = (view.context as Activity).window
             // Цвет самого бара делаем прозрачным (так как используем EdgeToEdge)
             // Но управляем цветом ИКОНОК:
-            // Если тема темная ИЛИ у нас темный AppBar на светлой теме -> иконки БЕЛЫЕ (appearanceLightStatusBars = false)
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            // Если тема светлая -> иконки ТЕМНЫЕ (isAppearanceLightStatusBars = true)
+            // Если тема темная -> иконки СВЕТЛЫЕ (isAppearanceLightStatusBars = false)
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 

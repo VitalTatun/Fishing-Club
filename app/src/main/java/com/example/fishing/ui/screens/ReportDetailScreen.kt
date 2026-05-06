@@ -49,7 +49,6 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Назад",
-//                            tint = Color.White
                         )
                     }
                 },
@@ -77,13 +76,6 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                         )
                     }
                 }
-
-                // Цвета Appbar
-//                colors = TopAppBarDefaults.topAppBarColors(
-//                    containerColor = Color(0xFF3E5481),
-//                    titleContentColor = Color.White,
-//                    navigationIconContentColor = Color.White
-//                )
             )
         },
     ) { paddingValues ->
