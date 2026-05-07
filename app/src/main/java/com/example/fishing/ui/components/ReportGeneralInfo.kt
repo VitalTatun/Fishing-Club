@@ -1,17 +1,14 @@
 package com.example.fishing.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,7 +43,7 @@ fun ReportGeneralInfoPreview() {
     )
     
     MaterialTheme {
-        Surface(modifier = Modifier.padding(16.dp)) {
+        Surface(modifier = Modifier.padding(horizontal = 16.dp)) {
             ReportGeneralInfo(report = mockReport)
         }
     }
@@ -55,146 +52,74 @@ fun ReportGeneralInfoPreview() {
 @Composable
 fun ReportGeneralInfo(report: FishingReport, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth()
-            .background(Color.White)
-            .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 16.dp)
-    )
-    {
-        MoodSection(selectedMood = 5)
-        Text(
-            text = "Общая информация",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(vertical = 16.dp)
-        )
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 0.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
         InfoDetailsList(report = report)
-
-        Spacer(modifier = Modifier.height(13.dp))
-
-        CatchSection(report = report)
-        Spacer(modifier = Modifier.height(13.dp))
-
+        ReportCatchSection(report = report)
         ReportDescriptionSection(report = report)
-
     }
 }
+
 
 @Composable
 private fun InfoDetailsList(report: FishingReport) {
     val dateFormatter = SimpleDateFormat("d MMMM yyyy • H:mm", Locale.forLanguageTag("ru"))
-    
-    Column {
-        InfoRow(
-            label = "Способ ловли",
-            value = when (report.fishingMethod) {
-                FishingMethod.BOBBER -> "Поплавок"
-                FishingMethod.SPINNING -> "Спиннинг"
-                FishingMethod.FEEDER -> "Фидер"
-                FishingMethod.FLY_FISHING -> "Нахлыст"
-                else -> "Не указан"
-            }
-        )
-        InfoRow("Наживка", report.bait.joinToString(", ") { it.russianName })
-        InfoRow("Дата", dateFormatter.format(report.fishingTime))
-        InfoRow("Ловля с берега", if (report.fishingFromTheShore) "Да" else "Нет")
-        InfoRow("Общий вес", "${report.weight.toString().replace('.', ',')} кг.")
-    }
-}
 
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Column {
-        Row(
+    val items = listOf(
+        "Способ ловли" to when (report.fishingMethod) {
+            FishingMethod.BOBBER -> "Поплавок"
+            FishingMethod.SPINNING -> "Спиннинг"
+            FishingMethod.FEEDER -> "Фидер"
+            FishingMethod.FLY_FISHING -> "Нахлыст"
+            else -> "Не указан"
+        },
+        "Наживка" to report.bait.joinToString(", ") { it.russianName },
+        "Дата" to dateFormatter.format(report.fishingTime),
+        "Ловля с берега" to if (report.fishingFromTheShore) "Да" else "Нет"
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        Text(
+            text = "Общая информация",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
+        )
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 13.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .clip(RoundedCornerShape(16.dp)),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(text = label, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-            Text(text = value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-        }
-        HorizontalDivider(color = Color(0xFFF0F0F0))
-    }
-}
+            items.forEachIndexed { index, item ->
+                val shape = when (index) {
+                    0 -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
+                    items.size - 1 -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+                    else -> RoundedCornerShape(4.dp)
+                }
 
-@Composable
-private fun MoodSection(selectedMood: Int) {
-    Surface(
-        color = Color(0xFFF0F2FA),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                MoodIcon(Icons.Default.SentimentVeryDissatisfied, selectedMood == 1)
-                MoodIcon(Icons.Default.SentimentDissatisfied, selectedMood == 2)
-                MoodIcon(Icons.Default.SentimentNeutral, selectedMood == 3)
-                MoodIcon(Icons.Default.SentimentSatisfied, selectedMood == 4)
-                MoodIcon(Icons.Default.SentimentVerySatisfied, selectedMood == 5)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Очень плохая",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF5C6E91)
-                )
-                Text(
-                    text = "Очень хорошая",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF5C6E91)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MoodIcon(icon: ImageVector, isSelected: Boolean) {
-    Icon(
-        imageVector = icon,
-        contentDescription = null,
-        tint = if (isSelected) Color(0xFFFF5722) else Color(0xFF8E99BA),
-        modifier = Modifier.size(40.dp)
-    )
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CatchSection(report: FishingReport) {
-    Column {
-        Text(
-            text = "Улов",
-            style = MaterialTheme.typography.titleMedium
-        )
-        FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 13.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            report.fish.forEach { fish ->
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Color.LightGray),
-                    color = Color.Transparent
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(shape)
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${fish.name} ${fish.count} шт.",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(text = item.first, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                    Text(text = item.second, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
-        HorizontalDivider(color = Color(0xFFF0F0F0))
     }
 }
+
+
+
+
+
+

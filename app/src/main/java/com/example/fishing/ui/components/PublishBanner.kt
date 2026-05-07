@@ -18,26 +18,30 @@ import com.example.fishing.ui.theme.FishingTheme
 @Composable
 fun PublishBanner(modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.padding(horizontal = 8.dp),
-        shape = RoundedCornerShape(10.dp),
+        modifier = modifier.fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color(0xFF3E5481),
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Отчет не опубликован",
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp
                 )
                 Text(
                     text = "Об этой рыбалке знаете только вы и рыба",
                     color = Color.White.copy(alpha = 0.8f),
-                    style = MaterialTheme.typography.bodySmall
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 13.sp
                 )
             }
             Icon(

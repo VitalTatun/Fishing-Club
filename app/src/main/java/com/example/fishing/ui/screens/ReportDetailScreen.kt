@@ -28,8 +28,12 @@ import java.util.*
 fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
     val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru"))
     Scaffold(
+        containerColor = Color(0xFFF7F8FA),
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFFF7F8FA)
+                ),
                 title = {
 //                    Column {
 //                        Text(
@@ -84,11 +88,17 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+                .padding(bottom = 32.dp, top = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(report = report)
+            MoodSection(selectedMood = 5)
+            // Баннер публикации (если черновик)
+            if (!report.isPublic) {
+                PublishBanner()
+            }
+
             // 4. Секция местоположения
             ReportLocationSection(report = report)
             // Общая информация (Mood, Details, Catch)

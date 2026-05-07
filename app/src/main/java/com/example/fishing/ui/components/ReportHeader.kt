@@ -34,24 +34,20 @@ import java.util.*
 fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .fillMaxWidth(),
+//            .background(Color.White),
+//            .padding(vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
         )
     {
         // Фото карусель
         ReportPhotoCarousel(photos = report.photo)
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
             // Основная информация (Теги + Автор/Название)
             ReportSummary(report = report)
-            // Баннер публикации (если черновик)
-            if (!report.isPublic) {
-                PublishBanner()
-            }
         }
     }
 }
@@ -71,7 +67,7 @@ fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 8.dp
         ) { index ->
             Image(
@@ -79,7 +75,7 @@ fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(10.dp)),
+                    .clip(RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.Crop
             )
         }
@@ -88,7 +84,7 @@ fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
         Surface(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 20.dp),
+                .padding(top = 8.dp, end = 24.dp),
             color = Color.Black.copy(alpha = 0.5f),
             shape = RoundedCornerShape(30.dp),
         ) {
@@ -119,7 +115,7 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
 
 
         // Вертикальный стек (Название + Имя)
-        Column {
+        Column(modifier = modifier.padding(vertical = 8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
