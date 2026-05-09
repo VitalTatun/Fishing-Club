@@ -31,7 +31,7 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
                 title = {
@@ -42,9 +42,10 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
 //                            fontWeight = FontWeight.Medium
 //                        )
 //                        Text(
-//                            text = "${dateFormatter.format(report.fishingTime)}",
+//                            text = dateFormatter.format(report.fishingTime),
 //                            style = MaterialTheme.typography.bodySmall,
-//                            color = Color(0xFFB6C3E5)
+//                            fontWeight = FontWeight.SemiBold,
+//                            color = Color.Black,
 //                        )
 //                    }
                 },
@@ -76,7 +77,7 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                         Icon(
                             imageVector = Icons.Default.Bookmark,
                             contentDescription = "Сохранить",
-                            tint = MaterialTheme.colorScheme.error
+                            tint = Color.Red
                         )
                     }
                 }

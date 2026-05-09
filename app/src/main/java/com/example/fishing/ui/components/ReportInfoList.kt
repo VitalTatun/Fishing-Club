@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
@@ -40,9 +41,9 @@ private fun DetailRow(label: String, value: String) {
                 .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = label, color = Color.Gray)
             Text(text = value, fontWeight = FontWeight.Medium)
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = Color(0xFFF0F0F0))
     }
 }

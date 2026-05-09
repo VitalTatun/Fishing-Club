@@ -43,7 +43,7 @@ fun ReportCatchSection(report: FishingReport, modifier: Modifier = Modifier) {
                 report.fish.forEach { fish ->
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Text(
@@ -81,7 +81,7 @@ fun ReportCatchSectionPreview() {
         fishingFromTheShore = true,
         isPublic = true
     )
-    Box(modifier = Modifier.padding(16.dp).background(MaterialTheme.colorScheme.surface)) {
+    Box(modifier = Modifier.padding(16.dp).background(MaterialTheme.colorScheme.background)) {
         ReportCatchSection(report = sampleReport)
     }
 }

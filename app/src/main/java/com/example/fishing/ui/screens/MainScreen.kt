@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -81,7 +82,7 @@ fun MainScreen(
                                     HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 4.dp),
                                         thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant
+                                        color = Color.LightGray.copy(alpha = 0.5f)
                                     )
                                 }
                             }

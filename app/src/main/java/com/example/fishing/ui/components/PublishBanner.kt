@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -20,7 +21,7 @@ fun PublishBanner(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primary,
+        color = Color(0xFF3E5481),
     ) {
         Row(
             modifier = Modifier
@@ -32,13 +33,13 @@ fun PublishBanner(modifier: Modifier = Modifier) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Отчет не опубликован",
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = Color.White,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp
                 )
                 Text(
                     text = "Об этой рыбалке знаете только вы и рыба",
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                    color = Color.White.copy(alpha = 0.8f),
                     fontWeight = FontWeight.Normal,
                     fontSize = 13.sp
                 )
@@ -46,7 +47,7 @@ fun PublishBanner(modifier: Modifier = Modifier) {
             Icon(
                 imageVector = Icons.Default.CloudUpload,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary
+                tint = Color.White
             )
         }
     }

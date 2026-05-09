@@ -12,11 +12,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.ui.theme.FishingTheme
 
 @Composable
 fun MoodSection(selectedMood: Int, modifier: Modifier = Modifier) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = FishingTheme.colors.secondaryBackground,
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
             .fillMaxWidth()
@@ -68,7 +69,7 @@ private fun MoodIcon(icon: ImageVector, isSelected: Boolean) {
     Icon(
         imageVector = icon,
         contentDescription = null,
-        tint = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
         modifier = Modifier.size(44.dp)
     )
 }

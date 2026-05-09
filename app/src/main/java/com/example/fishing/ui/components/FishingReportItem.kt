@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,17 +95,22 @@ private fun FishingReportHeader(report: FishingReport) {
                         fontSize = 20.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                if (report.type == FishingType.HAUL) {
-                    TrophyBadge()
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
+                ReportBadges(
+                    report = report,
+                    showDraftBadge = false
+                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
                 Icon(
                     imageVector = Icons.Default.Bookmark,
                     contentDescription = "Bookmark",
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = FishingTheme.colors.bookmarkRed,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -162,7 +168,7 @@ private fun FishingReportPhotos(photos: List<Int>) {
         Surface(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 20.dp),
+                .padding(top = 8.dp, end = 24.dp),
             color = Color.Black.copy(alpha = 0.6f),
             shape = RoundedCornerShape(30.dp)
         ) {
@@ -238,15 +244,51 @@ private fun PrivateReportBadge(modifier: Modifier = Modifier) {
 }
 
 @Composable
+fun ReportBadges(
+    report: FishingReport,
+    modifier: Modifier = Modifier,
+    showDraftBadge: Boolean = true
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!report.isPublic && showDraftBadge) {
+            DraftBadge()
+        }
+        if (report.type == FishingType.HAUL) {
+            TrophyBadge()
+        }
+    }
+}
+
+@Composable
 fun TrophyBadge() {
     Surface(
-        color = MaterialTheme.colorScheme.tertiary,
+        color = FishingTheme.colors.trophyYellow,
         shape = RoundedCornerShape(4.dp)
     ) {
         Text(
             text = "Трофей",
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            color = MaterialTheme.colorScheme.onTertiary,
+            color = FishingTheme.colors.textOnTrophy,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun DraftBadge() {
+    Surface(
+        color = MaterialTheme.colorScheme.primary,
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            text = "Не опубликован",
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            color = Color.White,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium
         )

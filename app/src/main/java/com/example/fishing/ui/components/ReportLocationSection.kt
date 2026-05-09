@@ -55,7 +55,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow
+                color = FishingTheme.colors.secondaryBackground
             ) {
                 Box(
                     modifier = Modifier
@@ -83,7 +83,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow
+                color = FishingTheme.colors.secondaryBackground
             ) {
                 Column(
                     modifier = Modifier

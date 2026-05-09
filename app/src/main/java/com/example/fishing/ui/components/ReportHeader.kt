@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -128,13 +129,12 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                         fontSize = 20.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                if (report.type == FishingType.HAUL) {
-                    TrophyBadge()
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
+                ReportBadges(report = report)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -142,7 +142,7 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                     text = dateFormatter.format(report.fishingTime),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color.Black,
                 )
                 Text(
                     text = "  •  ",
@@ -171,12 +171,12 @@ fun ReportStatusTags(report: FishingReport, modifier: Modifier = Modifier) {
             Surface(
                 modifier = Modifier.size(28.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary
+                color = Color(0xFF5C78A3)
             ) {
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = Color.White,
                     modifier = Modifier.padding(6.dp)
                 )
             }
@@ -184,14 +184,14 @@ fun ReportStatusTags(report: FishingReport, modifier: Modifier = Modifier) {
         if (report.isPublic) {
             StatusChip(
                 text = "Опубликован",
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                containerColor = Color(0xFFDCEDC8),
+                contentColor = Color(0xFF689F38)
             )
         } else {
             StatusChip(
                 text = "Не опубликован",
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                containerColor = Color(0xFFF5F5F5),
+                contentColor = Color(0xFF757575)
             )
         }
     }
