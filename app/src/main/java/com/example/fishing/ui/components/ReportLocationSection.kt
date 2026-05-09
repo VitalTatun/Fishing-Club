@@ -31,7 +31,7 @@ import java.util.*
 
 @Composable
 fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
-    val primaryColor = Color(0xFF3E5481)
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Column(
         modifier = modifier
@@ -55,7 +55,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
-                color = Color(0xFFF2F3F4)
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 Box(
                     modifier = Modifier
@@ -66,7 +66,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
                             topStart = 12.dp, topEnd = 12.dp,
                             bottomStart = 2.dp, bottomEnd = 2.dp
                         ))
-                        .background(Color(0xFFE3F2FD))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
                 ) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
@@ -83,7 +83,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
-                color = Color(0xFFF2F3F4)
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 Column(
                     modifier = Modifier
@@ -125,7 +125,7 @@ fun LocationInfoRow(
         Text(
             text = "GPS координаты: ",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray.copy(alpha = 0.8f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = "${report.water.latitude} - ${report.water.longitude}",

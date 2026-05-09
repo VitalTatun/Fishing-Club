@@ -127,7 +127,7 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                         fontWeight = FontWeight.Medium,
                         fontSize = 20.sp
                     ),
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -142,7 +142,7 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                     text = dateFormatter.format(report.fishingTime),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = "  •  ",
@@ -171,12 +171,12 @@ fun ReportStatusTags(report: FishingReport, modifier: Modifier = Modifier) {
             Surface(
                 modifier = Modifier.size(28.dp),
                 shape = CircleShape,
-                color = Color(0xFF5C78A3)
+                color = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.padding(6.dp)
                 )
             }
@@ -184,14 +184,14 @@ fun ReportStatusTags(report: FishingReport, modifier: Modifier = Modifier) {
         if (report.isPublic) {
             StatusChip(
                 text = "Опубликован",
-                containerColor = Color(0xFFDCEDC8),
-                contentColor = Color(0xFF689F38)
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
             )
         } else {
             StatusChip(
                 text = "Не опубликован",
-                containerColor = Color(0xFFF5F5F5),
-                contentColor = Color(0xFF757575)
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

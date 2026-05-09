@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun MoodSection(selectedMood: Int, modifier: Modifier = Modifier) {
     Surface(
-        color = Color(0xFFF2F3F4),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
             .fillMaxWidth()
@@ -30,7 +30,7 @@ fun MoodSection(selectedMood: Int, modifier: Modifier = Modifier) {
                 text = "Эмоциональная оценка",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF3E5481)
+                color = MaterialTheme.colorScheme.primary
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -50,13 +50,13 @@ fun MoodSection(selectedMood: Int, modifier: Modifier = Modifier) {
                     text = "Очень плохая",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF3E5481)
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "Очень хорошая",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF3E5481)
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -68,7 +68,7 @@ private fun MoodIcon(icon: ImageVector, isSelected: Boolean) {
     Icon(
         imageVector = icon,
         contentDescription = null,
-        tint = if (isSelected) Color(0xFFFF5722) else Color(0xFF8E99BA).copy(alpha = 0.7f),
+        tint = if (isSelected) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
         modifier = Modifier.size(44.dp)
     )
 }

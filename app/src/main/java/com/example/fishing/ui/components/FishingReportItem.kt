@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fishing.model.*
+import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -92,7 +93,7 @@ private fun FishingReportHeader(report: FishingReport) {
                         fontWeight = FontWeight.Medium,
                         fontSize = 20.sp
                     ),
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -103,7 +104,7 @@ private fun FishingReportHeader(report: FishingReport) {
                 Icon(
                     imageVector = Icons.Default.Bookmark,
                     contentDescription = "Bookmark",
-                    tint = Color(0xFFFF3E00),
+                    tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -113,7 +114,7 @@ private fun FishingReportHeader(report: FishingReport) {
                     text = dateFormatter.format(report.fishingTime),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = "  •  ",
@@ -225,12 +226,12 @@ private fun PrivateReportBadge(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.size(32.dp),
         shape = CircleShape,
-        color = Color(0xFF3E5481)
+        color = MaterialTheme.colorScheme.primary
     ) {
         Icon(
             imageVector = Icons.Default.Lock,
             contentDescription = "Private",
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.padding(6.dp)
         )
     }
@@ -239,13 +240,13 @@ private fun PrivateReportBadge(modifier: Modifier = Modifier) {
 @Composable
 fun TrophyBadge() {
     Surface(
-        color = Color(0xFFFFD71D),
+        color = MaterialTheme.colorScheme.tertiary,
         shape = RoundedCornerShape(4.dp)
     ) {
         Text(
             text = "Трофей",
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            color = Color(0xFF50250A),
+            color = MaterialTheme.colorScheme.onTertiary,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium
         )
@@ -256,9 +257,9 @@ fun TrophyBadge() {
 fun TagChip(
     text: String,
     icon: ImageVector,
-    containerColor: Color = Color.White,
-    borderColor: Color = Color(0xFFB6C3E5),
-    contentColor: Color = Color(0xFF3E5481)
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    borderColor: Color = MaterialTheme.colorScheme.outlineVariant,
+    contentColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Surface(
         color = containerColor,
@@ -302,7 +303,9 @@ fun FishingReportItemPreview() {
         fishingFromTheShore = true,
         isPublic = false
     )
-    Box(modifier = Modifier.background(Color.White)) {
-        FishingReportItem(report = sampleReport)
+    Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+        FishingTheme {
+            FishingReportItem(report = sampleReport)
+        }
     }
 }

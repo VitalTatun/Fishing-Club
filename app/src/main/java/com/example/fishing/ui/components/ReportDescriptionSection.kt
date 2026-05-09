@@ -55,7 +55,7 @@ fun ReportDescriptionSectionPreview() {
     )
     Box(
         modifier = Modifier
-            .background(Color(0xFFF7F8FA))
+            .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
         ReportDescriptionSection(report = sampleReport)

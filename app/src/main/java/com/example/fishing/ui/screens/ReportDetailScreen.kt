@@ -28,11 +28,11 @@ import java.util.*
 fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
     val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru"))
     Scaffold(
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
                 title = {
 //                    Column {
@@ -76,7 +76,7 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                         Icon(
                             imageVector = Icons.Default.Bookmark,
                             contentDescription = "Сохранить",
-                            tint = Color.Red
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }

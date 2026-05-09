@@ -8,11 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.fishing.model.*
+import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -42,7 +42,7 @@ fun ReportGeneralInfoPreview() {
         isPublic = true
     )
     
-    MaterialTheme {
+    FishingTheme {
         Surface(modifier = Modifier.padding(horizontal = 16.dp)) {
             ReportGeneralInfo(report = mockReport)
         }
@@ -106,12 +106,12 @@ private fun InfoDetailsList(report: FishingReport) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(shape)
-                        .background(Color(0xFFF2F3F4))
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = item.first, color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
+                    Text(text = item.first, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                     Text(text = item.second, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium)
                 }
             }
