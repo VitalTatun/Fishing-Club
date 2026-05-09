@@ -24,7 +24,7 @@ fun ReportCatchSection(report: FishingReport, modifier: Modifier = Modifier) {
     ) {
         Text(
             text = "Улов",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
         )
@@ -49,7 +49,7 @@ fun ReportCatchSection(report: FishingReport, modifier: Modifier = Modifier) {
                         Text(
                             text = "${fish.name} ${fish.count} шт.",
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
                 }

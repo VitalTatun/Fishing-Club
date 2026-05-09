@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun MoodSection(selectedMood: Int, modifier: Modifier = Modifier) {
     Surface(
-        color = Color.White,
+        color = Color(0xFFF2F3F4),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
             .fillMaxWidth()

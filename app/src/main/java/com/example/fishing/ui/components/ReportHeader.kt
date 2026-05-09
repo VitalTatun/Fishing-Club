@@ -137,11 +137,26 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                 }
             }
 
-            Text(
-                text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Black,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = dateFormatter.format(report.fishingTime),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black,
+                )
+                Text(
+                    text = "  •  ",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = report.water.waterName,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
         }
 }
 

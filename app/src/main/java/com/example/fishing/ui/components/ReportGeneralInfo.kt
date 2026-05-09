@@ -55,7 +55,7 @@ fun ReportGeneralInfo(report: FishingReport, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 0.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         InfoDetailsList(report = report)
         ReportCatchSection(report = report)
@@ -78,13 +78,14 @@ private fun InfoDetailsList(report: FishingReport) {
         },
         "Наживка" to report.bait.joinToString(", ") { it.russianName },
         "Дата" to dateFormatter.format(report.fishingTime),
-        "Ловля с берега" to if (report.fishingFromTheShore) "Да" else "Нет"
+        "Ловля с берега" to if (report.fishingFromTheShore) "Да" else "Нет",
+        "Общий вес" to "${report.weight.toString().replace('.', ',')} кг"
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         Text(
             text = "Общая информация",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
         )
@@ -105,8 +106,8 @@ private fun InfoDetailsList(report: FishingReport) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(shape)
-                        .background(Color.White)
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .background(Color(0xFFF2F3F4))
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

@@ -23,7 +23,7 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
     ) {
         Text(
             text = "Комментарий",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
         )

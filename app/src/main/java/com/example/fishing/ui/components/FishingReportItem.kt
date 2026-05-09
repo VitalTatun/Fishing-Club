@@ -52,7 +52,7 @@ fun FishingReportItem(
 
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 10.dp),
+            modifier = Modifier.padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
@@ -69,7 +69,7 @@ fun FishingReportItem(
 private fun FishingReportHeader(report: FishingReport) {
     val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru"))
 
-    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -84,7 +84,7 @@ private fun FishingReportHeader(report: FishingReport) {
                 color = Color.Black,
                 modifier = Modifier.weight(1f)
             )
-            
+
             if (report.type == FishingType.HAUL) {
                 TrophyBadge()
                 Spacer(modifier = Modifier.width(8.dp))
@@ -97,12 +97,26 @@ private fun FishingReportHeader(report: FishingReport) {
             )
         }
 
-        Text(
-            text = "${dateFormatter.format(report.fishingTime)}  •  ${report.water.waterName}",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Black,
-            modifier = Modifier.padding(bottom = 10.dp)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = dateFormatter.format(report.fishingTime),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black,
+            )
+            Text(
+                text = "  •  ",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = report.water.waterName,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
     }
 }
 
@@ -118,7 +132,7 @@ private fun FishingReportPhotos(photos: List<Int>) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 8.dp
         ) { index ->
             Image(
@@ -158,7 +172,7 @@ private fun FishingReportFooter(report: FishingReport) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
@@ -239,19 +253,13 @@ fun TagChip(
         border = BorderStroke(1.dp, borderColor)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = contentColor
-            )
-            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 color = contentColor
             )
         }

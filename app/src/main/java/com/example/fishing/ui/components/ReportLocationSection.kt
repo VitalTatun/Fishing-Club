@@ -41,7 +41,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
     ) {
         Text(
             text = "Местоположение",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
         )
@@ -55,7 +55,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
-                color = Color.White
+                color = Color(0xFFF2F3F4)
             ) {
                 Box(
                     modifier = Modifier
@@ -83,7 +83,7 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
-                color = Color.White
+                color = Color(0xFFF2F3F4)
             ) {
                 Column(
                     modifier = Modifier
