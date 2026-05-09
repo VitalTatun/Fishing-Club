@@ -67,55 +67,67 @@ fun FishingReportItem(
 
 @Composable
 private fun FishingReportHeader(report: FishingReport) {
-    val dateFormatter = SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru"))
+    val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = report.name,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 20.sp
-                ),
-                color = Color.Black,
-                modifier = Modifier.weight(1f)
-            )
-
-            if (report.type == FishingType.HAUL) {
-                TrophyBadge()
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Icon(
-                imageVector = Icons.Default.Bookmark,
-                contentDescription = "Bookmark",
-                tint = Color(0xFFFF3E00),
-                modifier = Modifier.size(24.dp)
-            )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!report.isPublic) {
+            PrivateReportBadge()
+            Spacer(modifier = Modifier.width(5.dp))
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = dateFormatter.format(report.fishingTime),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black,
-            )
-            Text(
-                text = "  •  ",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = report.water.waterName,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.outline
-            )
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = report.name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 20.sp
+                    ),
+                    color = Color.Black,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (report.type == FishingType.HAUL) {
+                    TrophyBadge()
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Icon(
+                    imageVector = Icons.Default.Bookmark,
+                    contentDescription = "Bookmark",
+                    tint = Color(0xFFFF3E00),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = dateFormatter.format(report.fishingTime),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black,
+                )
+                Text(
+                    text = "  •  ",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = report.water.waterName,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
         }
     }
 }
@@ -180,21 +192,6 @@ private fun FishingReportFooter(report: FishingReport) {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!report.isPublic) {
-                Surface(
-                    modifier = Modifier.size(32.dp),
-                    shape = CircleShape,
-                    color = Color(0xFF3E5481)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.padding(6.dp)
-                    )
-                }
-            }
-
             if (report.fish.isNotEmpty()) {
                 TagChip(text = report.fish.first().name, icon = Icons.Default.SetMeal)
             }
@@ -219,6 +216,22 @@ private fun FishingReportFooter(report: FishingReport) {
                     interactionSource = interactionSource,
                     indication = null
                 ) {  }
+        )
+    }
+}
+
+@Composable
+private fun PrivateReportBadge(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.size(32.dp),
+        shape = CircleShape,
+        color = Color(0xFF3E5481)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Lock,
+            contentDescription = "Private",
+            tint = Color.White,
+            modifier = Modifier.padding(6.dp)
         )
     }
 }
