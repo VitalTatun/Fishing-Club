@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingReportItem
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.MainViewModel
 import java.util.*
 
 sealed class BottomNavItem(val title: String, val icon: ImageVector) {
@@ -33,9 +34,11 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 fun MainScreen(
     reports: List<FishingReport>,
     isLoading: Boolean = false,
+    selectedTab: Int = 0,
+    viewModel: MainViewModel? = null,
+    onTabSelected: (Int) -> Unit = {},
     onReportClick: (FishingReport) -> Unit
 ) {
-    var selectedItem by remember { mutableIntStateOf(0) }
     val items = listOf(
         BottomNavItem.Home,
         BottomNavItem.Map,
@@ -54,15 +57,17 @@ fun MainScreen(
                     NavigationBarItem(
                         icon = { Icon(item.icon, contentDescription = item.title) },
                         label = { Text(item.title) },
-                        selected = selectedItem == index,
-                        onClick = { selectedItem = index }
+                        selected = selectedTab == index,
+                        onClick = { 
+                            onTabSelected(index)
+                        }
                     )
                 }
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            when (selectedItem) {
+            when (selectedTab) {
                 0 -> {
                     if (isLoading) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -90,9 +95,11 @@ fun MainScreen(
                     }
                 }
                 1 -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Экран карты")
-                    }
+                    MapScreen(
+                        reports = reports,
+                        onReportClick = onReportClick,
+                        viewModel = viewModel
+                    )
                 }
                 2 -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -143,6 +150,9 @@ fun MainScreenPreview() {
                 isPublic = true
             )
         )
-        MainScreen(reports = sampleReports, onReportClick = {})
+        MainScreen(
+            reports = sampleReports,
+            onReportClick = {}
+        )
     }
 }

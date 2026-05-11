@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BorderColor
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
@@ -14,18 +12,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
+import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
+fun ReportDetailScreen(
+    report: FishingReport,
+    onBackClick: () -> Unit,
+    onMapClick: (GeoPoint) -> Unit = {}
+) {
     val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru"))
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
@@ -35,19 +39,22 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
                 title = {
-//                    Column {
-//                        Text(
-//                            text = report.name,
-//                            style = MaterialTheme.typography.titleLarge,
-//                            fontWeight = FontWeight.Medium
-//                        )
-//                        Text(
-//                            text = dateFormatter.format(report.fishingTime),
-//                            style = MaterialTheme.typography.bodySmall,
-//                            fontWeight = FontWeight.SemiBold,
-//                            color = Color.Black,
-//                        )
-//                    }
+                    Column {
+                        Text(
+                            text = report.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = dateFormatter.format(report.fishingTime),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -101,7 +108,12 @@ fun ReportDetailScreen(report: FishingReport, onBackClick: () -> Unit) {
             }
 
             // 4. Секция местоположения
-            ReportLocationSection(report = report)
+            ReportLocationSection(
+                report = report,
+                onMapClick = {
+                    onMapClick(GeoPoint(report.water.latitude, report.water.longitude))
+                }
+            )
             // Общая информация (Mood, Details, Catch)
             ReportGeneralInfo(report = report) 
         }

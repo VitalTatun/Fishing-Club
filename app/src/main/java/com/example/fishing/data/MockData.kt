@@ -12,7 +12,7 @@ object MockData {
         FishingReport(
             type = FishingType.FISHING_LOG,
             name = "Смеркалось...",
-            water = Water(waterName = "Водохранилище Крылово", latitude = 54.32344, longitude = 54.23425),
+            water = Water(waterName = "Водохранилище Крылово", latitude = 53.998, longitude = 27.285),
             photo = listOf(R.drawable.example, R.drawable.example, R.drawable.example),
             fishingTime = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time,
             weight = 3.2,
@@ -32,7 +32,7 @@ object MockData {
         FishingReport(
             type = FishingType.FISHING_LOG,
             name = "Утренняя щука",
-            water = Water(waterName = "Река Кама", latitude = 55.0, longitude = 60.0),
+            water = Water(waterName = "Заславское вдхр. (Дамба)", latitude = 53.978, longitude = 27.352),
             photo = emptyList(),
             fishingTime = calendar.apply { set(2024, Calendar.MAY, 10) }.time,
             weight = 3.5,
@@ -47,7 +47,7 @@ object MockData {
         FishingReport(
             type = FishingType.FISHING_LOG,
             name = "Карасиный рай",
-            water = Water(waterName = "Чистый пруд", latitude = 53.0, longitude = 27.0),
+            water = Water(waterName = "Чистый пруд", latitude = 53.965, longitude = 27.310),
             photo = emptyList(),
             fishingTime = calendar.apply { set(2024, Calendar.JUNE, 1) }.time,
             weight = 1.5,
@@ -62,7 +62,7 @@ object MockData {
         FishingReport(
             type = FishingType.HAUL,
             name = "Трофейный Сазан",
-            water = Water(waterName = "Озеро Нарочь", latitude = 54.8, longitude = 26.7),
+            water = Water(waterName = "Заславское вдхр. (Остров)", latitude = 53.992, longitude = 27.320),
             photo = listOf(R.drawable.example),
             fishingTime = calendar.apply { set(2024, Calendar.JULY, 15) }.time,
             weight = 8.4,
@@ -77,7 +77,7 @@ object MockData {
         FishingReport(
             type = FishingType.HAUL,
             name = "Ночной хищник",
-            water = Water(waterName = "Река Днепр", latitude = 52.1, longitude = 30.2),
+            water = Water(waterName = "Заславское вдхр. (Семково)", latitude = 54.015, longitude = 27.360),
             photo = emptyList(),
             fishingTime = calendar.apply { set(2024, Calendar.AUGUST, 5) }.time,
             weight = 5.2,
@@ -91,8 +91,8 @@ object MockData {
         ),
         FishingReport(
             type = FishingType.FISHING_LOG,
-            name = "Летний зной на Березине",
-            water = Water(waterName = "Река Березина", latitude = 53.9, longitude = 28.5),
+            name = "Летний зной на Заславском",
+            water = Water(waterName = "Заславское вдхр. (Ратомский залив)", latitude = 53.958, longitude = 27.345),
             photo = listOf(R.drawable.example, R.drawable.example),
             fishingTime = calendar.apply { set(2024, Calendar.JULY, 20) }.time,
             weight = 4.8,
@@ -107,7 +107,7 @@ object MockData {
         FishingReport(
             type = FishingType.HAUL,
             name = "Осенний монстр",
-            water = Water(waterName = "Заславское вдхр.", latitude = 54.0, longitude = 27.3),
+            water = Water(waterName = "Заславское вдхр. (Каналы)", latitude = 53.985, longitude = 27.275),
             photo = listOf(R.drawable.example),
             fishingTime = calendar.apply { set(2024, Calendar.SEPTEMBER, 12) }.time,
             weight = 12.5,
@@ -122,7 +122,7 @@ object MockData {
         FishingReport(
             type = FishingType.FISHING_LOG,
             name = "Бесконечный зимний день",
-            water = Water(waterName = "Минское море", latitude = 53.9, longitude = 27.3),
+            water = Water(waterName = "Минское море (Центр)", latitude = 53.990, longitude = 27.330),
             photo = emptyList(),
             fishingTime = calendar.apply { set(2025, Calendar.JANUARY, 15) }.time,
             weight = 2.1,
@@ -136,7 +136,7 @@ object MockData {
 
                 И тут началось... Клев был такой интенсивный, что я едва успевал опускать мормышку. Плотва шла мерная, "батончики" грамм по 150-200. Периодически проскакивал окунь, заставляя мормышку танцевать активнее. Время пролетело незаметно. Когда я в очередной раз взглянул на часы, оказалось, что прошло уже четыре часа! 
                 
-                Но самое интересное началось ближе к вечеру. Ветер внезапно стих, и над озером повисла звенящая тишина. В такие моменты кажется, что ты один во всей вселенной. Я сидел над лункой, завороженный игрой света на льду. Вдруг кивок не просто дрогнул, а резко прижался к самому льду. Это был не окунь и не плотва. Леска 0.08 звенела как струна. Я понимал, что форсировать нельзя — оборвет в мгновение ока. 
+                Но самое интересное началось ближе к вечеру. Ветер внезапно стих, и над озером повисла звенящая тишина. В такие моменты кажется, что ты один во всей вселенной. Я сидел над лункой, завороженный игрой света на льду. В вдруг кивок не просто дрогнул, а резко прижался к самому льду. Это был не окунь и не плотва. Леска 0.08 звенела как струна. Я понимал, что форсировать нельзя — оборвет в мгновение ока.
 
                 Минут десять я водил рыбу под лункой, пытаясь завести голову в 130-й диаметр. Когда, наконец, на поверхности показалась морда приличного подлещика, я понял, что день прожит не зря. Этот красавец стал достойным завершением моей рыбалки. 
                 

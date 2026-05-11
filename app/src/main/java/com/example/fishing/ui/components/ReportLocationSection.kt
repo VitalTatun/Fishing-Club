@@ -1,6 +1,11 @@
 package com.example.fishing.ui.components
 
 import android.content.ClipData
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -19,19 +24,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import kotlinx.coroutines.launch
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import java.util.*
 
 @Composable
-fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) {
+fun ReportLocationSection(
+    report: FishingReport, 
+    modifier: Modifier = Modifier,
+    onMapClick: () -> Unit = {}
+) {
     val primaryColor = MaterialTheme.colorScheme.primary
+    val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
+    val regularColor = MaterialTheme.colorScheme.primary.toArgb()
+    val context = LocalContext.current
 
     Column(
         modifier = modifier
@@ -66,15 +85,40 @@ fun ReportLocationSection(report: FishingReport, modifier: Modifier = Modifier) 
                             topStart = 12.dp, topEnd = 12.dp,
                             bottomStart = 2.dp, bottomEnd = 2.dp
                         ))
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = primaryColor,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .align(Alignment.Center)
+                    AndroidView(
+                        factory = { ctx ->
+                            MapView(ctx).apply {
+                                setTileSource(TileSourceFactory.MAPNIK)
+                                // Полностью отключаем взаимодействие
+                                setMultiTouchControls(false)
+                                isClickable = false
+                                isFocusable = false
+                                
+                                controller.setZoom(15.0)
+                                val point = GeoPoint(report.water.latitude, report.water.longitude)
+                                controller.setCenter(point)
+                                
+                                overlays.add(Marker(this).apply {
+                                    position = point
+                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                    
+                                    val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
+                                    icon = BitmapDrawable(context.resources, createMarkerBitmap(markerColor))
+                                    
+                                    // Отключаем клик по маркеру
+                                    setOnMarkerClickListener { _, _ -> true }
+                                })
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        onRelease = { it.onDetach() }
+                    )
+                    
+                    // Прозрачный слой поверх карты, чтобы перехватывать любые нажатия
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(enabled = true, onClick = onMapClick)
                     )
                 }
             }
@@ -158,6 +202,27 @@ fun LocationInfoRow(
                 }
         )
     }
+}
+
+private fun createMarkerBitmap(color: Int): Bitmap {
+    val size = 60 // Чуть меньше для превью
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // Рисуем каплю
+    paint.color = color
+    val path = Path()
+    path.moveTo(size / 2f, size.toFloat())
+    path.cubicTo(0f, size * 0.6f, 0f, 0f, size / 2f, 0f)
+    path.cubicTo(size.toFloat(), 0f, size.toFloat(), size * 0.6f, size / 2f, size.toFloat())
+    canvas.drawPath(path, paint)
+
+    // Рисуем белый круг внутри
+    paint.color = android.graphics.Color.WHITE
+    canvas.drawCircle(size / 2f, size / 3f, size / 6f, paint)
+
+    return bitmap
 }
 
 @Preview(showBackground = true)

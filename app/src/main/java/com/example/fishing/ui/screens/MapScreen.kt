@@ -1,0 +1,314 @@
+package com.example.fishing.ui.screens
+
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.drawable.BitmapDrawable
+import android.view.ViewGroup
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.example.fishing.model.FishingReport
+import com.example.fishing.model.FishingType
+import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.MainViewModel
+import org.osmdroid.events.MapListener
+import org.osmdroid.events.ScrollEvent
+import org.osmdroid.events.ZoomEvent
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+
+@Composable
+fun MapScreen(
+    reports: List<FishingReport>,
+    onReportClick: (FishingReport) -> Unit,
+    viewModel: MainViewModel? = null,
+    onBackClick: (() -> Unit)? = null,
+    isLocationEnabled: Boolean = true
+) {
+    val context = LocalContext.current
+    val mapView = remember { MapView(context) }
+    
+    // Обработка системной кнопки "Назад"
+    // Мы используем enabled = onBackClick != null, чтобы активировать его только на полноэкранной карте
+    BackHandler(enabled = onBackClick != null) {
+        onBackClick?.invoke()
+    }
+
+    // Используем rememberSaveable для сохранения состояния при навигации и повороте экрана
+    var lastCenterLat by rememberSaveable { mutableStateOf<Double?>(null) }
+    var lastCenterLon by rememberSaveable { mutableStateOf<Double?>(null) }
+    var lastZoom by rememberSaveable { mutableDoubleStateOf(6.0) }
+    var hasInitialLocationBeenSet by rememberSaveable { mutableStateOf(false) }
+
+    val requestedLocation by viewModel?.mapRequestedLocation?.collectAsState() ?: remember { mutableStateOf(null) }
+    val fallbackCenter = remember(reports) {
+        val validReports = reports.filter { report ->
+            report.water.latitude != 0.0 || report.water.longitude != 0.0
+        }
+        if (validReports.isNotEmpty()) {
+            GeoPoint(
+                validReports.map { it.water.latitude }.average(),
+                validReports.map { it.water.longitude }.average()
+            )
+        } else {
+            GeoPoint(53.9, 27.5667)
+        }
+    }
+
+    DisposableEffect(mapView) {
+        mapView.onResume()
+        onDispose {
+            mapView.onPause()
+            mapView.onDetach()
+        }
+    }
+
+    // Реакция на запрос конкретной локации
+    LaunchedEffect(requestedLocation) {
+        requestedLocation?.let { location ->
+            mapView.controller.animateTo(location)
+            mapView.controller.setZoom(17.0)
+            viewModel?.requestMapLocation(null) // Сбрасываем запрос после анимации
+            
+            // Обновляем сохраненное состояние
+            lastCenterLat = location.latitude
+            lastCenterLon = location.longitude
+            lastZoom = 17.0
+        }
+    }
+
+    // Получаем цвета из темы
+    val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
+    val regularColor = MaterialTheme.colorScheme.primary.toArgb()
+
+    val myLocationOverlay = remember(mapView) {
+        MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
+    }
+
+    DisposableEffect(myLocationOverlay, isLocationEnabled) {
+        if (isLocationEnabled) {
+            myLocationOverlay.enableMyLocation()
+            myLocationOverlay.runOnFirstFix {
+                val location = myLocationOverlay.myLocation
+                if (location != null) {
+                    mapView.post {
+                        if (!hasInitialLocationBeenSet && lastCenterLat == null) {
+                            mapView.controller.animateTo(location)
+                            mapView.controller.setZoom(15.0)
+                            myLocationOverlay.disableFollowLocation()
+                            hasInitialLocationBeenSet = true
+                        }
+                    }
+                }
+            }
+        } else {
+            myLocationOverlay.disableMyLocation()
+            myLocationOverlay.disableFollowLocation()
+        }
+
+        onDispose {
+            myLocationOverlay.disableMyLocation()
+            myLocationOverlay.disableFollowLocation()
+        }
+    }
+
+    // Логика восстановления или установки начальной позиции
+    LaunchedEffect(mapView) {
+        if (lastCenterLat != null && lastCenterLon != null) {
+            // Восстанавливаем сохраненную позицию
+            mapView.controller.setCenter(GeoPoint(lastCenterLat!!, lastCenterLon!!))
+            mapView.controller.setZoom(lastZoom)
+            myLocationOverlay.disableFollowLocation()
+        }
+    }
+
+    LaunchedEffect(mapView, fallbackCenter) {
+        if (lastCenterLat == null && requestedLocation == null) {
+            mapView.controller.setCenter(fallbackCenter)
+            mapView.controller.setZoom(11.0)
+            lastCenterLat = fallbackCenter.latitude
+            lastCenterLon = fallbackCenter.longitude
+            lastZoom = 11.0
+        }
+    }
+
+    // Слушатель для сохранения текущей позиции карты
+    DisposableEffect(mapView) {
+        val listener = object : MapListener {
+            override fun onScroll(event: ScrollEvent?): Boolean {
+                val center = mapView.mapCenter
+                lastCenterLat = center.latitude
+                lastCenterLon = center.longitude
+                return true
+            }
+
+            override fun onZoom(event: ZoomEvent?): Boolean {
+                lastZoom = mapView.zoomLevelDouble
+                return true
+            }
+        }
+        mapView.addMapListener(listener)
+        
+        onDispose {
+            mapView.removeMapListener(listener)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        OsmMapView(
+            mapView = mapView,
+            myLocationOverlay = myLocationOverlay,
+            modifier = Modifier.fillMaxSize(),
+            reports = reports,
+            onMarkerClick = onReportClick,
+            trophyColor = trophyColor,
+            regularColor = regularColor,
+            initialZoom = lastZoom
+        )
+
+        // Кнопка Назад
+        if (onBackClick != null) {
+            FilledIconButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 48.dp, start = 16.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+            }
+        }
+
+        FloatingActionButton(
+            onClick = {
+                val location = myLocationOverlay.myLocation
+                if (location != null) {
+                    mapView.controller.animateTo(location)
+                    mapView.controller.setZoom(15.0)
+                } else {
+                    myLocationOverlay.enableMyLocation()
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .size(56.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.MyLocation,
+                contentDescription = "My Location"
+            )
+        }
+    }
+}
+
+@Composable
+fun OsmMapView(
+    mapView: MapView,
+    myLocationOverlay: MyLocationNewOverlay,
+    modifier: Modifier = Modifier,
+    reports: List<FishingReport>,
+    onMarkerClick: (FishingReport) -> Unit,
+    trophyColor: Int,
+    regularColor: Int,
+    initialZoom: Double = 6.0
+) {
+    val context = LocalContext.current
+    
+    AndroidView(
+        factory = {
+            // Удаляем из старого родителя
+            (mapView.parent as? ViewGroup)?.removeView(mapView)
+
+            mapView.apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                
+                if (zoomLevelDouble <= 1.0) {
+                    controller.setZoom(initialZoom)
+                }
+                
+                if (!overlays.contains(myLocationOverlay)) {
+                    overlays.add(myLocationOverlay)
+                }
+            }
+        },
+        modifier = modifier,
+        update = { mv ->
+            // Работаем с маркерами только когда MapView инициализирован
+            // Чтобы избежать NPE при обращении к репозиторию MapView
+            val currentOverlays = mv.overlays
+            
+            // Удаляем только старые маркеры
+            val markersToRemove = currentOverlays.filterIsInstance<Marker>()
+            currentOverlays.removeAll(markersToRemove)
+            
+            reports.forEach { report ->
+                try {
+                    val marker = Marker(mv).apply {
+                        position = GeoPoint(report.water.latitude, report.water.longitude)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        title = report.name
+                        subDescription = report.water.waterName
+                        
+                        val color = if (report.type == FishingType.HAUL) trophyColor else regularColor
+                        icon = BitmapDrawable(context.resources, createMarkerBitmap(color))
+                        
+                        setOnMarkerClickListener { _, _ ->
+                            onMarkerClick(report)
+                            true
+                        }
+                    }
+                    currentOverlays.add(marker)
+                } catch (e: Exception) {
+                    // Игнорируем ошибки инициализации маркеров в переходных состояниях
+                }
+            }
+            mv.invalidate()
+        }
+    )
+}
+
+private fun createMarkerBitmap(color: Int): Bitmap {
+    val size = 80
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // Рисуем каплю
+    paint.color = color
+    val path = Path()
+    path.moveTo(size / 2f, size.toFloat())
+    path.cubicTo(0f, size * 0.6f, 0f, 0f, size / 2f, 0f)
+    path.cubicTo(size.toFloat(), 0f, size.toFloat(), size * 0.6f, size / 2f, size.toFloat())
+    canvas.drawPath(path, paint)
+
+    // Рисуем белый круг внутри
+    paint.color = android.graphics.Color.WHITE
+    canvas.drawCircle(size / 2f, size / 3f, size / 6f, paint)
+
+    return bitmap
+}
