@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.fishing.ui.screens.FullScreenPhotoScreen
+import com.example.fishing.ui.screens.CreateReportScreen
 import com.example.fishing.ui.screens.MainScreen
 import com.example.fishing.ui.screens.MapScreen
 import com.example.fishing.ui.screens.ReportDetailScreen
@@ -92,9 +93,19 @@ class MainActivity : ComponentActivity() {
                                 selectedTab = selectedTab,
                                 viewModel = viewModel,
                                 onTabSelected = { index -> viewModel.selectTab(index) },
+                                onCreateReportClick = {
+                                    navController.navigate("create_report")
+                                },
                                 onReportClick = { report ->
                                     navController.navigate("detail/${report.id}")
                                 }
+                            )
+                        }
+
+                        composable("create_report") {
+                            CreateReportScreen(
+                                onBackClick = { navController.popBackStack() },
+                                onSaveClick = { navController.popBackStack() }
                             )
                         }
 

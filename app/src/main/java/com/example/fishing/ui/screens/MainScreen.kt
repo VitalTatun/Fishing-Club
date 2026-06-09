@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
@@ -37,6 +38,7 @@ fun MainScreen(
     selectedTab: Int = 0,
     viewModel: MainViewModel? = null,
     onTabSelected: (Int) -> Unit = {},
+    onCreateReportClick: () -> Unit = {},
     onReportClick: (FishingReport) -> Unit
 ) {
     val items = listOf(
@@ -62,6 +64,13 @@ fun MainScreen(
                             onTabSelected(index)
                         }
                     )
+                }
+            }
+        },
+        floatingActionButton = {
+            if (selectedTab == 0) {
+                FloatingActionButton(onClick = onCreateReportClick) {
+                    Icon(Icons.Default.Add, contentDescription = "Новый отчет")
                 }
             }
         }
