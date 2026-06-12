@@ -34,6 +34,7 @@ import com.example.fishing.ui.theme.FishingTheme
 fun CreateReportScreen(
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
+    onNavigateToCatchEdit: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var title by remember { mutableStateOf("") }
@@ -117,7 +118,7 @@ fun CreateReportScreen(
                     onWeightChange = { weight = it }
                 )
             }
-            item { CatchSection() }
+            item { CatchSection(onArrowClick = onNavigateToCatchEdit) }
             item { CommentSection() }
             item {
                 Text(

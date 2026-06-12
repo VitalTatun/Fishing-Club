@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.fishing.ui.screens.CatchEditScreen
 import com.example.fishing.ui.screens.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.CreateReportScreen
 import com.example.fishing.ui.screens.MainScreen
@@ -104,6 +105,22 @@ class MainActivity : ComponentActivity() {
 
                         composable("create_report") {
                             CreateReportScreen(
+                                onBackClick = { navController.popBackStack() },
+                                onSaveClick = { navController.popBackStack() },
+                                onNavigateToCatchEdit = {
+                                    navController.navigate("catch_edit")
+                                }
+                            )
+                        }
+
+                        composable("catch_edit") {
+                            val sampleFish = listOf(
+                                com.example.fishing.model.Fish(name = "Карась", count = 5),
+                                com.example.fishing.model.Fish(name = "Окунь", count = 1),
+                                com.example.fishing.model.Fish(name = "Плотва", count = 4)
+                            )
+                            CatchEditScreen(
+                                fishList = sampleFish,
                                 onBackClick = { navController.popBackStack() },
                                 onSaveClick = { navController.popBackStack() }
                             )

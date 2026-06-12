@@ -17,9 +17,15 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun CatchSection() {
+internal fun CatchSection(
+    onArrowClick: () -> Unit = {}
+) {
     SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-        SectionHeader(title = "Улов*", subtitle = "Обязательное")
+        SectionHeader(
+            title = "Улов*",
+            subtitle = "Обязательное",
+            onArrowClick = onArrowClick
+        )
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
