@@ -255,24 +255,33 @@ class MainActivity : ComponentActivity() {
                                     onBackClick = { navController.popBackStack() },
                                     onMapClick = { point ->
                                         viewModel.requestMapLocation(point)
-                                        navController.navigate("full_map")
+                                        navController.navigate("full_map/${report.id}")
                                     }
                                 )
                             }
                         }
 
-                        composable("full_map") {
+                        composable(
+                            route = "full_map/{reportId}",
+                            arguments = listOf(navArgument("reportId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val reportId = backStackEntry.arguments
+                                ?.getString("reportId")
+                                ?.let(UUID::fromString)
+                            val singleReport = reportId?.let { id -> reports.firstOrNull { it.id == id } }
+
                             MapScreen(
-                                reports = reports,
+                                reports = if (singleReport != null) listOf(singleReport) else reports,
                                 viewModel = viewModel,
                                 onBackClick = { 
                                     navController.popBackStack() 
                                 },
                                 onReportClick = { report ->
                                     navController.navigate("detail/${report.id}") {
-                                        popUpTo("full_map") { inclusive = true }
+                                        popUpTo("full_map/${reportId}") { inclusive = true }
                                     }
-                                }
+                                },
+                                markersInteractive = false
                             )
                         }
 

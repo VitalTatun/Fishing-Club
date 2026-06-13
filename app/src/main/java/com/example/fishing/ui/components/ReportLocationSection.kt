@@ -172,7 +172,7 @@ fun LocationInfoRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "${report.water.latitude} - ${report.water.longitude}",
+            text = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
             style = MaterialTheme.typography.bodyMedium,
             color = primaryColor,
             fontWeight = FontWeight.Normal

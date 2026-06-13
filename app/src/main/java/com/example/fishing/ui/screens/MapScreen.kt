@@ -43,7 +43,8 @@ fun MapScreen(
     onReportClick: (FishingReport) -> Unit,
     viewModel: MainViewModel? = null,
     onBackClick: (() -> Unit)? = null,
-    isLocationEnabled: Boolean = true
+    isLocationEnabled: Boolean = true,
+    markersInteractive: Boolean = true
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -181,6 +182,7 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             reports = reports,
             onMarkerClick = onReportClick,
+            markersInteractive = markersInteractive,
             trophyColor = trophyColor,
             regularColor = regularColor,
             initialZoom = lastZoom
@@ -232,6 +234,7 @@ fun OsmMapView(
     modifier: Modifier = Modifier,
     reports: List<FishingReport>,
     onMarkerClick: (FishingReport) -> Unit,
+    markersInteractive: Boolean = true,
     trophyColor: Int,
     regularColor: Int,
     initialZoom: Double = 6.0
@@ -271,16 +274,20 @@ fun OsmMapView(
                     val marker = Marker(mv).apply {
                         position = GeoPoint(report.water.latitude, report.water.longitude)
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        title = report.name
-                        subDescription = report.water.waterName
-                        
+
+                        if (markersInteractive) {
+                            title = report.name
+                            subDescription = report.water.waterName
+                            setOnMarkerClickListener { _, _ ->
+                                onMarkerClick(report)
+                                true
+                            }
+                        } else {
+                            setInfoWindow(null)
+                        }
+
                         val color = if (report.type == FishingType.HAUL) trophyColor else regularColor
                         icon = BitmapDrawable(context.resources, createMarkerBitmap(color))
-                        
-                        setOnMarkerClickListener { _, _ ->
-                            onMarkerClick(report)
-                            true
-                        }
                     }
                     currentOverlays.add(marker)
                 } catch (e: Exception) {
