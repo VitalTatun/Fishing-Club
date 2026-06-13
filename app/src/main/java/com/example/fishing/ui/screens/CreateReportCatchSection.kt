@@ -31,7 +31,7 @@ internal fun CatchSection(
     ) {
         SectionHeader(
             title = "Улов*",
-            subtitle = "Обязательное",
+            subtitle = if (selectedFish.isEmpty()) "Обязательное" else null,
             onArrowClick = onArrowClick
         )
         if (selectedFish.isNotEmpty()) {

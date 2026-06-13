@@ -40,12 +40,12 @@ internal fun WaterSection(
         val subtitle = if (location != null) {
             String.format(Locale.US, "%.4f, %.4f", location.latitude, location.longitude)
         } else {
-            "Координаты не указаны"
+            "Обязательное"
         }
         
         SectionHeader(
             title = "Водоем*",
-            subtitle = if (hasData) subtitle else null,
+            subtitle = subtitle,
             onArrowClick = onArrowClick,
         )
         

@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +76,16 @@ fun CreateReportScreen(
     var comment by remember(initialComment) { mutableStateOf(initialComment) }
     var location by remember(initialLocation) { mutableStateOf(initialLocation) }
 
+    val isSaveEnabled by remember {
+        derivedStateOf {
+            title.isNotBlank() &&
+                    waterName.isNotBlank() &&
+                    location != null &&
+                    selectedMethod != FishingMethod.NONE &&
+                    selectedFish.isNotEmpty()
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = CreateReportColors.ScreenBackground,
@@ -94,7 +105,7 @@ fun CreateReportScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onSaveClick, enabled = title.isNotBlank()) {
+                    IconButton(onClick = onSaveClick, enabled = isSaveEnabled) {
                         Icon(Icons.Default.Check, contentDescription = "Сохранить")
                     }
                 },

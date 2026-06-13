@@ -16,6 +16,7 @@ internal fun MethodAndBaitSection(
     SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
         SectionHeader(
             title = "Способ ловли и наживка*",
+            subtitle = if (selectedMethod == FishingMethod.NONE) "Обязательное" else null,
             onArrowClick = onArrowClick
         )
         if (selectedMethod != FishingMethod.NONE) {
