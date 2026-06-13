@@ -1,7 +1,9 @@
 package com.example.fishing.ui.screens
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import android.location.LocationManager
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -100,6 +102,7 @@ fun FishingLocationScreen(
         Marker(mapView).apply {
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             icon = customMarkerIcon
+            setInfoWindow(null)
         }
     }
 
@@ -115,10 +118,9 @@ fun FishingLocationScreen(
         myLocationOverlay.enableMyLocation()
         myLocationOverlay.runOnFirstFix {
             val location = myLocationOverlay.myLocation
-            if (location != null && !hasInitialLocationBeenSet && selectedLocation == null) {
+            if (location != null && !hasInitialLocationBeenSet) {
                 mapView.post {
-                    mapView.controller.animateTo(location)
-                    mapView.controller.setZoom(15.0)
+                    mapView.controller.animateTo(location, 15.0, 500L)
                     myLocationOverlay.disableFollowLocation()
                     hasInitialLocationBeenSet = true
                 }
@@ -174,9 +176,21 @@ fun FishingLocationScreen(
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
                         controller.setZoom(lastZoom)
-                        
+
+                        if (selectedLocation != null) {
+                            controller.setCenter(selectedLocation)
+                        } else if (!hasInitialLocationBeenSet) {
+                            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                            val lastKnown = try {
+                                locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                                    ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                            } catch (_: SecurityException) { null }
+                            if (lastKnown != null) {
+                                controller.setCenter(GeoPoint(lastKnown.latitude, lastKnown.longitude))
+                            }
+                        }
+
                         selectedLocation?.let {
-                            controller.setCenter(it)
                             marker.position = it
                             if (!overlays.contains(marker)) {
                                 overlays.add(marker)
@@ -219,8 +233,7 @@ fun FishingLocationScreen(
                 onClick = {
                     val location = myLocationOverlay.myLocation
                     if (location != null) {
-                        mapView.controller.animateTo(location)
-                        mapView.controller.setZoom(15.0)
+                        mapView.controller.animateTo(location, 15.0, 500L)
                     } else {
                         myLocationOverlay.enableMyLocation()
                     }
