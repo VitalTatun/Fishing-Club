@@ -44,8 +44,10 @@ fun CreateReportScreen(
     initialMethod: FishingMethod = FishingMethod.NONE,
     initialBaits: List<Bait> = emptyList(),
     initialFish: List<Fish> = emptyList(),
+    initialComment: String = "",
     onNavigateToCatchEdit: () -> Unit = {},
-    onNavigateToMethodAndBaitEdit: () -> Unit = {}
+    onNavigateToMethodAndBaitEdit: () -> Unit = {},
+    onNavigateToCommentEdit: () -> Unit = {}
 ) {
     var title by remember { mutableStateOf("") }
     var reportType by remember { mutableStateOf("Отчет") }
@@ -67,6 +69,7 @@ fun CreateReportScreen(
     var selectedMethod by remember(initialMethod) { mutableStateOf(initialMethod) }
     var selectedBaits by remember(initialBaits) { mutableStateOf(initialBaits) }
     var selectedFish by remember(initialFish) { mutableStateOf(initialFish) }
+    var comment by remember(initialComment) { mutableStateOf(initialComment) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -151,7 +154,12 @@ fun CreateReportScreen(
                     onArrowClick = onNavigateToCatchEdit
                 )
             }
-            item { CommentSection() }
+            item {
+                CommentSection(
+                    comment = comment,
+                    onArrowClick = onNavigateToCommentEdit
+                )
+            }
             item {
                 Text(
                     text = "*Обязательные поля",

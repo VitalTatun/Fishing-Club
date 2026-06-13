@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.fishing.ui.screens.CatchEditScreen
+import com.example.fishing.ui.screens.CommentEditScreen
 import com.example.fishing.ui.screens.FishingMethodAndBaitScreen
 import com.example.fishing.ui.screens.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.CreateReportScreen
@@ -117,6 +118,9 @@ class MainActivity : ComponentActivity() {
                             val resultFish = navController.currentBackStackEntry
                                 ?.savedStateHandle
                                 ?.get<List<Fish>>("fish") ?: emptyList()
+                            val resultComment = navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<String>("comment") ?: ""
 
                             CreateReportScreen(
                                 onBackClick = { navController.popBackStack() },
@@ -124,11 +128,32 @@ class MainActivity : ComponentActivity() {
                                 initialMethod = resultMethod,
                                 initialBaits = resultBaits,
                                 initialFish = resultFish,
+                                initialComment = resultComment,
                                 onNavigateToCatchEdit = {
                                     navController.navigate("catch_edit")
                                 },
                                 onNavigateToMethodAndBaitEdit = {
                                     navController.navigate("method_bait_edit")
+                                },
+                                onNavigateToCommentEdit = {
+                                    navController.navigate("comment_edit")
+                                }
+                            )
+                        }
+
+                        composable("comment_edit") {
+                            val currentComment = navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<String>("comment") ?: ""
+
+                            CommentEditScreen(
+                                initialComment = currentComment,
+                                onBackClick = { navController.popBackStack() },
+                                onSaveClick = { comment ->
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("comment", comment)
+                                    navController.popBackStack()
                                 }
                             )
                         }

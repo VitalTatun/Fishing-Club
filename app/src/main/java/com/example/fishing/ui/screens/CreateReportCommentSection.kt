@@ -11,18 +11,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun CommentSection() {
-    SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-        SectionHeader(title = "Комментарий")
-        Text(
-            text = "В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб! Замешав вечерком плотву с орехом от Feeder.by с утра поехал на мелководную часть вдх посмотреть как там обстоят дела с рыбкой. Мишаня с утра ловил подлещиков а у меня ни поклевки ни с ближней, ни с дальней точки!",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            color = CreateReportColors.OnSurface,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 5,
-            overflow = TextOverflow.Ellipsis
+internal fun CommentSection(
+    comment: String = "",
+    onArrowClick: () -> Unit = {}
+) {
+    SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
+        SectionHeader(
+            title = "Комментарий",
+            onArrowClick = onArrowClick
         )
+        if (comment.isNotBlank()) {
+            Text(
+                text = comment,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 16.dp),
+                color = CreateReportColors.OnSurface,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 5,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
