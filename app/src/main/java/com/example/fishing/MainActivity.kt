@@ -124,10 +124,19 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("report_search") {
+                            val isFromWaterEdit = navController.previousBackStackEntry
+                                ?.destination?.route == "water_edit"
+
                             LocationSearchScreen(
                                 onLocationSelected = { point, _ ->
-                                    viewModel.selectTab(1)
-                                    viewModel.requestMapLocation(point)
+                                    if (isFromWaterEdit) {
+                                        navController.previousBackStackEntry
+                                            ?.savedStateHandle
+                                            ?.set("searchLocation", point)
+                                    } else {
+                                        viewModel.selectTab(1)
+                                        viewModel.requestMapLocation(point)
+                                    }
                                     navController.popBackStack()
                                 },
                                 onBack = { navController.popBackStack() }
@@ -182,19 +191,30 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        composable("water_edit") {
+                        composable("water_edit") { backStackEntry ->
                             val currentLocation = navController.previousBackStackEntry
                                 ?.savedStateHandle
                                 ?.get<GeoPoint>("location")
 
+                            val searchLocation =
+                                backStackEntry.savedStateHandle.get<GeoPoint>("searchLocation")
+
+                            if (searchLocation != null) {
+                                backStackEntry.savedStateHandle.remove<GeoPoint>("searchLocation")
+                            }
+
                             FishingLocationScreen(
                                 initialLocation = currentLocation,
+                                searchLocation = searchLocation,
                                 onBackClick = { navController.popBackStack() },
                                 onSaveClick = { point ->
                                     navController.previousBackStackEntry
                                         ?.savedStateHandle
                                         ?.set("location", point)
                                     navController.popBackStack()
+                                },
+                                onSearchClick = {
+                                    navController.navigate("report_search")
                                 }
                             )
                         }

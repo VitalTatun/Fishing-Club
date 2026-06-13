@@ -25,6 +25,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,7 +60,9 @@ fun FishingLocationScreen(
     onBackClick: () -> Unit,
     onSaveClick: (GeoPoint) -> Unit,
     modifier: Modifier = Modifier,
-    initialLocation: GeoPoint? = null
+    initialLocation: GeoPoint? = null,
+    onSearchClick: () -> Unit = {},
+    searchLocation: GeoPoint? = null,
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -106,6 +109,18 @@ fun FishingLocationScreen(
         }
     }
 
+    LaunchedEffect(searchLocation) {
+        searchLocation?.let { point ->
+            selectedLocation = point
+            marker.position = point
+            hasInitialLocationBeenSet = true
+            mapView.post {
+                mapView.controller.animateTo(point, 15.0, 500L)
+            }
+            myLocationOverlay.disableFollowLocation()
+        }
+    }
+
     DisposableEffect(mapView) {
         mapView.onResume()
         onDispose {
@@ -149,7 +164,7 @@ fun FishingLocationScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Search */ }) {
+                    IconButton(onClick = onSearchClick) {
                         Icon(Icons.Default.Search, contentDescription = "Поиск")
                     }
                     IconButton(
