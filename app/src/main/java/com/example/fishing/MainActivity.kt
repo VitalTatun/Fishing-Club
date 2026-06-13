@@ -21,6 +21,7 @@ import androidx.navigation.navArgument
 import com.example.fishing.ui.screens.CatchEditScreen
 import com.example.fishing.ui.screens.CommentEditScreen
 import com.example.fishing.ui.screens.FishingMethodAndBaitScreen
+import com.example.fishing.ui.screens.FishingLocationScreen
 import com.example.fishing.ui.screens.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.CreateReportScreen
 import com.example.fishing.ui.screens.MainScreen
@@ -32,6 +33,7 @@ import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.viewmodel.MainViewModel
 import org.osmdroid.config.Configuration
+import org.osmdroid.util.GeoPoint
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -121,6 +123,9 @@ class MainActivity : ComponentActivity() {
                             val resultComment = navController.currentBackStackEntry
                                 ?.savedStateHandle
                                 ?.get<String>("comment") ?: ""
+                            val resultLocation = navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<GeoPoint>("location")
 
                             CreateReportScreen(
                                 onBackClick = { navController.popBackStack() },
@@ -129,6 +134,7 @@ class MainActivity : ComponentActivity() {
                                 initialBaits = resultBaits,
                                 initialFish = resultFish,
                                 initialComment = resultComment,
+                                initialLocation = resultLocation,
                                 onNavigateToCatchEdit = {
                                     navController.navigate("catch_edit")
                                 },
@@ -137,6 +143,26 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToCommentEdit = {
                                     navController.navigate("comment_edit")
+                                },
+                                onNavigateToWaterEdit = {
+                                    navController.navigate("water_edit")
+                                }
+                            )
+                        }
+
+                        composable("water_edit") {
+                            val currentLocation = navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<GeoPoint>("location")
+
+                            FishingLocationScreen(
+                                initialLocation = currentLocation,
+                                onBackClick = { navController.popBackStack() },
+                                onSaveClick = { point ->
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("location", point)
+                                    navController.popBackStack()
                                 }
                             )
                         }

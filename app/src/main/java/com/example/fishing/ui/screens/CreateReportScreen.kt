@@ -31,6 +31,7 @@ import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.ui.theme.FishingTheme
+import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -45,13 +46,15 @@ fun CreateReportScreen(
     initialBaits: List<Bait> = emptyList(),
     initialFish: List<Fish> = emptyList(),
     initialComment: String = "",
+    initialLocation: GeoPoint? = null,
     onNavigateToCatchEdit: () -> Unit = {},
     onNavigateToMethodAndBaitEdit: () -> Unit = {},
-    onNavigateToCommentEdit: () -> Unit = {}
+    onNavigateToCommentEdit: () -> Unit = {},
+    onNavigateToWaterEdit: () -> Unit = {}
 ) {
     var title by remember { mutableStateOf("") }
     var reportType by remember { mutableStateOf("Отчет") }
-    var waterName by remember { mutableStateOf("Озеро в деревне Вулька 2") }
+    var waterName by remember { mutableStateOf("") }
     
     val currentDate = remember {
         val calendar = Calendar.getInstance()
@@ -70,6 +73,7 @@ fun CreateReportScreen(
     var selectedBaits by remember(initialBaits) { mutableStateOf(initialBaits) }
     var selectedFish by remember(initialFish) { mutableStateOf(initialFish) }
     var comment by remember(initialComment) { mutableStateOf(initialComment) }
+    var location by remember(initialLocation) { mutableStateOf(initialLocation) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -122,7 +126,9 @@ fun CreateReportScreen(
             item {
                 WaterSection(
                     waterName = waterName,
-                    onWaterNameChange = { waterName = it }
+                    onWaterNameChange = { waterName = it },
+                    onArrowClick = onNavigateToWaterEdit,
+                    location = location
                 )
             }
             item {

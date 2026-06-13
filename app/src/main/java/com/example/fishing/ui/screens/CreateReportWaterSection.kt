@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,26 +21,51 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import java.util.Locale
 
 @Composable
 internal fun WaterSection(
     waterName: String,
-    onWaterNameChange: (String) -> Unit
+    onWaterNameChange: (String) -> Unit,
+    onArrowClick: () -> Unit,
+    location: GeoPoint? = null,
 ) {
-    SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 20.dp)) {
-        SectionHeader(title = "Водоем*", subtitle = "Координаты не указаны")
-        MapPreview()
-        Spacer(Modifier.height(16.dp))
-        ReportTextField(
-            value = waterName,
-            onValueChange = onWaterNameChange,
-            label = "Название водоема *"
+    val hasData = (location != null) || waterName.isNotBlank()
+    
+    SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = if (hasData) 20.dp else 0.dp)) {
+        val subtitle = if (location != null) {
+            String.format(Locale.US, "%.4f, %.4f", location.latitude, location.longitude)
+        } else {
+            "Координаты не указаны"
+        }
+        
+        SectionHeader(
+            title = "Водоем*",
+            subtitle = if (hasData) subtitle else null,
+            onArrowClick = onArrowClick
         )
+        
+        if (hasData) {
+            MapPreview(location = location)
+            Spacer(Modifier.height(16.dp))
+            ReportTextField(
+                value = waterName,
+                onValueChange = onWaterNameChange,
+                label = "Название водоема *"
+            )
+        }
     }
 }
 
 @Composable
-private fun MapPreview(modifier: Modifier = Modifier) {
+private fun MapPreview(
+    location: GeoPoint?,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -49,37 +73,46 @@ private fun MapPreview(modifier: Modifier = Modifier) {
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFFBFE3EA))
     ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            Color(0xFFB8E4EC),
-                            Color(0xFFEAF4D0),
-                            Color(0xFFCDE8B8)
+        if (location != null) {
+            AndroidView(
+                factory = { context ->
+                    MapView(context).apply {
+                        setTileSource(TileSourceFactory.MAPNIK)
+                        setMultiTouchControls(false)
+                        isClickable = false
+                        isFocusable = false
+                        // Потребляем события касания, чтобы карта не реагировала, 
+                        // но не блокируем прокрутку списка (возвращаем true)
+                        setOnTouchListener { v, _ -> 
+                            v.parent.requestDisallowInterceptTouchEvent(false)
+                            true 
+                        }
+                        controller.setZoom(15.0)
+                        controller.setCenter(location)
+                    }
+                },
+                update = { mapView ->
+                    mapView.controller.setCenter(location)
+                },
+                modifier = Modifier.matchParentSize()
+            )
+        } else {
+            // Заглушка, если координаты не указаны, но есть название
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFFB8E4EC),
+                                Color(0xFFEAF4D0),
+                                Color(0xFFCDE8B8)
+                            )
                         )
                     )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 18.dp)
-                .fillMaxWidth(0.7f)
-                .height(16.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.White.copy(alpha = 0.85f))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 26.dp, bottom = 18.dp)
-                .width(112.dp)
-                .height(12.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.White.copy(alpha = 0.72f))
-        )
+            )
+        }
+
         Surface(
             modifier = Modifier
                 .align(Alignment.Center)
