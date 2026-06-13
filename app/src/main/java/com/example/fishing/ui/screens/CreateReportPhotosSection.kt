@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,7 +46,7 @@ internal fun PhotosSection(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
     ) { uris ->
         val availableSlots = MaxPhotos - selectedPhotoUris.size
-        val newUris = uris.take(availableSlots)
+        val newUris = uris.take(availableSlots).filter { it !in selectedPhotoUris }
         onPhotosChange(selectedPhotoUris + newUris)
     }
 
@@ -88,13 +88,12 @@ internal fun PhotosSectionContent(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(items = selectedPhotoUris, key = { it.hashCode() }) { photoUri ->
+                itemsIndexed(items = selectedPhotoUris, key = { index, _ -> index }) { _, photoUri ->
                     PhotoTile(
                         photoUri = photoUri,
                         onRemoveClick = { onRemoveClick(photoUri) },
                         modifier = Modifier
-                            .animateItem()
-                            .width(100.dp)
+                            .width(120.dp)
                             .aspectRatio(1f)
                     )
                 }

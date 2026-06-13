@@ -1,5 +1,6 @@
 package com.example.fishing.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,19 +10,23 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -86,6 +91,54 @@ fun CreateReportScreen(
         }
     }
 
+    val formHasData by remember {
+        derivedStateOf {
+            viewModel.formTitle.isNotBlank() ||
+                    viewModel.formWaterName.isNotBlank() ||
+                    viewModel.formLocation != null ||
+                    viewModel.formSelectedMethod != FishingMethod.NONE ||
+                    viewModel.formSelectedFish.isNotEmpty() ||
+                    viewModel.formSelectedBaits.isNotEmpty() ||
+                    viewModel.formSelectedPhotoUris.isNotEmpty() ||
+                    viewModel.formComment.isNotBlank() ||
+                    viewModel.formWeight > 0f
+        }
+    }
+
+    var showDiscardDialog by remember { mutableStateOf(false) }
+
+    val handleBack = {
+        if (formHasData) {
+            showDiscardDialog = true
+        } else {
+            onBackClick()
+        }
+    }
+
+    BackHandler(enabled = formHasData) { showDiscardDialog = true }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("Отмена") },
+            text = { Text("Введённые данные не сохранятся. Продолжить?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDiscardDialog = false
+                    viewModel.resetFormState()
+                    onBackClick()
+                }) {
+                    Text("Закрыть")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("Остаться")
+                }
+            }
+        )
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = CreateReportColors.ScreenBackground,
@@ -100,7 +153,7 @@ fun CreateReportScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = { handleBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
