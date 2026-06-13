@@ -50,7 +50,7 @@ fun CreateReportScreen(
     onNavigateToCatchEdit: () -> Unit = {},
     onNavigateToMethodAndBaitEdit: () -> Unit = {},
     onNavigateToCommentEdit: () -> Unit = {},
-    onNavigateToWaterEdit: () -> Unit = {}
+    onNavigateToWaterEdit: () -> Unit = {},
 ) {
     var title by remember { mutableStateOf("") }
     var reportType by remember { mutableStateOf("Отчет") }
@@ -65,8 +65,8 @@ fun CreateReportScreen(
 
     var fishingDate by remember { mutableStateOf(currentDate.first) }
     var fishingStartTime by remember { mutableStateOf(currentDate.second) }
-    var fishingFromShore by remember { mutableStateOf(true) }
-    var isPublic by remember { mutableStateOf(true) }
+    var fishingFromShore by remember { mutableStateOf(value = true) }
+    var isPublic by remember { mutableStateOf(value = true) }
     var isPaidWater by remember { mutableStateOf(false) }
     var weight by remember { mutableFloatStateOf(0f) }
     var selectedMethod by remember(initialMethod) { mutableStateOf(initialMethod) }
@@ -119,7 +119,7 @@ fun CreateReportScreen(
                     title = title,
                     onTitleChange = { title = it },
                     reportType = reportType,
-                    onReportTypeChange = { reportType = it }
+                    onReportTypeChange = { reportType = it },
                 )
             }
             item { PhotosSection() }

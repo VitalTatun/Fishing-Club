@@ -46,7 +46,7 @@ internal fun WaterSection(
         SectionHeader(
             title = "Водоем*",
             subtitle = if (hasData) subtitle else null,
-            onArrowClick = onArrowClick
+            onArrowClick = onArrowClick,
         )
         
         if (hasData) {
@@ -85,6 +85,7 @@ private fun MapPreview(
                         // но не блокируем прокрутку списка (возвращаем true)
                         setOnTouchListener { v, _ -> 
                             v.parent.requestDisallowInterceptTouchEvent(false)
+                            v.performClick()
                             true 
                         }
                         controller.setZoom(15.0)
