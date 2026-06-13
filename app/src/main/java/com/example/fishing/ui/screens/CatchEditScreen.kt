@@ -1,6 +1,5 @@
 package com.example.fishing.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -66,6 +65,7 @@ fun CatchEditScreen(
     modifier: Modifier = Modifier
 ) {
     var fishNameInput by remember { mutableStateOf("") }
+    var isDuplicateError by remember { mutableStateOf(false) }
     val editableFish = remember(fishList) {
         mutableStateListOf<Fish>().also { it.addAll(fishList) }
     }
@@ -102,47 +102,47 @@ fun CatchEditScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
+            OutlinedTextField(
+                value = fishNameInput,
+                onValueChange = {
+                    fishNameInput = it
+                    isDuplicateError = false
+                },
+                label = { Text("Название рыбы") },
+                singleLine = true,
+                isError = isDuplicateError,
+                supportingText = if (isDuplicateError) {
+                    { Text("Уже есть в списке") }
+                } else null,
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            if (fishNameInput.isNotBlank()) {
+                                val exists = editableFish.any { it.name.equals(fishNameInput, ignoreCase = true) }
+                                if (!exists) {
+                                    editableFish.add(0, Fish(name = fishNameInput, count = 1))
+                                    fishNameInput = ""
+                                    isDuplicateError = false
+                                } else {
+                                    isDuplicateError = true
+                                }
+                            }
+                        },
+                        enabled = fishNameInput.isNotBlank()
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Добавить",
+                            tint = if (fishNameInput.isNotBlank()) 
+                                MaterialTheme.colorScheme.primary 
+                            else MaterialTheme.colorScheme.outline
+                        )
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                OutlinedTextField(
-                    value = fishNameInput,
-                    onValueChange = { fishNameInput = it },
-                    label = { Text("Название рыбы") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-
-                FilledTonalIconButton(
-                    onClick = {
-                        if (fishNameInput.isNotBlank()) {
-                            val existingIndex = editableFish.indexOfFirst { it.name.equals(fishNameInput, ignoreCase = true) }
-                            if (existingIndex != -1) {
-                                val existingFish = editableFish[existingIndex]
-                                editableFish[existingIndex] = existingFish.copy(count = existingFish.count + 1)
-                            } else {
-                                editableFish.add(0, Fish(name = fishNameInput, count = 1))
-                            }
-                            fishNameInput = ""
-                        }
-                    },
-                    modifier = Modifier.size(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = CreateReportColors.SecondaryContainer,
-                        contentColor = CreateReportColors.OnSecondaryContainer
-                    )
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Добавить"
-                    )
-                }
-            }
+                    .padding(horizontal = 16.dp)
+            )
 
             Column(
                 modifier = Modifier
@@ -170,8 +170,7 @@ fun CatchEditScreen(
                             onClick = {
                                 val existingIndex = editableFish.indexOfFirst { it.name.equals(label, ignoreCase = true) }
                                 if (existingIndex != -1) {
-                                    val existingFish = editableFish[existingIndex]
-                                    editableFish[existingIndex] = existingFish.copy(count = existingFish.count + 1)
+                                    editableFish.removeAt(existingIndex)
                                 } else {
                                     editableFish.add(0, Fish(name = label, count = 1))
                                 }
