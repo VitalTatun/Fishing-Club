@@ -208,8 +208,7 @@ fun MapScreen(
             onClick = {
                 val location = myLocationOverlay.myLocation
                 if (location != null) {
-                    mapView.controller.animateTo(location)
-                    mapView.controller.setZoom(15.0)
+                    mapView.controller.animateTo(location, 15.0, 500L)
                 } else {
                     myLocationOverlay.enableMyLocation()
                 }
