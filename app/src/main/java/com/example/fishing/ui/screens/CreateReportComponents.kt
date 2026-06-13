@@ -2,7 +2,9 @@ package com.example.fishing.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -155,19 +157,26 @@ internal fun ReportPickerField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
-    leadingIcon: @Composable (() -> Unit)? = null
+    leadingIcon: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit = {}
 ) {
-    ReportTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = label,
-        modifier = modifier,
-        readOnly = true,
-        leadingIcon = leadingIcon,
-        trailingIcon = {
-            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-        }
-    )
+    Box(modifier = modifier) {
+        ReportTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = label,
+            readOnly = true,
+            leadingIcon = leadingIcon,
+            trailingIcon = {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+            }
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(onClick = onClick)
+        )
+    }
 }
 
 @Composable

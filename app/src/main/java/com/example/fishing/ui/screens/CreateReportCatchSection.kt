@@ -14,39 +14,49 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.fishing.model.Fish
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CatchSection(
-    onArrowClick: () -> Unit = {}
+    selectedFish: List<Fish> = emptyList(),
+    onArrowClick: () -> Unit = {},
 ) {
-    SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+    SectionCard(
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            bottom = if (selectedFish.isNotEmpty()) 16.dp else 0.dp
+        )
+    ) {
         SectionHeader(
             title = "Улов*",
             subtitle = "Обязательное",
             onArrowClick = onArrowClick
         )
-        FlowRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            listOf("Карась 2 шт.", "Окунь 2 шт.", "Лещ 2 шт.", "Подлещик 2 шт.").forEach { chip ->
-                AssistChip(
-                    onClick = {},
-                    label = { Text(chip, maxLines = 1) },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = CreateReportColors.Surface,
-                        labelColor = CreateReportColors.OnSurfaceVariant
-                    ),
-                    border = AssistChipDefaults.assistChipBorder(
-                        enabled = true,
-                        borderColor = CreateReportColors.OutlineVariant
+        if (selectedFish.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                selectedFish.forEach { fish ->
+                    AssistChip(
+                        onClick = {},
+                        label = { Text("${fish.name} ${fish.count} шт.", maxLines = 1) },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = CreateReportColors.Surface,
+                            labelColor = CreateReportColors.OnSurfaceVariant
+                        ),
+                        border = AssistChipDefaults.assistChipBorder(
+                            enabled = true,
+                            borderColor = CreateReportColors.OutlineVariant
+                        )
                     )
-                )
+                }
             }
         }
     }

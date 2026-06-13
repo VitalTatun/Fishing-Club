@@ -28,6 +28,7 @@ import com.example.fishing.ui.screens.ReportDetailScreen
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.Bait
+import com.example.fishing.model.Fish
 import com.example.fishing.viewmodel.MainViewModel
 import org.osmdroid.config.Configuration
 import android.Manifest
@@ -113,12 +114,16 @@ class MainActivity : ComponentActivity() {
                             val resultBaits = navController.currentBackStackEntry
                                 ?.savedStateHandle
                                 ?.get<List<Bait>>("baits") ?: emptyList()
+                            val resultFish = navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<List<Fish>>("fish") ?: emptyList()
 
                             CreateReportScreen(
                                 onBackClick = { navController.popBackStack() },
                                 onSaveClick = { navController.popBackStack() },
                                 initialMethod = resultMethod,
                                 initialBaits = resultBaits,
+                                initialFish = resultFish,
                                 onNavigateToCatchEdit = {
                                     navController.navigate("catch_edit")
                                 },
@@ -153,15 +158,19 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("catch_edit") {
-                            val sampleFish = listOf(
-                                com.example.fishing.model.Fish(name = "Карась", count = 5),
-                                com.example.fishing.model.Fish(name = "Окунь", count = 1),
-                                com.example.fishing.model.Fish(name = "Плотва", count = 4)
-                            )
+                            val currentFish = navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<List<Fish>>("fish") ?: emptyList()
+                            
                             CatchEditScreen(
-                                fishList = sampleFish,
+                                fishList = currentFish,
                                 onBackClick = { navController.popBackStack() },
-                                onSaveClick = { navController.popBackStack() }
+                                onSaveClick = { fish ->
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("fish", ArrayList(fish))
+                                    navController.popBackStack()
+                                }
                             )
                         }
 

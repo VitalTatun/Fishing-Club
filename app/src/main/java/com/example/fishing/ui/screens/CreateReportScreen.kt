@@ -28,8 +28,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.model.Bait
+import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.ui.theme.FishingTheme
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,20 +43,30 @@ fun CreateReportScreen(
     modifier: Modifier = Modifier,
     initialMethod: FishingMethod = FishingMethod.NONE,
     initialBaits: List<Bait> = emptyList(),
+    initialFish: List<Fish> = emptyList(),
     onNavigateToCatchEdit: () -> Unit = {},
     onNavigateToMethodAndBaitEdit: () -> Unit = {}
 ) {
     var title by remember { mutableStateOf("") }
     var reportType by remember { mutableStateOf("Отчет") }
     var waterName by remember { mutableStateOf("Озеро в деревне Вулька 2") }
-    var fishingDate by remember { mutableStateOf("6 июн. 2026") }
-    var fishingStartTime by remember { mutableStateOf("5:00") }
+    
+    val currentDate = remember {
+        val calendar = Calendar.getInstance()
+        val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
+        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+        Pair(dateFormatter.format(calendar.time), timeFormatter.format(calendar.time))
+    }
+
+    var fishingDate by remember { mutableStateOf(currentDate.first) }
+    var fishingStartTime by remember { mutableStateOf(currentDate.second) }
     var fishingFromShore by remember { mutableStateOf(true) }
     var isPublic by remember { mutableStateOf(true) }
     var isPaidWater by remember { mutableStateOf(false) }
     var weight by remember { mutableFloatStateOf(0f) }
     var selectedMethod by remember(initialMethod) { mutableStateOf(initialMethod) }
     var selectedBaits by remember(initialBaits) { mutableStateOf(initialBaits) }
+    var selectedFish by remember(initialFish) { mutableStateOf(initialFish) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -131,7 +145,12 @@ fun CreateReportScreen(
                     onWeightChange = { weight = it }
                 )
             }
-            item { CatchSection(onArrowClick = onNavigateToCatchEdit) }
+            item {
+                CatchSection(
+                    selectedFish = selectedFish,
+                    onArrowClick = onNavigateToCatchEdit
+                )
+            }
             item { CommentSection() }
             item {
                 Text(
