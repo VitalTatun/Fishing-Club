@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ fun MainScreen(
     onCreateReportClick: () -> Unit = {},
     onReportClick: (FishingReport) -> Unit,
     onDeleteReport: (FishingReport) -> Unit = {},
+    onSearchClick: () -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -51,7 +53,22 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Fishing Journal", fontWeight = FontWeight.Medium) }
+                title = {
+                    Text(
+                        when (selectedTab) {
+                            1 -> "Карта"
+                            else -> "Fishing Journal"
+                        },
+                        fontWeight = FontWeight.Medium
+                    )
+                },
+                actions = {
+                    if (selectedTab == 1) {
+                        IconButton(onClick = onSearchClick) {
+                            Icon(Icons.Default.Search, contentDescription = "Поиск")
+                        }
+                    }
+                }
             )
         },
         bottomBar = {

@@ -87,14 +87,13 @@ fun MapScreen(
     // Реакция на запрос конкретной локации
     LaunchedEffect(requestedLocation) {
         requestedLocation?.let { location ->
-            mapView.controller.animateTo(location)
-            mapView.controller.setZoom(17.0)
+            mapView.controller.animateTo(location, 13.0, 500L)
             viewModel?.requestMapLocation(null) // Сбрасываем запрос после анимации
             
             // Обновляем сохраненное состояние
             lastCenterLat = location.latitude
             lastCenterLon = location.longitude
-            lastZoom = 17.0
+            lastZoom = 13.0
         }
     }
 

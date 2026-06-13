@@ -23,6 +23,7 @@ import com.example.fishing.ui.screens.FishingMethodAndBaitScreen
 import com.example.fishing.ui.screens.FishingLocationScreen
 import com.example.fishing.ui.screens.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.CreateReportScreen
+import com.example.fishing.ui.screens.LocationSearchScreen
 import com.example.fishing.ui.screens.MainScreen
 import com.example.fishing.ui.screens.MapScreen
 import com.example.fishing.ui.screens.ReportDetailScreen
@@ -115,7 +116,21 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onDeleteReport = { report ->
                                     viewModel.deleteReport(report.id)
+                                },
+                                onSearchClick = {
+                                    navController.navigate("report_search")
                                 }
+                            )
+                        }
+
+                        composable("report_search") {
+                            LocationSearchScreen(
+                                onLocationSelected = { point, _ ->
+                                    viewModel.selectTab(1)
+                                    viewModel.requestMapLocation(point)
+                                    navController.popBackStack()
+                                },
+                                onBack = { navController.popBackStack() }
                             )
                         }
 
