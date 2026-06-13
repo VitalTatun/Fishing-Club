@@ -18,12 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,57 +30,59 @@ import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.MainViewModel
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateReportScreen(
+    viewModel: MainViewModel,
     onBackClick: () -> Unit,
-    onSaveClick: () -> Unit,
+    onSaveClick: (
+        title: String,
+        type: String,
+        waterName: String,
+        location: GeoPoint?,
+        fishingTime: Date,
+        weight: Double,
+        fish: List<Fish>,
+        method: FishingMethod,
+        baits: List<Bait>,
+        comment: String,
+        shore: Boolean,
+        isPublic: Boolean,
+        photos: List<String>
+    ) -> Unit,
     modifier: Modifier = Modifier,
-    initialMethod: FishingMethod = FishingMethod.NONE,
-    initialBaits: List<Bait> = emptyList(),
-    initialFish: List<Fish> = emptyList(),
-    initialComment: String = "",
-    initialLocation: GeoPoint? = null,
     onNavigateToCatchEdit: () -> Unit = {},
     onNavigateToMethodAndBaitEdit: () -> Unit = {},
     onNavigateToCommentEdit: () -> Unit = {},
     onNavigateToWaterEdit: () -> Unit = {},
 ) {
-    var title by remember { mutableStateOf("") }
-    var reportType by remember { mutableStateOf("Отчет") }
-    var waterName by remember { mutableStateOf("") }
-    
-    val currentDate = remember {
-        val calendar = Calendar.getInstance()
-        val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
-        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-        Pair(dateFormatter.format(calendar.time), timeFormatter.format(calendar.time))
-    }
+    val calendar = remember { Calendar.getInstance() }
+    val dateFormatter = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru")) }
+    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
-    var fishingDate by remember { mutableStateOf(currentDate.first) }
-    var fishingStartTime by remember { mutableStateOf(currentDate.second) }
-    var fishingFromShore by remember { mutableStateOf(value = true) }
-    var isPublic by remember { mutableStateOf(value = true) }
-    var isPaidWater by remember { mutableStateOf(false) }
-    var weight by remember { mutableFloatStateOf(0f) }
-    var selectedMethod by remember(initialMethod) { mutableStateOf(initialMethod) }
-    var selectedBaits by remember(initialBaits) { mutableStateOf(initialBaits) }
-    var selectedFish by remember(initialFish) { mutableStateOf(initialFish) }
-    var comment by remember(initialComment) { mutableStateOf(initialComment) }
-    var location by remember(initialLocation) { mutableStateOf(initialLocation) }
+    LaunchedEffect(Unit) {
+        if (viewModel.formFishingDate.isEmpty()) {
+            viewModel.formFishingDate = dateFormatter.format(calendar.time)
+        }
+        if (viewModel.formFishingStartTime.isEmpty()) {
+            viewModel.formFishingStartTime = timeFormatter.format(calendar.time)
+        }
+    }
 
     val isSaveEnabled by remember {
         derivedStateOf {
-            title.isNotBlank() &&
-                    waterName.isNotBlank() &&
-                    location != null &&
-                    selectedMethod != FishingMethod.NONE &&
-                    selectedFish.isNotEmpty()
+            viewModel.formTitle.isNotBlank() &&
+                    viewModel.formWaterName.isNotBlank() &&
+                    viewModel.formLocation != null &&
+                    viewModel.formSelectedMethod != FishingMethod.NONE &&
+                    viewModel.formSelectedFish.isNotEmpty()
         }
     }
 
@@ -105,7 +105,28 @@ fun CreateReportScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onSaveClick, enabled = isSaveEnabled) {
+                    IconButton(
+                        onClick = {
+                            val combinedDateTime = Calendar.getInstance().apply {
+                                time = dateFormatter.parse(viewModel.formFishingDate) ?: Date()
+                                val timeParts = viewModel.formFishingStartTime.split(":")
+                                if (timeParts.size == 2) {
+                                    set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+                                    set(Calendar.MINUTE, timeParts[1].toInt())
+                                }
+                            }.time
+
+                            onSaveClick(
+                                viewModel.formTitle, viewModel.formReportType, viewModel.formWaterName,
+                                viewModel.formLocation, combinedDateTime,
+                                viewModel.formWeight.toDouble(), viewModel.formSelectedFish,
+                                viewModel.formSelectedMethod, viewModel.formSelectedBaits,
+                                viewModel.formComment, viewModel.formFishingFromShore,
+                                viewModel.formIsPublic, viewModel.formSelectedPhotoUris.map { it.toString() }
+                            )
+                        },
+                        enabled = isSaveEnabled
+                    ) {
                         Icon(Icons.Default.Check, contentDescription = "Сохранить")
                     }
                 },
@@ -127,53 +148,58 @@ fun CreateReportScreen(
         ) {
             item {
                 ReportHeaderSection(
-                    title = title,
-                    onTitleChange = { title = it },
-                    reportType = reportType,
-                    onReportTypeChange = { reportType = it },
+                    title = viewModel.formTitle,
+                    onTitleChange = { viewModel.formTitle = it },
+                    reportType = viewModel.formReportType,
+                    onReportTypeChange = { viewModel.formReportType = it },
                 )
             }
-            item { PhotosSection() }
+            item {
+                PhotosSection(
+                    selectedPhotoUris = viewModel.formSelectedPhotoUris,
+                    onPhotosChange = { viewModel.formSelectedPhotoUris = it }
+                )
+            }
             item {
                 WaterSection(
-                    waterName = waterName,
-                    onWaterNameChange = { waterName = it },
+                    waterName = viewModel.formWaterName,
+                    onWaterNameChange = { viewModel.formWaterName = it },
                     onArrowClick = onNavigateToWaterEdit,
-                    location = location
+                    location = viewModel.formLocation
                 )
             }
             item {
                 MethodAndBaitSection(
-                    selectedMethod = selectedMethod,
-                    selectedBaits = selectedBaits,
+                    selectedMethod = viewModel.formSelectedMethod,
+                    selectedBaits = viewModel.formSelectedBaits,
                     onArrowClick = onNavigateToMethodAndBaitEdit
                 )
             }
             item {
                 GeneralInfoSection(
-                    fishingDate = fishingDate,
-                    onFishingDateChange = { fishingDate = it },
-                    fishingStartTime = fishingStartTime,
-                    onFishingStartTimeChange = { fishingStartTime = it },
-                    fishingFromShore = fishingFromShore,
-                    onFishingFromShoreChange = { fishingFromShore = it },
-                    isPublic = isPublic,
-                    onPublicChange = { isPublic = it },
-                    isPaidWater = isPaidWater,
-                    onPaidWaterChange = { isPaidWater = it },
-                    weight = weight,
-                    onWeightChange = { weight = it }
+                    fishingDate = viewModel.formFishingDate,
+                    onFishingDateChange = { viewModel.formFishingDate = it },
+                    fishingStartTime = viewModel.formFishingStartTime,
+                    onFishingStartTimeChange = { viewModel.formFishingStartTime = it },
+                    fishingFromShore = viewModel.formFishingFromShore,
+                    onFishingFromShoreChange = { viewModel.formFishingFromShore = it },
+                    isPublic = viewModel.formIsPublic,
+                    onPublicChange = { viewModel.formIsPublic = it },
+                    isPaidWater = viewModel.formIsPaidWater,
+                    onPaidWaterChange = { viewModel.formIsPaidWater = it },
+                    weight = viewModel.formWeight,
+                    onWeightChange = { viewModel.formWeight = it }
                 )
             }
             item {
                 CatchSection(
-                    selectedFish = selectedFish,
+                    selectedFish = viewModel.formSelectedFish,
                     onArrowClick = onNavigateToCatchEdit
                 )
             }
             item {
                 CommentSection(
-                    comment = comment,
+                    comment = viewModel.formComment,
                     onArrowClick = onNavigateToCommentEdit
                 )
             }
@@ -196,8 +222,11 @@ fun CreateReportScreen(
 private fun CreateReportScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
         CreateReportScreen(
+            viewModel = MainViewModel(
+                repository = com.example.fishing.data.MockFishingRepository()
+            ),
             onBackClick = {},
-            onSaveClick = {}
+            onSaveClick = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
         )
     }
 }

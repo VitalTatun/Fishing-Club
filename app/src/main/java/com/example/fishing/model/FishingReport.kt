@@ -5,10 +5,14 @@ import java.util.UUID
 
 data class FishingReport(
     val id: UUID = UUID.randomUUID(),
+    val userId: UUID,
+    var publishedAt: Date? = null,
     var type: FishingType,
     var name: String,
     var water: Water,
-    var photo: List<Int>, // List of drawable resource IDs for testing
+    var spotLat: Double? = null,
+    var spotLng: Double? = null,
+    var photo: List<String>, // Paths or URLs
     var fishingTime: Date,
     var weight: Double,
     var fish: List<Fish>,
@@ -17,5 +21,6 @@ data class FishingReport(
     var comment: String,
     val user: User,
     var fishingFromTheShore: Boolean,
-    var isPublic: Boolean
+    var isPublic: Boolean,
+    var isSynced: Boolean = false
 )

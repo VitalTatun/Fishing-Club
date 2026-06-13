@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
 import java.util.Date
+import java.util.UUID
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -62,6 +63,7 @@ fun ReportCatchSection(report: FishingReport, modifier: Modifier = Modifier) {
 @Composable
 fun ReportCatchSectionPreview() {
     val sampleReport = FishingReport(
+        userId = UUID.randomUUID(),
         type = FishingType.FISHING_LOG,
         name = "Тестовый отчет",
         water = Water(waterName = "Озеро", latitude = 0.0, longitude = 0.0),

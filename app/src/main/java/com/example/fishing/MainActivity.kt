@@ -12,7 +12,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,9 +35,16 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.core.content.ContextCompat
+import java.io.File
+import java.io.FileOutputStream
+import java.util.Date
 import java.util.UUID
+import dagger.hilt.android.AndroidEntryPoint
+import androidx.hilt.navigation.compose.hiltViewModel
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +59,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FishingTheme(darkTheme = false, dynamicColor = false) {
-                val viewModel: MainViewModel = viewModel()
+                val viewModel: MainViewModel = hiltViewModel()
                 val reports by viewModel.reports.collectAsState()
                 val isLoading by viewModel.isLoading.collectAsState()
                 val selectedTab by viewModel.selectedTab.collectAsState()
@@ -106,45 +112,56 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onReportClick = { report ->
                                     navController.navigate("detail/${report.id}")
+                                },
+                                onDeleteReport = { report ->
+                                    viewModel.deleteReport(report.id)
                                 }
                             )
                         }
 
                         composable("create_report") {
-                            val resultMethod = navController.currentBackStackEntry
-                                ?.savedStateHandle
-                                ?.get<FishingMethod>("method") ?: FishingMethod.NONE
-                            val resultBaits = navController.currentBackStackEntry
-                                ?.savedStateHandle
-                                ?.get<List<Bait>>("baits") ?: emptyList()
-                            val resultFish = navController.currentBackStackEntry
-                                ?.savedStateHandle
-                                ?.get<List<Fish>>("fish") ?: emptyList()
-                            val resultComment = navController.currentBackStackEntry
-                                ?.savedStateHandle
-                                ?.get<String>("comment") ?: ""
-                            val resultLocation = navController.currentBackStackEntry
-                                ?.savedStateHandle
-                                ?.get<GeoPoint>("location")
+                            val currentEntry = navController.currentBackStackEntry!!
+
+                            currentEntry.savedStateHandle.get<FishingMethod>("method")?.let {
+                                viewModel.formSelectedMethod = it
+                            }
+                            currentEntry.savedStateHandle.get<List<Bait>>("baits")?.let {
+                                viewModel.formSelectedBaits = it
+                            }
+                            currentEntry.savedStateHandle.get<List<Fish>>("fish")?.let {
+                                viewModel.formSelectedFish = it
+                            }
+                            currentEntry.savedStateHandle.get<String>("comment")?.let {
+                                viewModel.formComment = it
+                            }
+                            currentEntry.savedStateHandle.get<GeoPoint>("location")?.let {
+                                viewModel.formLocation = it
+                            }
 
                             CreateReportScreen(
+                                viewModel = viewModel,
                                 onBackClick = { navController.popBackStack() },
-                                onSaveClick = { navController.popBackStack() },
-                                initialMethod = resultMethod,
-                                initialBaits = resultBaits,
-                                initialFish = resultFish,
-                                initialComment = resultComment,
-                                initialLocation = resultLocation,
+                                onSaveClick = { title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, photos ->
+                                    val internalPhotos = photos.map { copyPhotoToInternalStorage(Uri.parse(it)) }
+                                    viewModel.saveNewReport(title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, internalPhotos)
+                                    viewModel.resetFormState()
+                                    navController.popBackStack()
+                                },
                                 onNavigateToCatchEdit = {
+                                    currentEntry.savedStateHandle["fish"] = ArrayList(viewModel.formSelectedFish)
                                     navController.navigate("catch_edit")
                                 },
                                 onNavigateToMethodAndBaitEdit = {
+                                    currentEntry.savedStateHandle["method"] = viewModel.formSelectedMethod
+                                    currentEntry.savedStateHandle["baits"] = ArrayList(viewModel.formSelectedBaits)
                                     navController.navigate("method_bait_edit")
                                 },
                                 onNavigateToCommentEdit = {
+                                    currentEntry.savedStateHandle["comment"] = viewModel.formComment
                                     navController.navigate("comment_edit")
                                 },
                                 onNavigateToWaterEdit = {
+                                    currentEntry.savedStateHandle["location"] = viewModel.formLocation
                                     navController.navigate("water_edit")
                                 }
                             )
@@ -281,6 +298,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun copyPhotoToInternalStorage(uri: Uri): String {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return uri.toString()
+            val fileName = "photo_${UUID.randomUUID()}.jpg"
+            val photosDir = File(filesDir, "photos")
+            photosDir.mkdirs()
+            val outputFile = File(photosDir, fileName)
+            FileOutputStream(outputFile).use { output ->
+                inputStream.copyTo(output)
+            }
+            outputFile.absolutePath
+        } catch (e: Exception) {
+            uri.toString()
         }
     }
 

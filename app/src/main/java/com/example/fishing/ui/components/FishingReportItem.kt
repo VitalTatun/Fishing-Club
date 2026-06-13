@@ -5,7 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -16,7 +15,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -40,6 +43,7 @@ fun FishingReportItem(
     report: FishingReport,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    onDeleteReport: (FishingReport) -> Unit = {},
 ) {
     Card(
         modifier = modifier
@@ -62,7 +66,7 @@ fun FishingReportItem(
                 FishingReportPhotos(photos = report.photo)
             }
             FishingReportHeader(report = report)
-            FishingReportFooter(report = report)
+            FishingReportFooter(report = report, onDeleteReport = { onDeleteReport(report) })
         }
     }
 }
@@ -140,7 +144,7 @@ private fun FishingReportHeader(report: FishingReport) {
 }
 
 @Composable
-private fun FishingReportPhotos(photos: List<Int>) {
+private fun FishingReportPhotos(photos: List<String>) {
     val pagerState = rememberPagerState { photos.size }
 
     Box(
@@ -154,8 +158,8 @@ private fun FishingReportPhotos(photos: List<Int>) {
             contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 8.dp
         ) { index ->
-            Image(
-                painter = painterResource(id = photos[index]),
+            AsyncImage(
+                model = photos[index],
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
@@ -185,8 +189,33 @@ private fun FishingReportPhotos(photos: List<Int>) {
 }
 
 @Composable
-private fun FishingReportFooter(report: FishingReport) {
-    val interactionSource = remember { MutableInteractionSource() }
+private fun FishingReportFooter(
+    report: FishingReport,
+    onDeleteReport: () -> Unit = {},
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Удалить отчет") },
+            text = { Text("Вы уверены, что хотите удалить этот отчет?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    onDeleteReport()
+                }) {
+                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 
     Row(
         modifier = Modifier
@@ -213,17 +242,31 @@ private fun FishingReportFooter(report: FishingReport) {
                 icon = Icons.Default.Phishing
             )
         }
-        Icon(
-            imageVector = Icons.Default.MoreVert,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier
-                .size(24.dp)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null
-                ) {  }
-        )
+        Box {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable { showMenu = true }
+            )
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Удалить отчет") },
+                    onClick = {
+                        showMenu = false
+                        showDeleteDialog = true
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -331,10 +374,11 @@ fun FishingReportItemPreview() {
         set(2023, Calendar.AUGUST, 22) 
     }
     val sampleReport = FishingReport(
+        userId = UUID.randomUUID(),
         type = FishingType.HAUL,
         name = "Смеркалось...",
         water = sampleWater,
-        photo = List(8) { android.R.drawable.ic_menu_gallery },
+        photo = emptyList(),
         fishingTime = calendar.time,
         weight = 2.5,
         fish = listOf(Fish(name = "Окунь", count = 5)),

@@ -17,11 +17,6 @@ internal fun ReportHeaderSection(
     SectionCard(
         contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 20.dp)
     ) {
-        SectionHeader(
-            title = "Основная информация",
-            subtitle = if (title.isBlank()) "Обязательное" else null,
-            showArrow = false
-        )
         ReportTextField(
             value = title,
             onValueChange = onTitleChange,

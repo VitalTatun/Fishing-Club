@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
@@ -126,10 +125,11 @@ fun ReportDetailScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
         val sampleUser = User(name = "Виталий", image = "", email = "vital@example.com")
         val sampleReport = FishingReport(
+            userId = UUID.randomUUID(),
             type = FishingType.FISHING_LOG,
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
-            photo = listOf(R.drawable.example),
+            photo = emptyList(),
             fishingTime = Date(),
             weight = 3.2,
             fish = listOf(

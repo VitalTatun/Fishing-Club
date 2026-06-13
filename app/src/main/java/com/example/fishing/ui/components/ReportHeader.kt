@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -55,7 +56,7 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
 
 // 2. Фото Карусель
 @Composable
-fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
+fun ReportPhotoCarousel(photos: List<String>, modifier: Modifier = Modifier) {
     if (photos.isEmpty()) return
 
     val pagerState = rememberPagerState { photos.size }
@@ -71,8 +72,8 @@ fun ReportPhotoCarousel(photos: List<Int>, modifier: Modifier = Modifier) {
             contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 8.dp
         ) { index ->
-            Image(
-                painter = painterResource(id = photos[index]),
+            AsyncImage(
+                model = photos[index],
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
@@ -221,10 +222,11 @@ fun StatusChip(text: String, containerColor: Color, contentColor: Color) {
 fun ReportSummaryPreview() {
     FishingTheme {
         val sampleReport = FishingReport(
+            userId = UUID.randomUUID(),
             type = FishingType.HAUL,
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
-            photo = listOf(android.R.drawable.ic_menu_gallery),
+            photo = emptyList(),
             fishingTime = Date(),
             weight = 3.2,
             fish = listOf(),
@@ -247,10 +249,11 @@ fun ReportSummaryPreview() {
 fun ReportHeaderPreview() {
     FishingTheme {
         val sampleReport = FishingReport(
+            userId = UUID.randomUUID(),
             type = FishingType.FISHING_LOG,
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
-            photo = listOf(android.R.drawable.ic_menu_gallery),
+            photo = emptyList(),
             fishingTime = Date(),
             weight = 3.2,
             fish = listOf(),

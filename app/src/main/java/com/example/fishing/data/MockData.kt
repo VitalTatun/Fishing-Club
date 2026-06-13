@@ -1,19 +1,20 @@
 package com.example.fishing.data
 
-import com.example.fishing.R
 import com.example.fishing.model.*
 import java.util.*
 
 object MockData {
-    private val sampleUser = User(name = "Виталий", image = "", email = "vital@example.com")
+    val sampleUserId: UUID = UUID.fromString("00000000-0000-0000-0000-000000000000")
+    val sampleUser = User(id = sampleUserId, name = "Виталий", image = "", email = "vital@example.com")
     private val calendar = Calendar.getInstance()
 
     val sampleReports = listOf(
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.FISHING_LOG,
             name = "Смеркалось...",
             water = Water(waterName = "Водохранилище Крылово", latitude = 53.998, longitude = 27.285),
-            photo = listOf(R.drawable.example, R.drawable.example, R.drawable.example),
+            photo = emptyList(),
             fishingTime = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time,
             weight = 3.2,
             fish = listOf(
@@ -30,6 +31,7 @@ object MockData {
             isPublic = false
         ),
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.FISHING_LOG,
             name = "Утренняя щука",
             water = Water(waterName = "Заславское вдхр. (Дамба)", latitude = 53.978, longitude = 27.352),
@@ -45,6 +47,7 @@ object MockData {
             isPublic = true
         ),
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.FISHING_LOG,
             name = "Карасиный рай",
             water = Water(waterName = "Чистый пруд", latitude = 53.965, longitude = 27.310),
@@ -60,10 +63,11 @@ object MockData {
             isPublic = true
         ),
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.HAUL,
             name = "Трофейный Сазан",
             water = Water(waterName = "Заславское вдхр. (Остров)", latitude = 53.992, longitude = 27.320),
-            photo = listOf(R.drawable.example),
+            photo = emptyList(),
             fishingTime = calendar.apply { set(2024, Calendar.JULY, 15) }.time,
             weight = 8.4,
             fish = listOf(Fish(name = "Сазан", count = 1)),
@@ -75,6 +79,7 @@ object MockData {
             isPublic = true
         ),
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.HAUL,
             name = "Ночной хищник",
             water = Water(waterName = "Заславское вдхр. (Семково)", latitude = 54.015, longitude = 27.360),
@@ -90,10 +95,11 @@ object MockData {
             isPublic = false
         ),
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.FISHING_LOG,
             name = "Летний зной на Заславском",
             water = Water(waterName = "Заславское вдхр. (Ратомский залив)", latitude = 53.958, longitude = 27.345),
-            photo = listOf(R.drawable.example, R.drawable.example),
+            photo = emptyList(),
             fishingTime = calendar.apply { set(2024, Calendar.JULY, 20) }.time,
             weight = 4.8,
             fish = listOf(Fish(name = "Лещ", count = 5), Fish(name = "Густера", count = 10)),
@@ -105,10 +111,11 @@ object MockData {
             isPublic = true
         ),
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.HAUL,
             name = "Осенний монстр",
             water = Water(waterName = "Заславское вдхр. (Каналы)", latitude = 53.985, longitude = 27.275),
-            photo = listOf(R.drawable.example),
+            photo = emptyList(),
             fishingTime = calendar.apply { set(2024, Calendar.SEPTEMBER, 12) }.time,
             weight = 12.5,
             fish = listOf(Fish(name = "Карп", count = 1)),
@@ -120,6 +127,7 @@ object MockData {
             isPublic = true
         ),
         FishingReport(
+            userId = sampleUserId,
             type = FishingType.FISHING_LOG,
             name = "Бесконечный зимний день",
             water = Water(waterName = "Минское море (Центр)", latitude = 53.990, longitude = 27.330),

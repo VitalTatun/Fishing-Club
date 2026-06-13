@@ -1,7 +1,6 @@
 package com.example.fishing.ui.screens
 
 import android.net.Uri
-import android.widget.ImageView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,29 +22,32 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.tooling.preview.Preview
+import coil.compose.AsyncImage
 import com.example.fishing.ui.theme.FishingTheme
 
 private const val MaxPhotos = 6
 
 @Composable
-internal fun PhotosSection() {
+internal fun PhotosSection(
+    selectedPhotoUris: List<Uri> = emptyList(),
+    onPhotosChange: (List<Uri>) -> Unit = {}
+) {
     val haptic = LocalHapticFeedback.current
-    val selectedPhotoUris = remember { mutableStateListOf<Uri>() }
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
     ) { uris ->
         val availableSlots = MaxPhotos - selectedPhotoUris.size
-        selectedPhotoUris += uris.take(availableSlots)
+        val newUris = uris.take(availableSlots)
+        onPhotosChange(selectedPhotoUris + newUris)
     }
 
     PhotosSectionContent(
@@ -58,7 +60,9 @@ internal fun PhotosSection() {
                 )
             }
         },
-        onRemoveClick = { selectedPhotoUris.remove(it) }
+        onRemoveClick = { uri ->
+            onPhotosChange(selectedPhotoUris - uri)
+        }
     )
 }
 
@@ -106,16 +110,11 @@ private fun PhotoTile(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.clip(RoundedCornerShape(16.dp))) {
-        AndroidView(
-            factory = { context ->
-                ImageView(context).apply {
-                    scaleType = ImageView.ScaleType.CENTER_CROP
-                }
-            },
-            update = { imageView ->
-                imageView.setImageURI(photoUri)
-            },
-            modifier = Modifier.fillMaxSize()
+        AsyncImage(
+            model = photoUri,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
         )
         Surface(
             modifier = Modifier

@@ -39,7 +39,8 @@ fun MainScreen(
     viewModel: MainViewModel? = null,
     onTabSelected: (Int) -> Unit = {},
     onCreateReportClick: () -> Unit = {},
-    onReportClick: (FishingReport) -> Unit
+    onReportClick: (FishingReport) -> Unit,
+    onDeleteReport: (FishingReport) -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -91,7 +92,7 @@ fun MainScreen(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             itemsIndexed(reports) { index, report ->
-                                FishingReportItem(report = report, onClick = { onReportClick(report) })
+                                FishingReportItem(report = report, onClick = { onReportClick(report) }, onDeleteReport = onDeleteReport)
                                 if (index < reports.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 4.dp),
@@ -129,10 +130,11 @@ fun MainScreenPreview() {
         
         val sampleReports = listOf(
             FishingReport(
+                userId = UUID.randomUUID(),
                 type = FishingType.FISHING_LOG,
                 name = "Смеркалось...",
                 water = Water(waterName = "Водохранилище Крылово", latitude = 0.0, longitude = 0.0),
-                photo = listOf(android.R.drawable.ic_menu_gallery),
+                photo = emptyList(),
                 fishingTime = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time,
                 weight = 1.2,
                 fish = listOf(Fish(name = "Окунь", count = 1)),
@@ -144,6 +146,7 @@ fun MainScreenPreview() {
                 isPublic = false
             ),
             FishingReport(
+                userId = UUID.randomUUID(),
                 type = FishingType.FISHING_LOG,
                 name = "Отчет без фото",
                 water = Water(waterName = "Чистый пруд", latitude = 0.0, longitude = 0.0),

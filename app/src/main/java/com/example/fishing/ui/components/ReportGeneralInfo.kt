@@ -21,6 +21,7 @@ import java.util.*
 @Composable
 fun ReportGeneralInfoPreview() {
     val mockReport = FishingReport(
+        userId = UUID.randomUUID(),
         type = FishingType.FISHING_LOG,
         name = "Летняя рыбалка на Оке",
         water = Water(waterName = "Река Ока", latitude = 54.0, longitude = 37.0),

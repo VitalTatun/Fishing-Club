@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fishing.model.*
 import java.util.Date
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +94,7 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
 @Composable
 fun ReportDescriptionSectionPreview() {
     val sampleReport = FishingReport(
+        userId = UUID.randomUUID(),
         type = FishingType.FISHING_LOG,
         name = "Тестовый отчет",
         water = Water(waterName = "Озеро", latitude = 0.0, longitude = 0.0),

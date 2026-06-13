@@ -230,6 +230,7 @@ private fun createMarkerBitmap(color: Int): Bitmap {
 fun ReportLocationSectionPreview() {
     FishingTheme {
         val sampleReport = FishingReport(
+            userId = UUID.randomUUID(),
             type = FishingType.FISHING_LOG,
             name = "Тестовый отчет",
             water = Water(

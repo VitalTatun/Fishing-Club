@@ -3,7 +3,6 @@ package com.example.fishing.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,15 +29,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.hypot
 
 @Composable
 fun FullScreenPhotoScreen(
-    photos: List<Int>,
+    photos: List<String>,
     initialPage: Int = 0,
     onBackClick: () -> Unit
 ) {
@@ -129,10 +129,10 @@ fun FullScreenPhotoScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        itemsIndexed(photos) { index, photoRes ->
+                        itemsIndexed(photos) { index, photoUrl ->
                             val isSelected = pagerState.currentPage == index
-                            Image(
-                                painter = painterResource(id = photoRes),
+                            AsyncImage(
+                                model = photoUrl,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -157,14 +157,14 @@ fun FullScreenPhotoScreen(
 
 @Composable
 fun ZoomableImage(
-    model: Int,
+    model: String,
     modifier: Modifier = Modifier,
     onZoomChange: (Boolean) -> Unit,
     onTap: () -> Unit
 ) {
     var targetScale by remember { mutableFloatStateOf(1f) }
     var targetOffset by remember { mutableStateOf(Offset.Zero) }
-    val painter = painterResource(id = model)
+    val painter = rememberAsyncImagePainter(model = model)
     val imageSize = painter.intrinsicSize
 
     val scale by animateFloatAsState(targetValue = targetScale, label = "ScaleAnimation")
@@ -195,8 +195,8 @@ fun ZoomableImage(
             )
         }
 
-        Image(
-            painter = painter,
+        AsyncImage(
+            model = model,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
