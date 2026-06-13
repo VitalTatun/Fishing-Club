@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.model.Bait
+import com.example.fishing.model.FishingMethod
 import com.example.fishing.ui.theme.FishingTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,8 +36,11 @@ import com.example.fishing.ui.theme.FishingTheme
 fun CreateReportScreen(
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    initialMethod: FishingMethod = FishingMethod.NONE,
+    initialBaits: List<Bait> = emptyList(),
     onNavigateToCatchEdit: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onNavigateToMethodAndBaitEdit: () -> Unit = {}
 ) {
     var title by remember { mutableStateOf("") }
     var reportType by remember { mutableStateOf("Отчет") }
@@ -46,6 +51,8 @@ fun CreateReportScreen(
     var isPublic by remember { mutableStateOf(true) }
     var isPaidWater by remember { mutableStateOf(false) }
     var weight by remember { mutableFloatStateOf(0f) }
+    var selectedMethod by remember(initialMethod) { mutableStateOf(initialMethod) }
+    var selectedBaits by remember(initialBaits) { mutableStateOf(initialBaits) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -101,7 +108,13 @@ fun CreateReportScreen(
                     onWaterNameChange = { waterName = it }
                 )
             }
-            item { MethodAndBaitSection() }
+            item {
+                MethodAndBaitSection(
+                    selectedMethod = selectedMethod,
+                    selectedBaits = selectedBaits,
+                    onArrowClick = onNavigateToMethodAndBaitEdit
+                )
+            }
             item {
                 GeneralInfoSection(
                     fishingDate = fishingDate,

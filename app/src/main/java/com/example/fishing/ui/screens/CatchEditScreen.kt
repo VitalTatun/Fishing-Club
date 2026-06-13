@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,6 +69,28 @@ fun CatchEditScreen(
         mutableStateListOf<Fish>().also { it.addAll(fishList) }
     }
 
+    fun toggleFishSelection(name: String) {
+        val existingIndex = editableFish.indexOfFirst { it.name.equals(name, ignoreCase = true) }
+        if (existingIndex != -1) {
+            editableFish.removeAt(existingIndex)
+        } else {
+            editableFish.add(0, Fish(name = name, count = 1))
+        }
+    }
+
+    fun addFishFromInput() {
+        if (fishNameInput.isNotBlank()) {
+            val exists = editableFish.any { it.name.equals(fishNameInput, ignoreCase = true) }
+            if (!exists) {
+                editableFish.add(0, Fish(name = fishNameInput, count = 1))
+                fishNameInput = ""
+                isDuplicateError = false
+            } else {
+                isDuplicateError = true
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -116,18 +137,7 @@ fun CatchEditScreen(
                 } else null,
                 trailingIcon = {
                     IconButton(
-                        onClick = {
-                            if (fishNameInput.isNotBlank()) {
-                                val exists = editableFish.any { it.name.equals(fishNameInput, ignoreCase = true) }
-                                if (!exists) {
-                                    editableFish.add(0, Fish(name = fishNameInput, count = 1))
-                                    fishNameInput = ""
-                                    isDuplicateError = false
-                                } else {
-                                    isDuplicateError = true
-                                }
-                            }
-                        },
+                        onClick = { addFishFromInput() },
                         enabled = fishNameInput.isNotBlank()
                     ) {
                         Icon(
@@ -161,20 +171,13 @@ fun CatchEditScreen(
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     chipLabels.forEach { label ->
                         val isSelected = editableFish.any { it.name.equals(label, ignoreCase = true) }
                         FilterChip(
                             selected = isSelected,
-                            onClick = {
-                                val existingIndex = editableFish.indexOfFirst { it.name.equals(label, ignoreCase = true) }
-                                if (existingIndex != -1) {
-                                    editableFish.removeAt(existingIndex)
-                                } else {
-                                    editableFish.add(0, Fish(name = label, count = 1))
-                                }
-                            },
+                            onClick = { toggleFishSelection(label) },
                             label = {
                                 Text(
                                     text = label,

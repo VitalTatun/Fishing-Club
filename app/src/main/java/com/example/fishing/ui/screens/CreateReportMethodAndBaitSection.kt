@@ -4,13 +4,29 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import com.example.fishing.model.Bait
+import com.example.fishing.model.FishingMethod
 
 @Composable
-internal fun MethodAndBaitSection() {
+internal fun MethodAndBaitSection(
+    selectedMethod: FishingMethod,
+    selectedBaits: List<Bait>,
+    onArrowClick: () -> Unit
+) {
     SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
-        SectionHeader(title = "Способ ловли и наживка*")
-        InfoRow(label = "Способ ловли", value = "Поплавок")
-        HorizontalDivider(color = CreateReportColors.Divider)
-        InfoRow(label = "Наживка", value = "Мотыль, Опарыш")
+        SectionHeader(
+            title = "Способ ловли и наживка*",
+            onArrowClick = onArrowClick
+        )
+        if (selectedMethod != FishingMethod.NONE) {
+            InfoRow(label = "Способ ловли", value = selectedMethod.russianName)
+            if (selectedBaits.isNotEmpty()) {
+                HorizontalDivider(color = CreateReportColors.Divider)
+                InfoRow(
+                    label = "Наживка",
+                    value = selectedBaits.joinToString(", ") { it.russianName }
+                )
+            }
+        }
     }
 }

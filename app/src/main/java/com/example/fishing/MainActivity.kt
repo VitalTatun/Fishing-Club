@@ -19,12 +19,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.fishing.ui.screens.CatchEditScreen
+import com.example.fishing.ui.screens.FishingMethodAndBaitScreen
 import com.example.fishing.ui.screens.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.CreateReportScreen
 import com.example.fishing.ui.screens.MainScreen
 import com.example.fishing.ui.screens.MapScreen
 import com.example.fishing.ui.screens.ReportDetailScreen
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.Bait
 import com.example.fishing.viewmodel.MainViewModel
 import org.osmdroid.config.Configuration
 import android.Manifest
@@ -104,11 +107,47 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("create_report") {
+                            val resultMethod = navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<FishingMethod>("method") ?: FishingMethod.NONE
+                            val resultBaits = navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<List<Bait>>("baits") ?: emptyList()
+
                             CreateReportScreen(
                                 onBackClick = { navController.popBackStack() },
                                 onSaveClick = { navController.popBackStack() },
+                                initialMethod = resultMethod,
+                                initialBaits = resultBaits,
                                 onNavigateToCatchEdit = {
                                     navController.navigate("catch_edit")
+                                },
+                                onNavigateToMethodAndBaitEdit = {
+                                    navController.navigate("method_bait_edit")
+                                }
+                            )
+                        }
+
+                        composable("method_bait_edit") {
+                            val currentMethod = navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<FishingMethod>("method") ?: FishingMethod.NONE
+                            val currentBaits = navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<List<Bait>>("baits") ?: emptyList()
+
+                            FishingMethodAndBaitScreen(
+                                initialMethod = currentMethod,
+                                initialBaits = currentBaits,
+                                onBackClick = { navController.popBackStack() },
+                                onSaveClick = { method, baits ->
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("method", method)
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("baits", ArrayList(baits))
+                                    navController.popBackStack()
                                 }
                             )
                         }
