@@ -21,6 +21,8 @@ import java.util.UUID
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifier) {
+    if (report.comment.isBlank()) return
+
     var showSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false // Позволяет открывать на пол-экрана

@@ -79,8 +79,7 @@ private fun InfoDetailsList(report: FishingReport) {
             else -> "Не указан"
         },
         "Наживка" to report.bait.joinToString(", ") { it.russianName },
-        "Дата" to dateFormatter.format(report.fishingTime),
-        "Общий вес" to "${report.weight.toString().replace('.', ',')} кг"
+        "Дата" to dateFormatter.format(report.fishingTime)
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {

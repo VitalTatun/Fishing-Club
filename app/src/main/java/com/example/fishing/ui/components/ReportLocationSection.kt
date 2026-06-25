@@ -59,7 +59,7 @@ fun ReportLocationSection(
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         Text(
-            text = "Местоположение",
+            text = "Водоем",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
