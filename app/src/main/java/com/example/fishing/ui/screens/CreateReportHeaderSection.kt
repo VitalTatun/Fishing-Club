@@ -12,10 +12,12 @@ internal fun ReportHeaderSection(
     title: String,
     onTitleChange: (String) -> Unit,
     reportType: String,
-    onReportTypeChange: (String) -> Unit
+    onReportTypeChange: (String) -> Unit,
+    isPublic: Boolean,
+    onPublicChange: (Boolean) -> Unit,
 ) {
     SectionCard(
-        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 20.dp)
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp)
     ) {
         ReportTextField(
             value = title,
@@ -23,12 +25,18 @@ internal fun ReportHeaderSection(
             label = "Отчет *",
             placeholder = "Название отчета"
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(28.dp))
         ReportDropdownField(
             value = reportType,
             onValueChange = onReportTypeChange,
             label = "Тип",
             options = listOf("Отчет", "Трофей")
+        )
+        SwitchRow(
+            title = "Опубликовать",
+            checked = isPublic,
+            onCheckedChange = onPublicChange,
+            showDivider = false
         )
     }
 }

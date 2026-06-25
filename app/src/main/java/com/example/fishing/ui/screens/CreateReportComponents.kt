@@ -288,12 +288,12 @@ internal fun InfoRow(
 internal fun SwitchRow(
     title: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    showDivider: Boolean = true
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
             .heightIn(min = 56.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -305,10 +305,9 @@ internal fun SwitchRow(
         )
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        color = CreateReportColors.Outline
-    )
+    if (showDivider) {
+        HorizontalDivider(color = CreateReportColors.Outline)
+    }
 }
 
 @Composable

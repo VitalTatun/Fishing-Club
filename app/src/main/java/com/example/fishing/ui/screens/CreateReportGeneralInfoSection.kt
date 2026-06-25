@@ -13,7 +13,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -31,23 +30,14 @@ import androidx.compose.ui.window.Dialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun GeneralInfoSection(
+internal fun DateAndTimeSection(
     fishingDate: String,
     onFishingDateChange: (String) -> Unit,
     fishingStartTime: String,
     onFishingStartTimeChange: (String) -> Unit,
-    fishingFromShore: Boolean,
-    onFishingFromShoreChange: (Boolean) -> Unit,
-    isPublic: Boolean,
-    onPublicChange: (Boolean) -> Unit,
-    isPaidWater: Boolean,
-    onPaidWaterChange: (Boolean) -> Unit,
-    weight: Float,
-    onWeightChange: (Float) -> Unit,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -118,16 +108,16 @@ internal fun GeneralInfoSection(
         }
     }
 
-    SectionCard(contentPadding = PaddingValues(bottom = 16.dp)) {
+    SectionCard(contentPadding = PaddingValues(0.dp)) {
         SectionHeader(
-            title = "Общая информация",
-            modifier = Modifier.padding(horizontal = 16.dp),
+            title = "Дата и время",
             showArrow = false,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
-        Column(
+        androidx.compose.foundation.layout.Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             ReportPickerField(
@@ -145,25 +135,6 @@ internal fun GeneralInfoSection(
                 leadingIcon = { Icon(Icons.Default.Schedule, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { showTimePicker = true }
-            )
-        }
-        SwitchRow("Ловля с берега", fishingFromShore, onFishingFromShoreChange)
-        SwitchRow("Опубликовать", isPublic, onPublicChange)
-        SwitchRow("Платный водоем", isPaidWater, onPaidWaterChange)
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            InfoRow(
-                label = "Общий вес",
-                value = if (weight == 0f) "Не указан" else "${(weight * 10).roundToInt() / 10f} кг",
-                contentPadding = PaddingValues(0.dp),
-            )
-            Slider(
-                value = weight,
-                onValueChange = onWeightChange,
-                valueRange = 0f..10f,
             )
         }
     }

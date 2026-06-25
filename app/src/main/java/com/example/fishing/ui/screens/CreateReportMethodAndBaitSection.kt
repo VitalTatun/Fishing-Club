@@ -16,16 +16,20 @@ internal fun MethodAndBaitSection(
     SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
         SectionHeader(
             title = "Способ ловли и наживка*",
-            subtitle = if (selectedMethod == FishingMethod.NONE) "Обязательное" else null,
             onArrowClick = onArrowClick
         )
         if (selectedMethod != FishingMethod.NONE) {
-            InfoRow(label = "Способ ловли", value = selectedMethod.russianName)
+            InfoRow(
+                label = "Способ ловли",
+                value = selectedMethod.russianName,
+                contentPadding = PaddingValues(vertical = 16.dp)
+            )
             if (selectedBaits.isNotEmpty()) {
                 HorizontalDivider(color = CreateReportColors.Divider)
                 InfoRow(
                     label = "Наживка",
-                    value = selectedBaits.joinToString(", ") { it.russianName }
+                    value = selectedBaits.joinToString(", ") { it.russianName },
+                    contentPadding = PaddingValues(vertical = 16.dp)
                 )
             }
         }

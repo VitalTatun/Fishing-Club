@@ -3,6 +3,7 @@ package com.example.fishing.viewmodel
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -52,6 +53,7 @@ class MainViewModel @Inject constructor(
     var formSelectedMethod by mutableStateOf(FishingMethod.NONE)
     var formSelectedBaits by mutableStateOf<List<Bait>>(emptyList())
     var formSelectedFish by mutableStateOf<List<Fish>>(emptyList())
+    var formMood by mutableIntStateOf(3)
     var formComment by mutableStateOf("")
     var formLocation by mutableStateOf<GeoPoint?>(null)
     init {
@@ -139,6 +141,7 @@ class MainViewModel @Inject constructor(
         formSelectedMethod = FishingMethod.NONE
         formSelectedBaits = emptyList()
         formSelectedFish = emptyList()
+        formMood = 3
         formComment = ""
         formLocation = null
     }

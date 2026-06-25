@@ -207,6 +207,14 @@ fun CreateReportScreen(
                     onTitleChange = { viewModel.formTitle = it },
                     reportType = viewModel.formReportType,
                     onReportTypeChange = { viewModel.formReportType = it },
+                    isPublic = viewModel.formIsPublic,
+                    onPublicChange = { viewModel.formIsPublic = it },
+                )
+            }
+            item {
+                MoodSection(
+                    selectedMood = viewModel.formMood,
+                    onMoodChange = { viewModel.formMood = it },
                 )
             }
             item {
@@ -220,7 +228,11 @@ fun CreateReportScreen(
                     waterName = viewModel.formWaterName,
                     onWaterNameChange = { viewModel.formWaterName = it },
                     onArrowClick = onNavigateToWaterEdit,
-                    location = viewModel.formLocation
+                    location = viewModel.formLocation,
+                    fishingFromShore = viewModel.formFishingFromShore,
+                    onFishingFromShoreChange = { viewModel.formFishingFromShore = it },
+                    isPaidWater = viewModel.formIsPaidWater,
+                    onPaidWaterChange = { viewModel.formIsPaidWater = it },
                 )
             }
             item {
@@ -231,25 +243,19 @@ fun CreateReportScreen(
                 )
             }
             item {
-                GeneralInfoSection(
+                DateAndTimeSection(
                     fishingDate = viewModel.formFishingDate,
                     onFishingDateChange = { viewModel.formFishingDate = it },
                     fishingStartTime = viewModel.formFishingStartTime,
                     onFishingStartTimeChange = { viewModel.formFishingStartTime = it },
-                    fishingFromShore = viewModel.formFishingFromShore,
-                    onFishingFromShoreChange = { viewModel.formFishingFromShore = it },
-                    isPublic = viewModel.formIsPublic,
-                    onPublicChange = { viewModel.formIsPublic = it },
-                    isPaidWater = viewModel.formIsPaidWater,
-                    onPaidWaterChange = { viewModel.formIsPaidWater = it },
-                    weight = viewModel.formWeight,
-                    onWeightChange = { viewModel.formWeight = it }
                 )
             }
             item {
                 CatchSection(
                     selectedFish = viewModel.formSelectedFish,
-                    onArrowClick = onNavigateToCatchEdit
+                    onArrowClick = onNavigateToCatchEdit,
+                    weight = viewModel.formWeight,
+                    onWeightChange = { viewModel.formWeight = it },
                 )
             }
             item {

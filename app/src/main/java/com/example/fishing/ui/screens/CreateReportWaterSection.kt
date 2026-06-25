@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
@@ -32,14 +33,18 @@ internal fun WaterSection(
     onWaterNameChange: (String) -> Unit,
     onArrowClick: () -> Unit,
     location: GeoPoint? = null,
+    fishingFromShore: Boolean = true,
+    onFishingFromShoreChange: (Boolean) -> Unit = {},
+    isPaidWater: Boolean = false,
+    onPaidWaterChange: (Boolean) -> Unit = {},
 ) {
     val hasData = (location != null) || waterName.isNotBlank()
     
-    SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = if (hasData) 20.dp else 0.dp)) {
+    SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 0.dp)) {
         val subtitle = if (location != null) {
             String.format(Locale.US, "%.4f, %.4f", location.latitude, location.longitude)
         } else {
-            "Обязательное"
+            null
         }
         
         SectionHeader(
@@ -55,6 +60,17 @@ internal fun WaterSection(
                 value = waterName,
                 onValueChange = onWaterNameChange,
                 label = "Название водоема *"
+            )
+            SwitchRow(
+                title = "Ловля с берега",
+                checked = fishingFromShore,
+                onCheckedChange = onFishingFromShoreChange
+            )
+            SwitchRow(
+                title = "Платный водоем",
+                checked = isPaidWater,
+                onCheckedChange = onPaidWaterChange,
+                showDivider = false
             )
         }
     }
