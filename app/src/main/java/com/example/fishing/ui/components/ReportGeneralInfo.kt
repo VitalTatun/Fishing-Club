@@ -80,7 +80,6 @@ private fun InfoDetailsList(report: FishingReport) {
         },
         "Наживка" to report.bait.joinToString(", ") { it.russianName },
         "Дата" to dateFormatter.format(report.fishingTime),
-        "Ловля с берега" to if (report.fishingFromTheShore) "Да" else "Нет",
         "Общий вес" to "${report.weight.toString().replace('.', ',')} кг"
     )
 

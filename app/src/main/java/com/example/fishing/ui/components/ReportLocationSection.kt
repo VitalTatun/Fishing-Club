@@ -126,7 +126,7 @@ fun ReportLocationSection(
             // Cell 2: Info (Name + Coordinates)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
+                shape = RoundedCornerShape(2.dp),
                 color = FishingTheme.colors.secondaryBackground
             ) {
                 Column(
@@ -143,6 +143,58 @@ fun ReportLocationSection(
                     LocationInfoRow(
                         report = report,
                         primaryColor = primaryColor
+                    )
+                }
+            }
+
+            // Cell 3: Ловля с берега
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(2.dp),
+                color = FishingTheme.colors.secondaryBackground
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Ловля с берега",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = if (report.fishingFromTheShore) "Да" else "Нет",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            // Cell 4: Платный водоем
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
+                color = FishingTheme.colors.secondaryBackground
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Платный водоем",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = if (report.water.isPaid) "Да" else "Нет",
+                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
