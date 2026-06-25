@@ -39,6 +39,10 @@ class MainViewModel @Inject constructor(
     private val _mapRequestedLocation = MutableStateFlow<GeoPoint?>(null)
     val mapRequestedLocation: StateFlow<GeoPoint?> = _mapRequestedLocation.asStateFlow()
 
+    var mapLastCenterLat: Double? = null
+    var mapLastCenterLon: Double? = null
+    var mapLastZoom: Double = 6.0
+
     // Create report form state (survives navigation — ViewModel scoped to Activity)
     var formTitle by mutableStateOf("")
     var formReportType by mutableStateOf("Отчет")

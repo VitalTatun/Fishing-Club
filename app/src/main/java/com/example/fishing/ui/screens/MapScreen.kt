@@ -16,7 +16,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -55,11 +54,11 @@ fun MapScreen(
         onBackClick?.invoke()
     }
 
-    // Используем rememberSaveable для сохранения состояния при навигации и повороте экрана
-    var lastCenterLat by rememberSaveable { mutableStateOf<Double?>(null) }
-    var lastCenterLon by rememberSaveable { mutableStateOf<Double?>(null) }
-    var lastZoom by rememberSaveable { mutableDoubleStateOf(6.0) }
-    var hasInitialLocationBeenSet by rememberSaveable { mutableStateOf(false) }
+    // Используем ViewModel для сохранения позиции карты между переключениями табов
+    var lastCenterLat by remember { mutableStateOf(viewModel?.mapLastCenterLat) }
+    var lastCenterLon by remember { mutableStateOf(viewModel?.mapLastCenterLon) }
+    var lastZoom by remember { mutableDoubleStateOf(viewModel?.mapLastZoom ?: 6.0) }
+    var hasInitialLocationBeenSet by remember { mutableStateOf(false) }
 
     val requestedLocation by viewModel?.mapRequestedLocation?.collectAsState() ?: remember { mutableStateOf(null) }
     val fallbackCenter = remember(reports) {
@@ -146,9 +145,11 @@ fun MapScreen(
         if (lastCenterLat == null && requestedLocation == null) {
             mapView.controller.setCenter(fallbackCenter)
             mapView.controller.setZoom(11.0)
-            lastCenterLat = fallbackCenter.latitude
-            lastCenterLon = fallbackCenter.longitude
-            lastZoom = 11.0
+            if (!isLocationEnabled) {
+                lastCenterLat = fallbackCenter.latitude
+                lastCenterLon = fallbackCenter.longitude
+                lastZoom = 11.0
+            }
         }
     }
 
@@ -171,6 +172,15 @@ fun MapScreen(
         
         onDispose {
             mapView.removeMapListener(listener)
+        }
+    }
+
+    // Синхронизируем позицию карты с ViewModel сразу при каждом изменении
+    SideEffect {
+        viewModel?.let {
+            it.mapLastCenterLat = lastCenterLat
+            it.mapLastCenterLon = lastCenterLon
+            it.mapLastZoom = lastZoom
         }
     }
 
@@ -247,6 +257,7 @@ fun OsmMapView(
             mapView.apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
+                setBuiltInZoomControls(false)
                 
                 if (zoomLevelDouble <= 1.0) {
                     controller.setZoom(initialZoom)
