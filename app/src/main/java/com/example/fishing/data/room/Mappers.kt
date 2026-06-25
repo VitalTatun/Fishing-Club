@@ -13,7 +13,8 @@ fun FishingReportWithDetails.toDomain(user: User): FishingReport {
         water = Water(
             waterName = fishing.waterName ?: "",
             latitude = fishing.waterLat ?: 0.0,
-            longitude = fishing.waterLng ?: 0.0
+            longitude = fishing.waterLng ?: 0.0,
+            isPaid = fishing.waterPaid
         ),
         spotLat = fishing.spotLat,
         spotLng = fishing.spotLng,
@@ -49,6 +50,7 @@ fun FishingReport.toEntity(): FishingEntity {
         waterName = water.waterName,
         waterLat = water.latitude,
         waterLng = water.longitude,
+        waterPaid = water.isPaid,
         spotLat = spotLat,
         spotLng = spotLng,
         fishingTime = fishingTime,

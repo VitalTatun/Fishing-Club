@@ -82,22 +82,23 @@ fun ReportPhotoCarousel(photos: List<String>, modifier: Modifier = Modifier) {
             )
         }
 
-        // Счетчик страниц
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 8.dp, end = 24.dp),
-            color = Color.Black.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(30.dp),
-        ) {
-            Text(
-                text = "${pagerState.currentPage + 1}/${photos.size}",
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Medium,
+        if (photos.size > 1) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 24.dp),
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(30.dp),
+            ) {
+                Text(
+                    text = "${pagerState.currentPage + 1}/${photos.size}",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                    )
                 )
-            )
+            }
         }
     }
 }

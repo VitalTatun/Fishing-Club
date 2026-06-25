@@ -6,5 +6,6 @@ data class Water(
     val id: UUID = UUID.randomUUID(),
     val waterName: String,
     val latitude: Double,
-    val longitude: Double
+    val longitude: Double,
+    val isPaid: Boolean = false
 )

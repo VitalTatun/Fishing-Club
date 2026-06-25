@@ -165,9 +165,9 @@ class MainActivity : ComponentActivity() {
                             CreateReportScreen(
                                 viewModel = viewModel,
                                 onBackClick = { navController.popBackStack() },
-                                onSaveClick = { title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, photos ->
+                                onSaveClick = { title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, isPaidWater, photos ->
                                     val internalPhotos = photos.map { copyPhotoToInternalStorage(Uri.parse(it)) }
-                                    viewModel.saveNewReport(title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, internalPhotos)
+                                    viewModel.saveNewReport(title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, isPaidWater, internalPhotos)
                                     viewModel.resetFormState()
                                     navController.popBackStack()
                                 },

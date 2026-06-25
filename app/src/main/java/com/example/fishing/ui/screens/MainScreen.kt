@@ -63,6 +63,14 @@ fun MainScreen(
                     )
                 },
                 actions = {
+                    if (selectedTab == 0) {
+                        IconButton(onClick = { /* TODO */ }) {
+                            Icon(Icons.Default.Search, contentDescription = "Поиск")
+                        }
+                        IconButton(onClick = onCreateReportClick) {
+                            Icon(Icons.Default.Add, contentDescription = "Новый отчет")
+                        }
+                    }
                     if (selectedTab == 1) {
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = "Поиск")
@@ -85,13 +93,6 @@ fun MainScreen(
                 }
             }
         },
-        floatingActionButton = {
-            if (selectedTab == 0) {
-                FloatingActionButton(onClick = onCreateReportClick) {
-                    Icon(Icons.Default.Add, contentDescription = "Новый отчет")
-                }
-            }
-        }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedTab) {

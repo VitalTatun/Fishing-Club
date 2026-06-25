@@ -91,6 +91,7 @@ class MainViewModel @Inject constructor(
         comment: String,
         shore: Boolean,
         isPublic: Boolean,
+        isPaidWater: Boolean,
         photos: List<String>
     ) {
         viewModelScope.launch {
@@ -101,7 +102,8 @@ class MainViewModel @Inject constructor(
                 water = Water(
                     waterName = waterName,
                     latitude = location?.latitude ?: 0.0,
-                    longitude = location?.longitude ?: 0.0
+                    longitude = location?.longitude ?: 0.0,
+                    isPaid = isPaidWater
                 ),
                 spotLat = location?.latitude,
                 spotLng = location?.longitude,

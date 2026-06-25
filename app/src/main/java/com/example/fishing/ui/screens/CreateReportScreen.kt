@@ -61,6 +61,7 @@ fun CreateReportScreen(
         comment: String,
         shore: Boolean,
         isPublic: Boolean,
+        isPaidWater: Boolean,
         photos: List<String>
     ) -> Unit,
     modifier: Modifier = Modifier,
@@ -176,7 +177,8 @@ fun CreateReportScreen(
                                 viewModel.formWeight.toDouble(), viewModel.formSelectedFish,
                                 viewModel.formSelectedMethod, viewModel.formSelectedBaits,
                                 viewModel.formComment, viewModel.formFishingFromShore,
-                                viewModel.formIsPublic, viewModel.formSelectedPhotoUris.map { it.toString() }
+                                viewModel.formIsPublic, viewModel.formIsPaidWater,
+                                viewModel.formSelectedPhotoUris.map { it.toString() }
                             )
                         },
                         enabled = isSaveEnabled
@@ -287,7 +289,7 @@ private fun CreateReportScreenPreview() {
                 repository = com.example.fishing.data.MockFishingRepository()
             ),
             onBackClick = {},
-            onSaveClick = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
+            onSaveClick = { _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
         )
     }
 }

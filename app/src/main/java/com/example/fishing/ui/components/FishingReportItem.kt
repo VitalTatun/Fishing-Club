@@ -111,11 +111,18 @@ private fun FishingReportHeader(report: FishingReport) {
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
+                if (report.water.isPaid) {
+                    Icon(
+                        imageVector = Icons.Default.Paid,
+                        contentDescription = "Платный водоем",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Icon(
                     imageVector = Icons.Default.Bookmark,
                     contentDescription = "Bookmark",
                     tint = FishingTheme.colors.bookmarkRed,
-                    modifier = Modifier.size(24.dp)
                 )
             }
 
@@ -168,22 +175,23 @@ private fun FishingReportPhotos(photos: List<String>) {
             )
         }
         
-        // Photo count
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 8.dp, end = 24.dp),
-            color = Color.Black.copy(alpha = 0.6f),
-            shape = RoundedCornerShape(30.dp)
-        ) {
-            Text(
-                text = "${pagerState.currentPage + 1}/${photos.size}",
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Medium,
+        if (photos.size > 1) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 24.dp),
+                color = Color.Black.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(30.dp)
+            ) {
+                Text(
+                    text = "${pagerState.currentPage + 1}/${photos.size}",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                    )
                 )
-            )
+            }
         }
     }
 }

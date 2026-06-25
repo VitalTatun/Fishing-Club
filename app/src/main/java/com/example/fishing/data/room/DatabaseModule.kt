@@ -20,7 +20,7 @@ object DatabaseModule {
             context,
             FishingDatabase::class.java,
             "fishing_database"
-        ).build()
+        ).fallbackToDestructiveMigration(false).build()
     }
 
     @Provides

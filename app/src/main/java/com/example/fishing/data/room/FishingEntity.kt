@@ -33,6 +33,8 @@ data class FishingEntity(
     val waterLat: Double?,
     @ColumnInfo(name = "water_lng")
     val waterLng: Double?,
+    @ColumnInfo(name = "water_paid")
+    val waterPaid: Boolean = false,
     @ColumnInfo(name = "spot_lat")
     val spotLat: Double?,
     @ColumnInfo(name = "spot_lng")
