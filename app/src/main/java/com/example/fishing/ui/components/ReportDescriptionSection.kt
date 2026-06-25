@@ -24,8 +24,9 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
     if (report.comment.isBlank()) return
 
     var showSheet by remember { mutableStateOf(false) }
+    var isOverflowed by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = false // Позволяет открывать на пол-экрана
+        skipPartiallyExpanded = false
     )
 
     Column(
@@ -44,19 +45,22 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
-            Text(
-                text = "Подробнее",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { showSheet = true }
-            )
+            if (isOverflowed) {
+                Text(
+                    text = "Подробнее",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { showSheet = true }
+                )
+            }
         }
         Text(
             text = report.comment,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(horizontal = 8.dp),
             maxLines = 5,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { isOverflowed = it.hasVisualOverflow }
         )
     }
 
