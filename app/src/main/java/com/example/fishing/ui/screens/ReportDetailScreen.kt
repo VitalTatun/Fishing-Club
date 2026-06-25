@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +32,7 @@ fun ReportDetailScreen(
     onMapClick: (GeoPoint) -> Unit = {}
 ) {
     val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru"))
+    var menuExpanded by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
@@ -64,27 +67,48 @@ fun ReportDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Редактировать */ }) {
-                        Icon(
-                            imageVector = Icons.Outlined.BorderColor,
-                            contentDescription = "Редактировать",
-//                            tint = Color.White
-                        )
-                    }
-                    IconButton(onClick = { /* TODO: Удалить */ }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = "Удалить",
-//                            tint = Color.White
-                        )
-                    }
-
                     IconButton(onClick = { }) {
                         Icon(
                             imageVector = Icons.Default.Bookmark,
                             contentDescription = "Сохранить",
                             tint = Color.Red
                         )
+                    }
+
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Меню",
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Редактировать") },
+                                onClick = { menuExpanded = false },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.BorderColor, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(if (report.isPublic) "Сделать приватным" else "Сделать публичным") },
+                                onClick = { menuExpanded = false },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Lock, contentDescription = null)
+                                }
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
+                                onClick = { menuExpanded = false },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            )
+                        }
                     }
                 }
             )
