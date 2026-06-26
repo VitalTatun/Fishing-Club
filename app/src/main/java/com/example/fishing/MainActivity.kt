@@ -129,7 +129,7 @@ class MainActivity : ComponentActivity() {
                         composable("main") {
                             val coroutineScope = rememberCoroutineScope()
                             LaunchedEffect(Unit) {
-                                viewModel.refresh()
+                                viewModel.loadReportsIfNeeded()
                             }
                             MainScreen(
                                 reports = reports,

@@ -15,6 +15,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import javax.inject.Inject
@@ -68,22 +69,34 @@ class MainViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private var reportsLoadJob: Job? = null
+    private var allReportsLoadJob: Job? = null
+
     fun refresh() {
-        loadReports()
+        loadReports(force = true)
     }
 
     fun selectTab(index: Int) {
         _selectedTab.value = index
-        if (index == 1) loadAllReports()
+        if (index == 1) loadAllReportsIfNeeded()
     }
 
     fun requestMapLocation(point: GeoPoint?) {
         _mapRequestedLocation.value = point
     }
 
-    fun loadReports() {
+    fun loadReportsIfNeeded() {
+        loadReports(force = false)
+    }
+
+    private fun loadReports(force: Boolean) {
+        if (!force && (_reports.value.isNotEmpty() || reportsLoadJob?.isActive == true)) {
+            return
+        }
+
         val currentUserId = authRepository.currentUser()?.id
-        viewModelScope.launch {
+        reportsLoadJob?.cancel()
+        reportsLoadJob = viewModelScope.launch {
             _isLoading.value = true
             try {
                 repository.getAllReports(userId = currentUserId).collect {
@@ -98,8 +111,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun loadAllReports() {
-        viewModelScope.launch {
+    private fun loadAllReportsIfNeeded() {
+        if (_allReports.value.isNotEmpty() || allReportsLoadJob?.isActive == true) {
+            return
+        }
+
+        allReportsLoadJob = viewModelScope.launch {
             try {
                 repository.getAllReports().collect {
                     _allReports.value = it
@@ -152,14 +169,14 @@ class MainViewModel @Inject constructor(
                 isPublic = isPublic
             )
             repository.saveReport(report)
-            loadReports()
+            loadReports(force = true)
         }
     }
 
     fun deleteReport(id: UUID) {
         viewModelScope.launch {
             repository.deleteReport(id)
-            loadReports()
+            loadReports(force = true)
         }
     }
 
