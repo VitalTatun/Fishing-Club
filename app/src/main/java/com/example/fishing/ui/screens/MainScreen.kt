@@ -39,6 +39,7 @@ fun MainScreen(
     isLoading: Boolean = false,
     selectedTab: Int = 0,
     viewModel: MainViewModel? = null,
+    repository: com.example.fishing.data.FishingRepository,
     onTabSelected: (Int) -> Unit = {},
     onCreateReportClick: () -> Unit = {},
     onReportClick: (FishingReport) -> Unit,
@@ -141,7 +142,7 @@ fun MainScreen(
                                 }
                             }
                             itemsIndexed(reports) { index, report ->
-                                FishingReportItem(report = report, onClick = { onReportClick(report) }, onDeleteReport = onDeleteReport)
+                                FishingReportItem(report = report, repository = repository, onClick = { onReportClick(report) }, onDeleteReport = onDeleteReport)
                                 if (index < reports.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 4.dp),
@@ -234,6 +235,7 @@ fun MainScreenPreview() {
         )
         MainScreen(
             reports = sampleReports,
+            repository = com.example.fishing.data.MockFishingRepository(),
             onReportClick = {}
         )
     }

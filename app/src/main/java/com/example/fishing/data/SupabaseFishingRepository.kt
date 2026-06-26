@@ -5,8 +5,11 @@ import com.example.fishing.model.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.io.File
+import kotlin.time.Duration.Companion.hours
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -63,8 +66,14 @@ class SupabaseFishingRepository @Inject constructor(
             supabase.postgrest["fishing"].insert(report.toFishingDto(now))
             supabase.postgrest["fishing_fish"].insert(report.fish.map { it.toFishDto(report.id) })
             supabase.postgrest["fishing_baits"].insert(report.bait.map { BaitDto(report.id, it.name) })
+            
+            // Загружаем фото в Storage и сохраняем storage paths
+            val storagePaths = report.photo.mapIndexed { index, localPath ->
+                uploadPhotoToStorage(localPath, report.userId, report.id)
+            }
+            
             supabase.postgrest["fishing_photos"].insert(
-                report.photo.mapIndexed { index, path ->
+                storagePaths.mapIndexed { index, path ->
                     PhotoDto(
                         fishingId = report.id,
                         storagePath = path,
@@ -75,6 +84,49 @@ class SupabaseFishingRepository @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    private suspend fun uploadPhotoToStorage(localPath: String, userId: UUID, fishingId: UUID): String {
+        return try {
+            val file = File(localPath)
+            if (!file.exists()) {
+                return localPath // Fallback to local path if file doesn't exist
+            }
+            
+            val bytes = file.readBytes()
+            val photoId = UUID.randomUUID()
+            val storagePath = "$userId/$fishingId/$photoId.jpg"
+            
+            supabase.storage.from("fishing_photos").upload(storagePath, bytes) {
+                upsert = true
+            }
+            
+            storagePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            localPath // Fallback to local path on error
+        }
+    }
+
+    override suspend fun getPhotoSignedUrl(storagePath: String): String? {
+        return try {
+            // Если это уже URL или локальный путь - возвращаем как есть
+            if (storagePath.startsWith("http") || storagePath.startsWith("/")) {
+                return storagePath
+            }
+            
+            supabase.storage.from("fishing_photos").createSignedUrl(
+                path = storagePath,
+                expiresIn = 24.hours
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    override fun isStoragePath(path: String): Boolean {
+        return !path.startsWith("http") && !path.startsWith("/")
     }
 
     override suspend fun deleteReport(id: UUID) {

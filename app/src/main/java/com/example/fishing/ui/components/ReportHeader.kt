@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -33,7 +34,7 @@ import java.util.*
 
 // 1. Модуль заголовка отчета (Фото + Инфо)
 @Composable
-fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
+fun ReportHeader(report: FishingReport, repository: FishingRepository, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth(),
@@ -43,7 +44,7 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
         )
     {
         // Фото карусель
-        ReportPhotoCarousel(photos = report.photo)
+        ReportPhotoCarousel(photos = report.photo, repository = repository)
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -56,7 +57,7 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
 
 // 2. Фото Карусель
 @Composable
-fun ReportPhotoCarousel(photos: List<String>, modifier: Modifier = Modifier) {
+fun ReportPhotoCarousel(photos: List<String>, repository: FishingRepository, modifier: Modifier = Modifier) {
     if (photos.isEmpty()) return
 
     val pagerState = rememberPagerState { photos.size }
@@ -72,9 +73,9 @@ fun ReportPhotoCarousel(photos: List<String>, modifier: Modifier = Modifier) {
             contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 8.dp
         ) { index ->
-            AsyncImage(
-                model = photos[index],
-                contentDescription = null,
+            PhotoImage(
+                photoPath = photos[index],
+                repository = repository,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp)),
@@ -266,11 +267,11 @@ fun ReportHeaderPreview() {
             isPublic = false
         )
         Column(modifier = Modifier.padding(16.dp)) {
-            ReportHeader(report = sampleReport)
+            ReportHeader(report = sampleReport, repository = com.example.fishing.data.MockFishingRepository())
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            ReportHeader(report = sampleReport.copy(isPublic = true))
+            ReportHeader(report = sampleReport.copy(isPublic = true), repository = com.example.fishing.data.MockFishingRepository())
         }
     }
 }

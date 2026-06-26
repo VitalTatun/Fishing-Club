@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.data.FishingRepository
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.*
@@ -28,6 +29,7 @@ import java.util.*
 @Composable
 fun ReportDetailScreen(
     report: FishingReport,
+    repository: FishingRepository,
     onBackClick: () -> Unit,
     onMapClick: (GeoPoint) -> Unit = {}
 ) {
@@ -123,7 +125,7 @@ fun ReportDetailScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
-            ReportHeader(report = report)
+            ReportHeader(report = report, repository = repository)
             MoodSection(selectedMood = 5)
             // Баннер публикации (если черновик)
             if (!report.isPublic) {
@@ -169,6 +171,6 @@ fun ReportDetailScreenPreview() {
             fishingFromTheShore = true,
             isPublic = false
         )
-        ReportDetailScreen(report = sampleReport, onBackClick = {})
+        ReportDetailScreen(report = sampleReport, repository = com.example.fishing.data.MockFishingRepository(), onBackClick = {})
     }
 }

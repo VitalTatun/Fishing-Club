@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -41,6 +42,7 @@ import java.util.*
 @Composable
 fun FishingReportItem(
     report: FishingReport,
+    repository: FishingRepository,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onDeleteReport: (FishingReport) -> Unit = {},
@@ -63,7 +65,7 @@ fun FishingReportItem(
         ) {
 
             if (report.photo.isNotEmpty()) {
-                FishingReportPhotos(photos = report.photo)
+                FishingReportPhotos(photos = report.photo, repository = repository)
             }
             FishingReportHeader(report = report)
             FishingReportFooter(report = report, onDeleteReport = { onDeleteReport(report) })
@@ -151,7 +153,7 @@ private fun FishingReportHeader(report: FishingReport) {
 }
 
 @Composable
-private fun FishingReportPhotos(photos: List<String>) {
+private fun FishingReportPhotos(photos: List<String>, repository: FishingRepository) {
     val pagerState = rememberPagerState { photos.size }
 
     Box(
@@ -165,9 +167,9 @@ private fun FishingReportPhotos(photos: List<String>) {
             contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 8.dp
         ) { index ->
-            AsyncImage(
-                model = photos[index],
-                contentDescription = null,
+            PhotoImage(
+                photoPath = photos[index],
+                repository = repository,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp)),
@@ -399,7 +401,7 @@ fun FishingReportItemPreview() {
     )
     Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
         FishingTheme {
-            FishingReportItem(report = sampleReport)
+            FishingReportItem(report = sampleReport, repository = com.example.fishing.data.MockFishingRepository())
         }
     }
 }

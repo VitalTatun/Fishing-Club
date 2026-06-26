@@ -10,6 +10,8 @@ interface FishingRepository {
     fun getAllReports(userId: UUID? = null): Flow<List<FishingReport>>
     suspend fun saveReport(report: FishingReport)
     suspend fun deleteReport(id: UUID)
+    suspend fun getPhotoSignedUrl(storagePath: String): String?
+    fun isStoragePath(path: String): Boolean
 }
 
 class MockFishingRepository : FishingRepository {
@@ -25,5 +27,13 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun deleteReport(id: UUID) {
         // Mock delete
+    }
+
+    override suspend fun getPhotoSignedUrl(storagePath: String): String? {
+        return storagePath
+    }
+
+    override fun isStoragePath(path: String): Boolean {
+        return !path.startsWith("http") && !path.startsWith("/")
     }
 }

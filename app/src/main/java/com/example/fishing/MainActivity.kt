@@ -34,6 +34,7 @@ import com.example.fishing.model.Fish
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.LoginViewModel
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.FishingRepository
 import com.example.fishing.ui.screens.LoginScreen
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
@@ -47,6 +48,9 @@ import java.util.Date
 import java.util.UUID
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -55,6 +59,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var fishingRepository: FishingRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -128,15 +135,18 @@ class MainActivity : ComponentActivity() {
 
                         composable("main") {
                             val coroutineScope = rememberCoroutineScope()
+
                             LaunchedEffect(Unit) {
                                 viewModel.loadReportsIfNeeded()
                             }
+
                             MainScreen(
                                 reports = reports,
                                 isLoading = isLoading,
                                 selectedTab = selectedTab,
                                 allReports = viewModel.allReports.collectAsState().value,
                                 viewModel = viewModel,
+                                repository = fishingRepository,
                                 onTabSelected = { index -> viewModel.selectTab(index) },
                                 onCreateReportClick = {
                                     navController.navigate("create_report")
@@ -328,6 +338,7 @@ class MainActivity : ComponentActivity() {
                             (allReports + reports).firstOrNull { it.id == reportId }?.let { report ->
                                 ReportDetailScreen(
                                     report = report,
+                                    repository = fishingRepository,
                                     onBackClick = { navController.popBackStack() },
                                     onMapClick = { point ->
                                         viewModel.requestMapLocation(point)
@@ -375,6 +386,7 @@ class MainActivity : ComponentActivity() {
                             (allReports + reports).firstOrNull { it.id == reportId }?.let { report ->
                                 FullScreenPhotoScreen(
                                     photos = report.photo,
+                                    repository = fishingRepository,
                                     initialPage = index,
                                     onBackClick = { navController.popBackStack() }
                                 )

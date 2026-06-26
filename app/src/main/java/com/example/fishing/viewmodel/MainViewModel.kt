@@ -78,7 +78,7 @@ class MainViewModel @Inject constructor(
 
     fun selectTab(index: Int) {
         _selectedTab.value = index
-        if (index == 1) loadAllReportsIfNeeded()
+        if (index == 1) loadAllReports(force = true)
     }
 
     fun requestMapLocation(point: GeoPoint?) {
@@ -111,11 +111,16 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun loadAllReportsIfNeeded() {
-        if (_allReports.value.isNotEmpty() || allReportsLoadJob?.isActive == true) {
+    fun refreshAll() {
+        loadAllReports(force = true)
+    }
+
+    private fun loadAllReports(force: Boolean = false) {
+        if (!force && (_allReports.value.isNotEmpty() || allReportsLoadJob?.isActive == true)) {
             return
         }
 
+        allReportsLoadJob?.cancel()
         allReportsLoadJob = viewModelScope.launch {
             try {
                 repository.getAllReports().collect {

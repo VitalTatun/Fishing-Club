@@ -32,6 +32,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import com.example.fishing.data.FishingRepository
+import com.example.fishing.ui.components.PhotoImage
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -39,6 +41,7 @@ import kotlin.math.hypot
 @Composable
 fun FullScreenPhotoScreen(
     photos: List<String>,
+    repository: FishingRepository,
     initialPage: Int = 0,
     onBackClick: () -> Unit
 ) {
@@ -66,16 +69,31 @@ fun FullScreenPhotoScreen(
             userScrollEnabled = !isCurrentPageZoomed,
             beyondViewportPageCount = 1
         ) { page ->
-            ZoomableImage(
-                model = photos[page],
-                onZoomChange = { zoomed ->
-                    if (pagerState.currentPage == page) {
-                        isCurrentPageZoomed = zoomed
-                        if (zoomed) showControls = false
+            // Resolve the photo URL
+            var resolvedUrl by remember(photos[page]) { mutableStateOf<String?>(null) }
+            LaunchedEffect(photos[page]) {
+                resolvedUrl = when {
+                    photos[page].startsWith("http") -> photos[page]
+                    photos[page].startsWith("/") -> photos[page]
+                    repository.isStoragePath(photos[page]) -> {
+                        repository.getPhotoSignedUrl(photos[page]) ?: photos[page]
                     }
-                },
-                onTap = { showControls = !showControls }
-            )
+                    else -> photos[page]
+                }
+            }
+            
+            resolvedUrl?.let { url ->
+                ZoomableImage(
+                    model = url,
+                    onZoomChange = { zoomed ->
+                        if (pagerState.currentPage == page) {
+                            isCurrentPageZoomed = zoomed
+                            if (zoomed) showControls = false
+                        }
+                    },
+                    onTap = { showControls = !showControls }
+                )
+            }
         }
 
         // Overlay Controls (Top)
@@ -131,22 +149,37 @@ fun FullScreenPhotoScreen(
                     ) {
                         itemsIndexed(photos) { index, photoUrl ->
                             val isSelected = pagerState.currentPage == index
-                            AsyncImage(
-                                model = photoUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .border(
-                                        width = 2.dp,
-                                        color = if (isSelected) Color.White else Color.Transparent,
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable {
-                                        scope.launch { pagerState.animateScrollToPage(index) }
+                            // Resolve the photo URL for thumbnail
+                            var thumbnailUrl by remember(photoUrl) { mutableStateOf<String?>(null) }
+                            LaunchedEffect(photoUrl) {
+                                thumbnailUrl = when {
+                                    photoUrl.startsWith("http") -> photoUrl
+                                    photoUrl.startsWith("/") -> photoUrl
+                                    repository.isStoragePath(photoUrl) -> {
+                                        repository.getPhotoSignedUrl(photoUrl) ?: photoUrl
                                     }
-                            )
+                                    else -> photoUrl
+                                }
+                            }
+                            
+                            thumbnailUrl?.let { url ->
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(
+                                            width = 2.dp,
+                                            color = if (isSelected) Color.White else Color.Transparent,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
+                                            scope.launch { pagerState.animateScrollToPage(index) }
+                                        }
+                                )
+                            }
                         }
                     }
                 }
