@@ -10,8 +10,8 @@ import io.github.jan.supabase.auth.Auth
 import javax.inject.Singleton
 
 internal object SupabaseConfig {
-    const val URL = "https://your-project-id.supabase.co"
-    const val ANON_KEY = "your-anon-key"
+    const val URL = "https://newwheannhymapusagnm.supabase.co"
+    const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ld3doZWFubmh5bWFwdXNhZ25tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDY0MzUsImV4cCI6MjA4ODQyMjQzNX0.qtW3zeoEfZmLvmiXlpDgQAw7CF12hWbiX8iTeqD1zNU"
 }
 
 @Module

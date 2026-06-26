@@ -47,6 +47,7 @@ import java.util.Date
 import java.util.UUID
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("main") {
+                            val coroutineScope = rememberCoroutineScope()
                             MainScreen(
                                 reports = reports,
                                 isLoading = isLoading,
@@ -142,6 +144,15 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onSearchClick = {
                                     navController.navigate("report_search")
+                                },
+                                userEmail = authRepository.currentUser()?.email,
+                                onLogout = {
+                                    coroutineScope.launch {
+                                        authRepository.logout()
+                                        navController.navigate("login") {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }
                                 }
                             )
                         }

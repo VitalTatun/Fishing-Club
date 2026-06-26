@@ -43,6 +43,8 @@ fun MainScreen(
     onReportClick: (FishingReport) -> Unit,
     onDeleteReport: (FishingReport) -> Unit = {},
     onSearchClick: () -> Unit = {},
+    userEmail: String? = null,
+    onLogout: () -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -130,8 +132,29 @@ fun MainScreen(
                     )
                 }
                 2 -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Экран профиля")
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        if (userEmail != null) {
+                            Text(
+                                text = userEmail,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = CreateReportColors.OnSurface
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                        OutlinedButton(
+                            onClick = onLogout,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = CreateReportColors.OnSurface
+                            )
+                        ) {
+                            Text("Выйти")
+                        }
                     }
                 }
             }
