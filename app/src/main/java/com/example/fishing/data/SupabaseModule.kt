@@ -7,6 +7,7 @@ import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.postgrest.Postgrest
 import javax.inject.Singleton
 
 internal object SupabaseConfig {
@@ -26,6 +27,7 @@ object SupabaseModule {
             supabaseKey = SupabaseConfig.ANON_KEY
         ) {
             install(Auth)
+            install(Postgrest)
         }
     }
 }

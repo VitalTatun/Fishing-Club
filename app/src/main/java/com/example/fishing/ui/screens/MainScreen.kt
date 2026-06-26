@@ -35,6 +35,7 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 @Composable
 fun MainScreen(
     reports: List<FishingReport>,
+    allReports: List<FishingReport> = reports,
     isLoading: Boolean = false,
     selectedTab: Int = 0,
     viewModel: MainViewModel? = null,
@@ -45,6 +46,8 @@ fun MainScreen(
     onSearchClick: () -> Unit = {},
     userEmail: String? = null,
     onLogout: () -> Unit = {},
+    errorText: String? = null,
+    onErrorDismiss: () -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -97,6 +100,20 @@ fun MainScreen(
         },
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
+            if (errorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(8.dp),
+                    action = {
+                        TextButton(onClick = onErrorDismiss) {
+                            Text("Повторить")
+                        }
+                    }
+                ) {
+                    Text(errorText)
+                }
+            }
             when (selectedTab) {
                 0 -> {
                     if (isLoading) {
@@ -126,7 +143,7 @@ fun MainScreen(
                 }
                 1 -> {
                     MapScreen(
-                        reports = reports,
+                        reports = allReports,
                         onReportClick = onReportClick,
                         viewModel = viewModel
                     )

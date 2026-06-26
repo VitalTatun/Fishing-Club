@@ -7,13 +7,13 @@ import kotlinx.coroutines.flow.flow
 import java.util.UUID
 
 interface FishingRepository {
-    fun getAllReports(): Flow<List<FishingReport>>
+    fun getAllReports(userId: UUID? = null): Flow<List<FishingReport>>
     suspend fun saveReport(report: FishingReport)
     suspend fun deleteReport(id: UUID)
 }
 
 class MockFishingRepository : FishingRepository {
-    override fun getAllReports(): Flow<List<FishingReport>> = flow {
+    override fun getAllReports(userId: UUID?): Flow<List<FishingReport>> = flow {
         // Имитируем задержку сети
         delay(1000)
         emit(MockData.sampleReports)

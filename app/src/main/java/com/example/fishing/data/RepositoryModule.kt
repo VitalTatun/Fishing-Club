@@ -13,6 +13,6 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindFishingRepository(
-        repository: RoomFishingRepository
+        repository: SupabaseFishingRepository
     ): FishingRepository
 }

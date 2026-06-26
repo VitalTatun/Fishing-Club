@@ -286,7 +286,14 @@ private fun CreateReportScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
         CreateReportScreen(
             viewModel = MainViewModel(
-                repository = com.example.fishing.data.MockFishingRepository()
+                repository = com.example.fishing.data.MockFishingRepository(),
+                authRepository = object : com.example.fishing.data.AuthRepository {
+                    override suspend fun login(email: String, password: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
+                    override suspend fun register(email: String, password: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
+                    override suspend fun logout() {}
+                    override fun currentUser(): com.example.fishing.model.User? = null
+                    override fun isLoggedIn() = false
+                }
             ),
             onBackClick = {},
             onSaveClick = { _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }

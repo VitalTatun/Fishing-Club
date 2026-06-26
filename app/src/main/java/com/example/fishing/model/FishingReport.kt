@@ -21,6 +21,5 @@ data class FishingReport(
     var comment: String,
     val user: User,
     var fishingFromTheShore: Boolean,
-    var isPublic: Boolean,
-    var isSynced: Boolean = false
+    var isPublic: Boolean
 )

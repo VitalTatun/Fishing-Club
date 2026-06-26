@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.FishingReport
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,16 +20,19 @@ import org.osmdroid.util.GeoPoint
 import javax.inject.Inject
 import java.util.Date
 import com.example.fishing.model.*
-import com.example.fishing.data.RoomFishingRepository
 import java.util.UUID
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val repository: FishingRepository
+    private val repository: FishingRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
     val reports: StateFlow<List<FishingReport>> = _reports.asStateFlow()
+
+    private val _allReports = MutableStateFlow<List<FishingReport>>(emptyList())
+    val allReports: StateFlow<List<FishingReport>> = _allReports.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -60,12 +64,17 @@ class MainViewModel @Inject constructor(
     var formMood by mutableIntStateOf(3)
     var formComment by mutableStateOf("")
     var formLocation by mutableStateOf<GeoPoint?>(null)
-    init {
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    fun refresh() {
         loadReports()
     }
 
     fun selectTab(index: Int) {
         _selectedTab.value = index
+        if (index == 1) loadAllReports()
     }
 
     fun requestMapLocation(point: GeoPoint?) {
@@ -73,11 +82,30 @@ class MainViewModel @Inject constructor(
     }
 
     fun loadReports() {
+        val currentUserId = authRepository.currentUser()?.id
         viewModelScope.launch {
             _isLoading.value = true
-            repository.getAllReports().collect {
-                _reports.value = it
+            try {
+                repository.getAllReports(userId = currentUserId).collect {
+                    _reports.value = it
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _error.value = "Ошибка загрузки: ${e.message ?: "неизвестная"}"
+            } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadAllReports() {
+        viewModelScope.launch {
+            try {
+                repository.getAllReports().collect {
+                    _allReports.value = it
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -99,8 +127,9 @@ class MainViewModel @Inject constructor(
         photos: List<String>
     ) {
         viewModelScope.launch {
+            val currentUser = authRepository.currentUser()
             val report = FishingReport(
-                userId = RoomFishingRepository.LOCAL_USER_ID,
+                userId = currentUser?.id ?: UUID.randomUUID(),
                 type = if (type == "Отчет") FishingType.FISHING_LOG else FishingType.HAUL,
                 name = title,
                 water = Water(
@@ -118,11 +147,12 @@ class MainViewModel @Inject constructor(
                 fishingMethod = method,
                 bait = baits,
                 comment = comment,
-                user = RoomFishingRepository.LOCAL_USER,
+                user = currentUser ?: User(name = "", email = "", image = ""),
                 fishingFromTheShore = shore,
                 isPublic = isPublic
             )
             repository.saveReport(report)
+            loadReports()
         }
     }
 

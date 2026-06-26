@@ -127,10 +127,14 @@ class MainActivity : ComponentActivity() {
 
                         composable("main") {
                             val coroutineScope = rememberCoroutineScope()
+                            LaunchedEffect(Unit) {
+                                viewModel.refresh()
+                            }
                             MainScreen(
                                 reports = reports,
                                 isLoading = isLoading,
                                 selectedTab = selectedTab,
+                                allReports = viewModel.allReports.collectAsState().value,
                                 viewModel = viewModel,
                                 onTabSelected = { index -> viewModel.selectTab(index) },
                                 onCreateReportClick = {
@@ -153,7 +157,9 @@ class MainActivity : ComponentActivity() {
                                             popUpTo(0) { inclusive = true }
                                         }
                                     }
-                                }
+                                },
+                                errorText = viewModel.error.collectAsState().value,
+                                onErrorDismiss = { viewModel.refresh() }
                             )
                         }
 
