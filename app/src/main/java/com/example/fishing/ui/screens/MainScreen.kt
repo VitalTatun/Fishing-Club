@@ -1,6 +1,5 @@
 package com.example.fishing.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -11,6 +10,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -116,18 +116,30 @@ fun MainScreen(
             }
             when (selectedTab) {
                 0 -> {
-                    if (isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
+                    PullToRefreshBox(
+                        isRefreshing = isLoading,
+                        onRefresh = { viewModel?.refresh() },
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
+                            modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(0.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
+                            if (reports.isEmpty() && !isLoading) {
+                                item {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Нет отчетов",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
                             itemsIndexed(reports) { index, report ->
                                 FishingReportItem(report = report, onClick = { onReportClick(report) }, onDeleteReport = onDeleteReport)
                                 if (index < reports.lastIndex) {
