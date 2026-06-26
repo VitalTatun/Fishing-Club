@@ -16,12 +16,12 @@ class SupabaseAuthRepository @Inject constructor(
 
     override suspend fun login(email: String, password: String): Result<User> {
         return try {
-            val session = supabase.auth.signInWith(Email) {
+            supabase.auth.signInWith(Email) {
                 this.email = email
                 this.password = password
             }
-            val user = session.user ?: throw Exception("User not found")
-            Result.success(user.toDomainUser())
+            val user = currentUser() ?: throw Exception("User not found")
+            Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -29,12 +29,12 @@ class SupabaseAuthRepository @Inject constructor(
 
     override suspend fun register(email: String, password: String): Result<User> {
         return try {
-            val session = supabase.auth.signUpWith(Email) {
+            supabase.auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
             }
-            val user = session.user ?: throw Exception("Registration failed")
-            Result.success(user.toDomainUser())
+            val user = currentUser() ?: throw Exception("Registration failed")
+            Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -45,11 +45,11 @@ class SupabaseAuthRepository @Inject constructor(
     }
 
     override fun currentUser(): User? {
-        return supabase.auth.currentUserOrNull?.toDomainUser()
+        return supabase.auth.currentUserOrNull()?.toDomainUser()
     }
 
     override fun isLoggedIn(): Boolean {
-        return supabase.auth.currentSessionOrNull != null
+        return supabase.auth.currentSessionOrNull() != null
     }
 
     private fun UserInfo.toDomainUser(): User {
