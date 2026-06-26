@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
             FishingTheme(darkTheme = false, dynamicColor = false) {
                 val viewModel: MainViewModel = hiltViewModel()
                 val reports by viewModel.reports.collectAsState()
+                val allReports by viewModel.allReports.collectAsState()
                 val isLoading by viewModel.isLoading.collectAsState()
                 val selectedTab by viewModel.selectedTab.collectAsState()
                 
@@ -324,7 +325,7 @@ class MainActivity : ComponentActivity() {
                             val reportId = backStackEntry.arguments
                                 ?.getString("reportId")
                                 ?.let(UUID::fromString)
-                            reports.firstOrNull { it.id == reportId }?.let { report ->
+                            (allReports + reports).firstOrNull { it.id == reportId }?.let { report ->
                                 ReportDetailScreen(
                                     report = report,
                                     onBackClick = { navController.popBackStack() },
@@ -343,7 +344,7 @@ class MainActivity : ComponentActivity() {
                             val reportId = backStackEntry.arguments
                                 ?.getString("reportId")
                                 ?.let(UUID::fromString)
-                            val singleReport = reportId?.let { id -> reports.firstOrNull { it.id == id } }
+                            val singleReport = reportId?.let { id -> (allReports + reports).firstOrNull { it.id == id } }
 
                             MapScreen(
                                 reports = if (singleReport != null) listOf(singleReport) else reports,
@@ -371,7 +372,7 @@ class MainActivity : ComponentActivity() {
                                 ?.getString("reportId")
                                 ?.let(UUID::fromString)
                             val index = backStackEntry.arguments?.getInt("index") ?: 0
-                            reports.firstOrNull { it.id == reportId }?.let { report ->
+                            (allReports + reports).firstOrNull { it.id == reportId }?.let { report ->
                                 FullScreenPhotoScreen(
                                     photos = report.photo,
                                     initialPage = index,
