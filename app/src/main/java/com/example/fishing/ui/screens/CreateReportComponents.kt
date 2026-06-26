@@ -200,7 +200,7 @@ internal fun SectionHeader(
                 } else Modifier
             ),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Column(
             modifier = Modifier.weight(1f),

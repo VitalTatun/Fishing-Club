@@ -10,12 +10,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -52,25 +49,21 @@ fun ReportLocationSection(
     val regularColor = MaterialTheme.colorScheme.primary.toArgb()
     val context = LocalContext.current
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        Text(
-            text = "Водоем",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp)
-        )
-
-        // Table structure
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            // Cell 1: Map
+    SectionCard(
+        title = "Водоем",
+        items = listOf(
+            SectionItem(
+                label = "Ловля с берега",
+                value = if (report.fishingFromTheShore) "Да" else "Нет"
+            ),
+            SectionItem(
+                label = "Платный водоем",
+                value = if (report.water.isPaid) "Да" else "Нет"
+            )
+        ),
+        modifier = modifier.padding(horizontal = 16.dp),
+        beforeItems = {
+            // Map Cell
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
@@ -90,23 +83,21 @@ fun ReportLocationSection(
                         factory = { ctx ->
                             MapView(ctx).apply {
                                 setTileSource(TileSourceFactory.MAPNIK)
-                                // Полностью отключаем взаимодействие
                                 setMultiTouchControls(false)
                                 isClickable = false
                                 isFocusable = false
-                                
+
                                 controller.setZoom(15.0)
                                 val point = GeoPoint(report.water.latitude, report.water.longitude)
                                 controller.setCenter(point)
-                                
+
                                 overlays.add(Marker(this).apply {
                                     position = point
                                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                                    
+
                                     val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
                                     icon = BitmapDrawable(context.resources, createMarkerBitmap(markerColor))
-                                    
-                                    // Отключаем клик по маркеру
+
                                     setOnMarkerClickListener { _, _ -> true }
                                 })
                             }
@@ -114,8 +105,7 @@ fun ReportLocationSection(
                         modifier = Modifier.fillMaxSize(),
                         onRelease = { it.onDetach() }
                     )
-                    
-                    // Прозрачный слой поверх карты, чтобы перехватывать любые нажатия
+
                     Box(modifier = Modifier
                         .fillMaxSize()
                         .clickable(enabled = true, onClick = onMapClick)
@@ -123,7 +113,7 @@ fun ReportLocationSection(
                 }
             }
 
-            // Cell 2: Info (Name + Coordinates)
+            // Info Cell (Name + Coordinates)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(2.dp),
@@ -146,60 +136,8 @@ fun ReportLocationSection(
                     )
                 }
             }
-
-            // Cell 3: Ловля с берега
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(2.dp),
-                color = FishingTheme.colors.secondaryBackground
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Ловля с берега",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = if (report.fishingFromTheShore) "Да" else "Нет",
-                        fontWeight = FontWeight.Medium,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            // Cell 4: Платный водоем
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
-                color = FishingTheme.colors.secondaryBackground
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Платный водоем",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = if (report.water.isPaid) "Да" else "Нет",
-                        fontWeight = FontWeight.Medium,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
         }
-    }
+    )
 }
 
 

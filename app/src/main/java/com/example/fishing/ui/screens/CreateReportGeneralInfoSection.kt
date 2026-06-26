@@ -114,7 +114,7 @@ internal fun DateAndTimeSection(
             showArrow = false,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
