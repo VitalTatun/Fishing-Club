@@ -32,6 +32,9 @@ import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.LoginViewModel
+import com.example.fishing.data.AuthRepository
+import com.example.fishing.ui.screens.LoginScreen
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
 import android.Manifest
@@ -44,9 +47,14 @@ import java.util.Date
 import java.util.UUID
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var authRepository: AuthRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -66,6 +74,9 @@ class MainActivity : ComponentActivity() {
                 val selectedTab by viewModel.selectedTab.collectAsState()
                 
                 val navController = rememberNavController()
+                val startDestination = remember {
+                    if (authRepository.isLoggedIn()) "main" else "login"
+                }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -73,7 +84,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     NavHost(
                         navController = navController,
-                        startDestination = "main",
+                        startDestination = startDestination,
                         modifier = Modifier.fillMaxSize(),
                         // Анимация "Слои": новый наезжает сверху, старый чуть сдвигается
                         enterTransition = {
@@ -101,6 +112,18 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     ) {
+                        composable("login") {
+                            val loginViewModel: LoginViewModel = hiltViewModel()
+                            LoginScreen(
+                                viewModel = loginViewModel,
+                                onAuthenticated = {
+                                    navController.navigate("main") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
                         composable("main") {
                             MainScreen(
                                 reports = reports,
