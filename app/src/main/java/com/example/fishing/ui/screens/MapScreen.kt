@@ -114,6 +114,7 @@ fun MapScreen(
     // Bottom sheet для отчёта
     var selectedReport by remember { mutableStateOf<FishingReport?>(null) }
     var showSheet by remember { mutableStateOf(false) }
+    var suppressDismiss by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     val myLocationOverlay = remember(mapView) {
@@ -207,10 +208,11 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             reports = reports,
             onMarkerClick = { report ->
+                suppressDismiss = true
                 selectedReport = report
                 showSheet = true
                 coroutineScope.launch {
-                    delay(1000L)
+                    delay(500L)
                     mapView.controller.animateTo(
                         GeoPoint(report.water.latitude, report.water.longitude),
                         mapView.zoomLevelDouble,
@@ -268,8 +270,12 @@ fun MapScreen(
     if (showSheet && selectedReport != null) {
         ModalBottomSheet(
             onDismissRequest = {
-                showSheet = false
-                selectedReport = null
+                if (suppressDismiss) {
+                    suppressDismiss = false
+                } else {
+                    showSheet = false
+                    selectedReport = null
+                }
             },
             sheetState = sheetState,
             dragHandle = { BottomSheetDefaults.DragHandle() },
