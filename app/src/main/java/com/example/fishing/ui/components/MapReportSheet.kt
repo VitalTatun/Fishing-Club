@@ -25,6 +25,7 @@ fun MapReportSheetContent(
     repository: FishingRepository,
     onPhotoClick: (Int) -> Unit = {},
     onMapClick: () -> Unit = {},
+    showMapPreview: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -46,11 +47,13 @@ fun MapReportSheetContent(
             PublishBanner()
         }
 
-        // 4. Секция местоположения
-        ReportLocationSection(
-            report = report,
-            onMapClick = onMapClick
-        )
+        // Секция местоположения (только если не из карты)
+        if (showMapPreview) {
+            ReportLocationSection(
+                report = report,
+                onMapClick = onMapClick
+            )
+        }
 
         // Общая информация (Mood, Details, Catch)
         ReportGeneralInfo(report = report)
