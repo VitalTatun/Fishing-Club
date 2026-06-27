@@ -27,6 +27,8 @@ import com.example.fishing.ui.components.MarkerShape
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
 import java.util.UUID
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -51,6 +53,7 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
+    val coroutineScope = rememberCoroutineScope()
     
     // Обработка системной кнопки "Назад"
     // Мы используем enabled = onBackClick != null, чтобы активировать его только на полноэкранной карте
@@ -206,11 +209,14 @@ fun MapScreen(
             onMarkerClick = { report ->
                 selectedReport = report
                 showSheet = true
-                mapView.controller.animateTo(
-                    GeoPoint(report.water.latitude, report.water.longitude),
-                    mapView.zoomLevelDouble,
-                    300L
-                )
+                coroutineScope.launch {
+                    delay(1000L)
+                    mapView.controller.animateTo(
+                        GeoPoint(report.water.latitude, report.water.longitude),
+                        mapView.zoomLevelDouble,
+                        300L
+                    )
+                }
             },
             onReportSelected = { selectedReportId = it },
             selectedReportId = selectedReportId,
