@@ -34,6 +34,7 @@ import com.example.fishing.model.Fish
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.LoginViewModel
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.FishingRepository
 import com.example.fishing.ui.screens.LoginScreen
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
@@ -47,6 +48,9 @@ import java.util.Date
 import java.util.UUID
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -56,15 +60,19 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var authRepository: AuthRepository
 
+    @Inject
+    lateinit var fishingRepository: FishingRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Запрос разрешений
         requestLocationPermissions()
 
         // Инициализация конфигурации OSM
         Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
         Configuration.getInstance().userAgentValue = packageName
+        Configuration.getInstance().osmdroidBasePath = cacheDir
 
         enableEdgeToEdge()
         setContent {
@@ -72,9 +80,10 @@ class MainActivity : ComponentActivity() {
                 val viewModel: MainViewModel = hiltViewModel()
                 val reports by viewModel.reports.collectAsState()
                 val allReports by viewModel.allReports.collectAsState()
+                val mapMarkers by viewModel.mapMarkers.collectAsState()
                 val isLoading by viewModel.isLoading.collectAsState()
                 val selectedTab by viewModel.selectedTab.collectAsState()
-                
+
                 val navController = rememberNavController()
                 val startDestination = remember {
                     if (authRepository.isLoggedIn()) "main" else "login"
@@ -88,28 +97,27 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         startDestination = startDestination,
                         modifier = Modifier.fillMaxSize(),
-                        // Анимация "Слои": новый наезжает сверху, старый чуть сдвигается
                         enterTransition = {
                             slideInHorizontally(
-                                initialOffsetX = { it }, // Появляется справа
+                                initialOffsetX = { it },
                                 animationSpec = tween(300)
                             )
                         },
                         exitTransition = {
                             slideOutHorizontally(
-                                targetOffsetX = { -it / 7 }, // Уходит лишь на треть влево
+                                targetOffsetX = { -it / 7 },
                                 animationSpec = tween(300)
                             )
                         },
                         popEnterTransition = {
                             slideInHorizontally(
-                                initialOffsetX = { -it / 7 }, // Возвращается из-за левого края
+                                initialOffsetX = { -it / 7 },
                                 animationSpec = tween(300)
                             )
                         },
                         popExitTransition = {
                             slideOutHorizontally(
-                                targetOffsetX = { it }, // Уезжает вправо, открывая нижний
+                                targetOffsetX = { it },
                                 animationSpec = tween(300)
                             )
                         }
@@ -128,15 +136,20 @@ class MainActivity : ComponentActivity() {
 
                         composable("main") {
                             val coroutineScope = rememberCoroutineScope()
+
                             LaunchedEffect(Unit) {
                                 viewModel.loadReportsIfNeeded()
+                                viewModel.loadMapMarkers()
                             }
+
                             MainScreen(
                                 reports = reports,
                                 isLoading = isLoading,
                                 selectedTab = selectedTab,
-                                allReports = viewModel.allReports.collectAsState().value,
+                                allReports = allReports,
+                                mapMarkers = mapMarkers,
                                 viewModel = viewModel,
+                                repository = fishingRepository,
                                 onTabSelected = { index -> viewModel.selectTab(index) },
                                 onCreateReportClick = {
                                     navController.navigate("create_report")
@@ -305,7 +318,7 @@ class MainActivity : ComponentActivity() {
                             val currentFish = navController.previousBackStackEntry
                                 ?.savedStateHandle
                                 ?.get<List<Fish>>("fish") ?: emptyList()
-                            
+
                             CatchEditScreen(
                                 fishList = currentFish,
                                 onBackClick = { navController.popBackStack() },
@@ -325,7 +338,14 @@ class MainActivity : ComponentActivity() {
                             val reportId = backStackEntry.arguments
                                 ?.getString("reportId")
                                 ?.let(UUID::fromString)
-                            (allReports + reports).firstOrNull { it.id == reportId }?.let { report ->
+
+                            LaunchedEffect(reportId) {
+                                reportId?.let { viewModel.loadReportDetails(it) }
+                            }
+
+                            val currentReport by viewModel.currentReport.collectAsState()
+
+                            currentReport?.let { report ->
                                 ReportDetailScreen(
                                     report = report,
                                     onBackClick = { navController.popBackStack() },
@@ -344,20 +364,25 @@ class MainActivity : ComponentActivity() {
                             val reportId = backStackEntry.arguments
                                 ?.getString("reportId")
                                 ?.let(UUID::fromString)
-                            val singleReport = reportId?.let { id -> (allReports + reports).firstOrNull { it.id == id } }
+
+                            val singleMarker = reportId?.let { id ->
+                                mapMarkers.firstOrNull { it.id == id }
+                            }
 
                             MapScreen(
-                                reports = if (singleReport != null) listOf(singleReport) else reports,
+                                markers = if (singleMarker != null) listOf(singleMarker) else mapMarkers,
                                 viewModel = viewModel,
-                                onBackClick = { 
-                                    navController.popBackStack() 
+                                onBackClick = {
+                                    navController.popBackStack()
                                 },
-                                onReportClick = { report ->
-                                    navController.navigate("detail/${report.id}") {
+                                onMarkerClick = { marker ->
+                                    navController.navigate("detail/${marker.id}") {
                                         popUpTo("full_map/${reportId}") { inclusive = true }
                                     }
                                 },
-                                markersInteractive = false
+                                markersInteractive = false,
+                                initialReportId = reportId,
+                                repository = fishingRepository
                             )
                         }
 
@@ -372,7 +397,14 @@ class MainActivity : ComponentActivity() {
                                 ?.getString("reportId")
                                 ?.let(UUID::fromString)
                             val index = backStackEntry.arguments?.getInt("index") ?: 0
-                            (allReports + reports).firstOrNull { it.id == reportId }?.let { report ->
+
+                            LaunchedEffect(reportId) {
+                                reportId?.let { viewModel.loadReportDetails(it) }
+                            }
+
+                            val currentReport by viewModel.currentReport.collectAsState()
+
+                            currentReport?.let { report ->
                                 FullScreenPhotoScreen(
                                     photos = report.photo,
                                     initialPage = index,

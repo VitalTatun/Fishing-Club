@@ -10,11 +10,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.FishingRepository
+import com.example.fishing.data.SupabaseFishingRepository
 import com.example.fishing.model.FishingReport
+import com.example.fishing.model.MarkerDomain
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
@@ -34,6 +37,12 @@ class MainViewModel @Inject constructor(
 
     private val _allReports = MutableStateFlow<List<FishingReport>>(emptyList())
     val allReports: StateFlow<List<FishingReport>> = _allReports.asStateFlow()
+
+    private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
+    val mapMarkers: StateFlow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
+
+    private val _currentReport = MutableStateFlow<FishingReport?>(null)
+    val currentReport: StateFlow<FishingReport?> = _currentReport.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -71,6 +80,8 @@ class MainViewModel @Inject constructor(
 
     private var reportsLoadJob: Job? = null
     private var allReportsLoadJob: Job? = null
+    private var mapMarkersLoadJob: Job? = null
+    private var reportDetailsJob: Job? = null
 
     fun refresh() {
         loadReports(force = true)
@@ -78,7 +89,7 @@ class MainViewModel @Inject constructor(
 
     fun selectTab(index: Int) {
         _selectedTab.value = index
-        if (index == 1) loadAllReportsIfNeeded()
+        if (index == 1) loadMapMarkers(force = true)
     }
 
     fun requestMapLocation(point: GeoPoint?) {
@@ -87,6 +98,81 @@ class MainViewModel @Inject constructor(
 
     fun loadReportsIfNeeded() {
         loadReports(force = false)
+    }
+
+    fun loadMapMarkers(force: Boolean = false) {
+        if (!force && (_mapMarkers.value.isNotEmpty() || mapMarkersLoadJob?.isActive == true)) {
+            return
+        }
+
+        mapMarkersLoadJob?.cancel()
+        mapMarkersLoadJob = viewModelScope.launch {
+            // Observe Room cache (never completes — updates UI on every DB change)
+            launch {
+                try {
+                    repository.getMapMarkers().collect {
+                        _mapMarkers.value = it
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            // Refresh from network → saves to Room → Flow auto-updates UI
+            launch {
+                try {
+                    if (repository is SupabaseFishingRepository) {
+                        repository.refreshMapMarkers()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _error.value = "Ошибка загрузки маркеров: ${e.message ?: "неизвестная"}"
+                }
+            }
+        }
+    }
+
+    fun loadReportDetails(id: UUID) {
+        reportDetailsJob?.cancel()
+        _currentReport.value = null
+        reportDetailsJob = viewModelScope.launch {
+            // Observe Room cache
+            launch {
+                try {
+                    repository.getReportDetails(id).collect { report ->
+                        _currentReport.value = report?.let {
+                            it.copy(
+                                photo = it.photo.map { path ->
+                                    if (repository.isStoragePath(path)) {
+                                        repository.getPhotoSignedUrl(path) ?: path
+                                    } else path
+                                }
+                            )
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            // Refresh from network
+            launch {
+                try {
+                    if (repository is SupabaseFishingRepository) {
+                        repository.refreshReportDetails(id)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _error.value = "Ошибка загрузки отчета: ${e.message ?: "неизвестная"}"
+                }
+            }
+        }
     }
 
     private fun loadReports(force: Boolean) {
@@ -99,9 +185,19 @@ class MainViewModel @Inject constructor(
         reportsLoadJob = viewModelScope.launch {
             _isLoading.value = true
             try {
-                repository.getAllReports(userId = currentUserId).collect {
-                    _reports.value = it
+                repository.getAllReports(userId = currentUserId).collect { reports ->
+                    _reports.value = reports.map { report ->
+                        report.copy(
+                            photo = report.photo.map { path ->
+                                if (repository.isStoragePath(path)) {
+                                    repository.getPhotoSignedUrl(path) ?: path
+                                } else path
+                            }
+                        )
+                    }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
                 _error.value = "Ошибка загрузки: ${e.message ?: "неизвестная"}"
@@ -111,16 +207,31 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun loadAllReportsIfNeeded() {
-        if (_allReports.value.isNotEmpty() || allReportsLoadJob?.isActive == true) {
+    fun refreshAll() {
+        loadAllReports(force = true)
+    }
+
+    private fun loadAllReports(force: Boolean = false) {
+        if (!force && (_allReports.value.isNotEmpty() || allReportsLoadJob?.isActive == true)) {
             return
         }
 
+        allReportsLoadJob?.cancel()
         allReportsLoadJob = viewModelScope.launch {
             try {
-                repository.getAllReports().collect {
-                    _allReports.value = it
+                repository.getAllReports().collect { reports ->
+                    _allReports.value = reports.map { report ->
+                        report.copy(
+                            photo = report.photo.map { path ->
+                                if (repository.isStoragePath(path)) {
+                                    repository.getPhotoSignedUrl(path) ?: path
+                                } else path
+                            }
+                        )
+                    }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -170,6 +281,7 @@ class MainViewModel @Inject constructor(
             )
             repository.saveReport(report)
             loadReports(force = true)
+            loadMapMarkers(force = true)
         }
     }
 
@@ -177,6 +289,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             repository.deleteReport(id)
             loadReports(force = true)
+            loadMapMarkers(force = true)
         }
     }
 

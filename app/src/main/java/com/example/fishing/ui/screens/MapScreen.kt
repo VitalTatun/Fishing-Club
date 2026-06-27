@@ -1,10 +1,5 @@
 package com.example.fishing.ui.screens
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.drawable.BitmapDrawable
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -22,10 +17,14 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.example.fishing.model.FishingReport
+import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.FishingType
+import com.example.fishing.model.MarkerDomain
+import com.example.fishing.ui.components.MarkerDrawableUtils
+import com.example.fishing.ui.components.MarkerShape
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
+import java.util.UUID
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -38,38 +37,32 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 @Composable
 fun MapScreen(
-    reports: List<FishingReport>,
-    onReportClick: (FishingReport) -> Unit,
+    markers: List<MarkerDomain>,
+    onMarkerClick: (MarkerDomain) -> Unit,
     viewModel: MainViewModel? = null,
     onBackClick: (() -> Unit)? = null,
     isLocationEnabled: Boolean = true,
-    markersInteractive: Boolean = true
+    markersInteractive: Boolean = true,
+    initialReportId: UUID? = null,
+    repository: FishingRepository
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
-    
-    // Обработка системной кнопки "Назад"
-    // Мы используем enabled = onBackClick != null, чтобы активировать его только на полноэкранной карте
+
     BackHandler(enabled = onBackClick != null) {
         onBackClick?.invoke()
     }
 
-    // Используем ViewModel для сохранения позиции карты между переключениями табов
     var lastCenterLat by remember { mutableStateOf(viewModel?.mapLastCenterLat) }
     var lastCenterLon by remember { mutableStateOf(viewModel?.mapLastCenterLon) }
     var lastZoom by remember { mutableDoubleStateOf(viewModel?.mapLastZoom ?: 6.0) }
     var hasInitialLocationBeenSet by remember { mutableStateOf(false) }
 
     val requestedLocation by viewModel?.mapRequestedLocation?.collectAsState() ?: remember { mutableStateOf(null) }
-    val fallbackCenter = remember(reports) {
-        val validReports = reports.filter { report ->
-            report.water.latitude != 0.0 || report.water.longitude != 0.0
-        }
-        if (validReports.isNotEmpty()) {
-            GeoPoint(
-                validReports.map { it.water.latitude }.average(),
-                validReports.map { it.water.longitude }.average()
-            )
+    val fallbackCenter = remember(markers) {
+        val validMarkers = markers.filter { it.waterLat != 0.0 || it.waterLng != 0.0 }
+        if (validMarkers.isNotEmpty()) {
+            GeoPoint(validMarkers.map { it.waterLat }.average(), validMarkers.map { it.waterLng }.average())
         } else {
             GeoPoint(53.9, 27.5667)
         }
@@ -83,22 +76,21 @@ fun MapScreen(
         }
     }
 
-    // Реакция на запрос конкретной локации
     LaunchedEffect(requestedLocation) {
         requestedLocation?.let { location ->
             mapView.controller.animateTo(location, 13.0, 500L)
-            viewModel?.requestMapLocation(null) // Сбрасываем запрос после анимации
-            
-            // Обновляем сохраненное состояние
+            viewModel?.requestMapLocation(null)
             lastCenterLat = location.latitude
             lastCenterLon = location.longitude
             lastZoom = 13.0
         }
     }
 
-    // Получаем цвета из темы
     val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
     val regularColor = MaterialTheme.colorScheme.primary.toArgb()
+    val trophyIconColor = android.graphics.Color.parseColor("#50250A")
+
+    var selectedMarkerId by remember { mutableStateOf(initialReportId) }
 
     val myLocationOverlay = remember(mapView) {
         MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
@@ -131,10 +123,8 @@ fun MapScreen(
         }
     }
 
-    // Логика восстановления или установки начальной позиции
     LaunchedEffect(mapView) {
         if (lastCenterLat != null && lastCenterLon != null) {
-            // Восстанавливаем сохраненную позицию
             mapView.controller.setCenter(GeoPoint(lastCenterLat!!, lastCenterLon!!))
             mapView.controller.setZoom(lastZoom)
             myLocationOverlay.disableFollowLocation()
@@ -153,7 +143,6 @@ fun MapScreen(
         }
     }
 
-    // Слушатель для сохранения текущей позиции карты
     DisposableEffect(mapView) {
         val listener = object : MapListener {
             override fun onScroll(event: ScrollEvent?): Boolean {
@@ -169,13 +158,9 @@ fun MapScreen(
             }
         }
         mapView.addMapListener(listener)
-        
-        onDispose {
-            mapView.removeMapListener(listener)
-        }
+        onDispose { mapView.removeMapListener(listener) }
     }
 
-    // Синхронизируем позицию карты с ViewModel сразу при каждом изменении
     SideEffect {
         viewModel?.let {
             it.mapLastCenterLat = lastCenterLat
@@ -189,15 +174,19 @@ fun MapScreen(
             mapView = mapView,
             myLocationOverlay = myLocationOverlay,
             modifier = Modifier.fillMaxSize(),
-            reports = reports,
-            onMarkerClick = onReportClick,
+            markers = markers,
+            onMarkerClick = { marker ->
+                onMarkerClick(marker)
+            },
+            onMarkerSelected = { selectedMarkerId = it },
+            selectedMarkerId = selectedMarkerId,
             markersInteractive = markersInteractive,
             trophyColor = trophyColor,
             regularColor = regularColor,
+            trophyIconColor = trophyIconColor,
             initialZoom = lastZoom
         )
 
-        // Кнопка Назад
         if (onBackClick != null) {
             FilledIconButton(
                 onClick = onBackClick,
@@ -227,10 +216,7 @@ fun MapScreen(
                 .padding(16.dp)
                 .size(56.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.MyLocation,
-                contentDescription = "My Location"
-            )
+            Icon(imageVector = Icons.Default.MyLocation, contentDescription = "My Location")
         }
     }
 }
@@ -240,29 +226,31 @@ fun OsmMapView(
     mapView: MapView,
     myLocationOverlay: MyLocationNewOverlay,
     modifier: Modifier = Modifier,
-    reports: List<FishingReport>,
-    onMarkerClick: (FishingReport) -> Unit,
+    markers: List<MarkerDomain>,
+    onMarkerClick: (MarkerDomain) -> Unit,
+    onMarkerSelected: (UUID?) -> Unit = {},
+    selectedMarkerId: UUID? = null,
     markersInteractive: Boolean = true,
     trophyColor: Int,
     regularColor: Int,
+    trophyIconColor: Int = android.graphics.Color.WHITE,
     initialZoom: Double = 6.0
 ) {
     val context = LocalContext.current
-    
+
     AndroidView(
         factory = {
-            // Удаляем из старого родителя
             (mapView.parent as? ViewGroup)?.removeView(mapView)
 
             mapView.apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 setBuiltInZoomControls(false)
-                
+
                 if (zoomLevelDouble <= 1.0) {
                     controller.setZoom(initialZoom)
                 }
-                
+
                 if (!overlays.contains(myLocationOverlay)) {
                     overlays.add(myLocationOverlay)
                 }
@@ -270,35 +258,38 @@ fun OsmMapView(
         },
         modifier = modifier,
         update = { mv ->
-            // Работаем с маркерами только когда MapView инициализирован
-            // Чтобы избежать NPE при обращении к репозиторию MapView
             val currentOverlays = mv.overlays
-            
-            // Удаляем только старые маркеры
+
             val markersToRemove = currentOverlays.filterIsInstance<Marker>()
             currentOverlays.removeAll(markersToRemove)
-            
-            reports.forEach { report ->
+
+            markers.forEach { marker ->
                 try {
-                    val marker = Marker(mv).apply {
-                        position = GeoPoint(report.water.latitude, report.water.longitude)
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    val shape = if (marker.id == selectedMarkerId) MarkerShape.DROP else MarkerShape.CIRCLE
+                    val markerOverlay = Marker(mv).apply {
+                        position = GeoPoint(marker.waterLat, marker.waterLng)
+                        val anchorY = if (shape == MarkerShape.DROP) Marker.ANCHOR_BOTTOM else Marker.ANCHOR_CENTER
+                        setAnchor(Marker.ANCHOR_CENTER, anchorY)
 
                         if (markersInteractive) {
-                            title = report.name
-                            subDescription = report.water.waterName
+                            title = marker.name
+                            subDescription = marker.waterName
                             setOnMarkerClickListener { _, _ ->
-                                onMarkerClick(report)
+                                onMarkerSelected(
+                                    if (selectedMarkerId == marker.id) null else marker.id
+                                )
+                                onMarkerClick(marker)
                                 true
                             }
                         } else {
                             setInfoWindow(null)
                         }
 
-                        val color = if (report.type == FishingType.HAUL) trophyColor else regularColor
-                        icon = BitmapDrawable(context.resources, createMarkerBitmap(color))
+                        val color = if (marker.type == FishingType.HAUL) trophyColor else regularColor
+                        val iconColor = if (marker.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
+                        icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, marker.fishingMethod, iconColor)
                     }
-                    currentOverlays.add(marker)
+                    currentOverlays.add(markerOverlay)
                 } catch (e: Exception) {
                     // Игнорируем ошибки инициализации маркеров в переходных состояниях
                 }
@@ -306,25 +297,4 @@ fun OsmMapView(
             mv.invalidate()
         }
     )
-}
-
-private fun createMarkerBitmap(color: Int): Bitmap {
-    val size = 80
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-    // Рисуем каплю
-    paint.color = color
-    val path = Path()
-    path.moveTo(size / 2f, size.toFloat())
-    path.cubicTo(0f, size * 0.6f, 0f, 0f, size / 2f, 0f)
-    path.cubicTo(size.toFloat(), 0f, size.toFloat(), size * 0.6f, size / 2f, size.toFloat())
-    canvas.drawPath(path, paint)
-
-    // Рисуем белый круг внутри
-    paint.color = android.graphics.Color.WHITE
-    canvas.drawCircle(size / 2f, size / 3f, size / 6f, paint)
-
-    return bitmap
 }

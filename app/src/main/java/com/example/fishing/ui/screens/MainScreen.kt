@@ -36,9 +36,11 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 fun MainScreen(
     reports: List<FishingReport>,
     allReports: List<FishingReport> = reports,
+    mapMarkers: List<MarkerDomain> = emptyList(),
     isLoading: Boolean = false,
     selectedTab: Int = 0,
     viewModel: MainViewModel? = null,
+    repository: com.example.fishing.data.FishingRepository,
     onTabSelected: (Int) -> Unit = {},
     onCreateReportClick: () -> Unit = {},
     onReportClick: (FishingReport) -> Unit,
@@ -91,7 +93,7 @@ fun MainScreen(
                         icon = { Icon(item.icon, contentDescription = item.title) },
                         label = { Text(item.title) },
                         selected = selectedTab == index,
-                        onClick = { 
+                        onClick = {
                             onTabSelected(index)
                         }
                     )
@@ -155,9 +157,32 @@ fun MainScreen(
                 }
                 1 -> {
                     MapScreen(
-                        reports = allReports,
-                        onReportClick = onReportClick,
-                        viewModel = viewModel
+                        markers = mapMarkers,
+                        onMarkerClick = { marker ->
+                            onReportClick(FishingReport(
+                                id = marker.id,
+                                userId = UUID.randomUUID(),
+                                type = marker.type,
+                                name = marker.name,
+                                water = Water(
+                                    waterName = marker.waterName,
+                                    latitude = marker.waterLat,
+                                    longitude = marker.waterLng
+                                ),
+                                photo = emptyList(),
+                                fishingTime = marker.fishingTime,
+                                weight = 0.0,
+                                fish = emptyList(),
+                                fishingMethod = marker.fishingMethod,
+                                bait = emptyList(),
+                                comment = "",
+                                user = User(name = "", email = "", image = ""),
+                                fishingFromTheShore = true,
+                                isPublic = marker.isPublic
+                            ))
+                        },
+                        viewModel = viewModel,
+                        repository = repository
                     )
                 }
                 2 -> {
@@ -197,7 +222,7 @@ fun MainScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
         val sampleUser = User(name = "Виталий", image = "", email = "vital@example.com")
         val calendar = Calendar.getInstance()
-        
+
         val sampleReports = listOf(
             FishingReport(
                 userId = UUID.randomUUID(),
@@ -234,6 +259,7 @@ fun MainScreenPreview() {
         )
         MainScreen(
             reports = sampleReports,
+            repository = com.example.fishing.data.MockFishingRepository(),
             onReportClick = {}
         )
     }
