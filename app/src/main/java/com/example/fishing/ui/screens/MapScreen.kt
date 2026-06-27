@@ -288,9 +288,11 @@ fun OsmMapView(
             
             reports.forEach { report ->
                 try {
+                    val shape = if (report.id == selectedReportId) MarkerShape.DROP else MarkerShape.CIRCLE
                     val marker = Marker(mv).apply {
                         position = GeoPoint(report.water.latitude, report.water.longitude)
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        val anchorY = if (shape == MarkerShape.DROP) Marker.ANCHOR_BOTTOM else Marker.ANCHOR_CENTER
+                        setAnchor(Marker.ANCHOR_CENTER, anchorY)
 
                         if (markersInteractive) {
                             title = report.name
@@ -308,7 +310,6 @@ fun OsmMapView(
 
                         val color = if (report.type == FishingType.HAUL) trophyColor else regularColor
                         val iconColor = if (report.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
-                        val shape = if (report.id == selectedReportId) MarkerShape.DROP else MarkerShape.CIRCLE
                         icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, report.fishingMethod, iconColor)
                     }
                     currentOverlays.add(marker)
