@@ -97,6 +97,7 @@ fun MapScreen(
     // Получаем цвета из темы
     val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
     val regularColor = MaterialTheme.colorScheme.primary.toArgb()
+    val trophyIconColor = android.graphics.Color.parseColor("#50250A")
 
     // Состояние выбранного маркера
     var selectedReportId by remember { mutableStateOf<UUID?>(null) }
@@ -197,6 +198,7 @@ fun MapScreen(
             markersInteractive = markersInteractive,
             trophyColor = trophyColor,
             regularColor = regularColor,
+            trophyIconColor = trophyIconColor,
             initialZoom = lastZoom
         )
 
@@ -250,6 +252,7 @@ fun OsmMapView(
     markersInteractive: Boolean = true,
     trophyColor: Int,
     regularColor: Int,
+    trophyIconColor: Int = android.graphics.Color.WHITE,
     initialZoom: Double = 6.0
 ) {
     val context = LocalContext.current
@@ -304,8 +307,9 @@ fun OsmMapView(
                         }
 
                         val color = if (report.type == FishingType.HAUL) trophyColor else regularColor
+                        val iconColor = if (report.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
                         val shape = if (report.id == selectedReportId) MarkerShape.DROP else MarkerShape.CIRCLE
-                        icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, report.fishingMethod)
+                        icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, report.fishingMethod, iconColor)
                     }
                     currentOverlays.add(marker)
                 } catch (e: Exception) {

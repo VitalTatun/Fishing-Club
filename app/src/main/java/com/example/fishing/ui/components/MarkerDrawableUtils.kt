@@ -22,11 +22,12 @@ object MarkerDrawableUtils {
         context: Context,
         shape: MarkerShape,
         color: Int,
-        method: FishingMethod
+        method: FishingMethod,
+        iconColor: Int = android.graphics.Color.WHITE
     ): Drawable {
-        val key = "${shape.name}_${color}_${method.name}"
+        val key = "${shape.name}_${color}_${method.name}_${iconColor}"
         return cache.getOrPut(key) {
-            createCompositedDrawable(context, shape, color, method)
+            createCompositedDrawable(context, shape, color, method, iconColor)
         }
     }
 
@@ -34,7 +35,8 @@ object MarkerDrawableUtils {
         context: Context,
         shape: MarkerShape,
         color: Int,
-        method: FishingMethod
+        method: FishingMethod,
+        iconColor: Int
     ): Drawable {
         val bgRes = when (shape) {
             MarkerShape.CIRCLE -> R.drawable.ic_marker_circle
@@ -57,6 +59,7 @@ object MarkerDrawableUtils {
             val iconRes = getMethodIconRes(method)
             if (iconRes != null) {
                 val iconDrawable = ContextCompat.getDrawable(context, iconRes)!!
+                DrawableCompat.setTint(iconDrawable.mutate(), iconColor)
                 val iconSize = (width * 0.65f).toInt()
                 val iconLeft = (width - iconSize) / 2
                 val iconTop = when (shape) {

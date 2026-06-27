@@ -42,6 +42,7 @@ fun MapCell(
 ) {
     val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
     val regularColor = MaterialTheme.colorScheme.primary.toArgb()
+    val trophyIconColor = android.graphics.Color.parseColor("#50250A")
     val context = LocalContext.current
     val isInPreview = LocalInspectionMode.current
 
@@ -82,7 +83,8 @@ fun MapCell(
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
 
                             val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
-                            icon = MarkerDrawableUtils.getMarkerDrawable(context, MarkerShape.CIRCLE, markerColor, report.fishingMethod)
+                            val iconColor = if (report.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
+                            icon = MarkerDrawableUtils.getMarkerDrawable(context, MarkerShape.CIRCLE, markerColor, report.fishingMethod, iconColor)
 
                             setOnMarkerClickListener { _, _ -> true }
                         })
