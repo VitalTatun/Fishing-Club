@@ -219,11 +219,15 @@ fun MapScreen(
                 showSheet = true
                 coroutineScope.launch {
                     delay(500L)
-                    mapView.controller.animateTo(
-                        GeoPoint(report.water.latitude, report.water.longitude),
-                        mapView.zoomLevelDouble,
-                        300L
-                    )
+                    // Смещаем камеру вниз чтобы маркер был на 40% от верха (на 10% выше центра)
+                    val markerGeo = GeoPoint(report.water.latitude, report.water.longitude)
+                    val mapHeight = mapView.height
+                    val offsetPixels = (mapHeight * 0.1).toInt()
+                    val centerPixel = mapView.projection.toPixels(mapView.mapCenter, null)
+                    val targetGeoPoint = mapView.projection.fromPixels(centerPixel.x, centerPixel.y + offsetPixels)
+                    // Сохраняем долготу маркера, берём широту со смещением
+                    val targetPoint = GeoPoint(markerGeo.latitude + (targetGeoPoint.latitude - mapView.mapCenter.latitude), markerGeo.longitude)
+                    mapView.controller.animateTo(targetPoint, mapView.zoomLevelDouble, 300L)
                 }
             },
             onReportSelected = { selectedReportId = it },
