@@ -18,28 +18,35 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.fishing.ui.theme.FishingTheme
 
-data class SectionItem(
-    val label: String,
-    val value: String,
-    val valueColor: Color? = null,
-    val valueFontWeight: FontWeight? = null,
-    val valueStyle: TextStyle? = null,
-    val onClick: (() -> Unit)? = null
-)
+sealed class SectionEntry {
+
+    data class TextItem(
+        val label: String,
+        val value: String,
+        val valueColor: Color? = null,
+        val onClick: (() -> Unit)? = null,
+        val padding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+    ) : SectionEntry()
+
+    class ComposableItem(
+        val padding: PaddingValues = PaddingValues(0.dp),
+        val content: @Composable () -> Unit
+    ) : SectionEntry()
+}
 
 @Composable
 fun SectionCard(
     title: String,
-    items: List<SectionItem>,
+    items: List<SectionEntry>,
     modifier: Modifier = Modifier,
     titleModifier: Modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
     containerColor: Color = FishingTheme.colors.secondaryBackground,
     cornerRadius: Dp = 16.dp,
-    rowPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-    rowSpacing: Dp = 2.dp,
-    labelStyle: TextStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
-    onTitleClick: (() -> Unit)? = null,
-    beforeItems: (@Composable ColumnScope.() -> Unit)? = null
+    gap: Dp = 2.dp,
+    labelStyle: TextStyle = MaterialTheme.typography.bodyMedium.copy(
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    ),
+    onTitleClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -57,55 +64,53 @@ fun SectionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(cornerRadius)),
-            verticalArrangement = Arrangement.spacedBy(rowSpacing)
+                .clip(RoundedCornerShape(cornerRadius))
         ) {
-            if (beforeItems != null) {
-                beforeItems()
-            }
+            items.forEach { entry ->
+                when (entry) {
+                    is SectionEntry.TextItem -> {
+                        val resolvedColor = entry.valueColor
+                            ?: MaterialTheme.colorScheme.onSurface
 
-            items.forEachIndexed { index, item ->
-                val shape = when (index) {
-                    0 -> RoundedCornerShape(
-                        topStart = if (beforeItems != null) 4.dp else cornerRadius,
-                        topEnd = if (beforeItems != null) 4.dp else cornerRadius,
-                        bottomStart = 4.dp, bottomEnd = 4.dp
-                    )
-                    items.size - 1 -> RoundedCornerShape(
-                        topStart = 4.dp, topEnd = 4.dp,
-                        bottomStart = cornerRadius, bottomEnd = cornerRadius
-                    )
-                    else -> RoundedCornerShape(4.dp)
-                }
+                        val rowModifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = gap / 2)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(containerColor)
+                            .padding(entry.padding)
 
-                val rowModifier = Modifier
-                    .fillMaxWidth()
-                    .clip(shape)
-                    .background(containerColor)
-                    .padding(rowPadding)
+                        val clickableModifier = if (entry.onClick != null) {
+                            rowModifier.clickable { entry.onClick.invoke() }
+                        } else {
+                            rowModifier
+                        }
 
-                val clickableModifier = if (item.onClick != null) {
-                    rowModifier.clickable { item.onClick?.invoke() }
-                } else {
-                    rowModifier
-                }
+                        Row(
+                            modifier = clickableModifier,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = entry.label, style = labelStyle)
+                            Text(
+                                text = entry.value,
+                                color = resolvedColor,
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
 
-                val resolvedColor = item.valueColor ?: MaterialTheme.colorScheme.onSurface
-                val resolvedWeight = item.valueFontWeight ?: FontWeight.Medium
-                val resolvedStyle = item.valueStyle ?: MaterialTheme.typography.bodyMedium
-
-                Row(
-                    modifier = clickableModifier,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = item.label, style = labelStyle)
-                    Text(
-                        text = item.value,
-                        color = resolvedColor,
-                        fontWeight = resolvedWeight,
-                        style = resolvedStyle
-                    )
+                    is SectionEntry.ComposableItem -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = gap / 2)
+                                .background(containerColor)
+                                .padding(entry.padding)
+                        ) {
+                            entry.content()
+                        }
+                    }
                 }
             }
         }
@@ -120,9 +125,9 @@ private fun SectionCardPreview() {
             SectionCard(
                 title = "Общая информация",
                 items = listOf(
-                    SectionItem("Способ ловли", "Поплавок"),
-                    SectionItem("Наживка", "Мотыль, Опарыш"),
-                    SectionItem("Дата", "14 августа 2023 • 07:00")
+                    SectionEntry.TextItem("Способ ловли", "Поплавок"),
+                    SectionEntry.TextItem("Наживка", "Мотыль, Опарыш"),
+                    SectionEntry.TextItem("Дата", "14 августа 2023 • 07:00")
                 )
             )
 
@@ -131,9 +136,9 @@ private fun SectionCardPreview() {
             SectionCard(
                 title = "Улов",
                 items = listOf(
-                    SectionItem("Карась", "2 шт."),
-                    SectionItem("Окунь", "2 шт."),
-                    SectionItem("Общий вес", "3,2 кг")
+                    SectionEntry.TextItem("Карась", "2 шт."),
+                    SectionEntry.TextItem("Окунь", "2 шт."),
+                    SectionEntry.TextItem("Общий вес", "3,2 кг")
                 )
             )
         }

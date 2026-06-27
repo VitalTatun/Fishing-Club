@@ -23,7 +23,7 @@ fun ReportCatchSection(report: FishingReport, modifier: Modifier = Modifier) {
 
     SectionCard(
         title = "Улов",
-        items = allItems.map { SectionItem(it.first, it.second) },
+        items = allItems.map { SectionEntry.TextItem(it.first, it.second) },
         modifier = modifier
     )
 }

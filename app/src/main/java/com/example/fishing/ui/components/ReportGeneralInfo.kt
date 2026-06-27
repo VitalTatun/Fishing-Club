@@ -68,15 +68,15 @@ private fun InfoDetailsList(report: FishingReport) {
     val dateFormatter = SimpleDateFormat("d MMMM yyyy • H:mm", Locale.forLanguageTag("ru"))
 
     val items = listOf(
-        SectionItem("Способ ловли", when (report.fishingMethod) {
+        SectionEntry.TextItem("Способ ловли", when (report.fishingMethod) {
             FishingMethod.BOBBER -> "Поплавок"
             FishingMethod.SPINNING -> "Спиннинг"
             FishingMethod.FEEDER -> "Фидер"
             FishingMethod.FLY_FISHING -> "Нахлыст"
             else -> "Не указан"
         }),
-        SectionItem("Наживка", report.bait.joinToString(", ") { it.russianName }),
-        SectionItem("Дата", dateFormatter.format(report.fishingTime))
+        SectionEntry.TextItem("Наживка", report.bait.joinToString(", ") { it.russianName }),
+        SectionEntry.TextItem("Дата", dateFormatter.format(report.fishingTime))
     )
 
     SectionCard(
