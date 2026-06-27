@@ -114,8 +114,15 @@ fun MapScreen(
     // Bottom sheet для отчёта
     var selectedReport by remember { mutableStateOf<FishingReport?>(null) }
     var showSheet by remember { mutableStateOf(false) }
-    var suppressDismiss by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+
+    // Закрываем sheet при свайпе вниз
+    LaunchedEffect(sheetState.currentValue) {
+        if (sheetState.currentValue == SheetValue.Hidden && showSheet) {
+            showSheet = false
+            selectedReport = null
+        }
+    }
 
     val myLocationOverlay = remember(mapView) {
         MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
@@ -208,7 +215,6 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             reports = reports,
             onMarkerClick = { report ->
-                suppressDismiss = true
                 selectedReport = report
                 showSheet = true
                 coroutineScope.launch {
@@ -269,14 +275,7 @@ fun MapScreen(
     // Bottom sheet для просмотра отчёта
     if (showSheet && selectedReport != null) {
         ModalBottomSheet(
-            onDismissRequest = {
-                if (suppressDismiss) {
-                    suppressDismiss = false
-                } else {
-                    showSheet = false
-                    selectedReport = null
-                }
-            },
+            onDismissRequest = { },
             sheetState = sheetState,
             dragHandle = { BottomSheetDefaults.DragHandle() },
             containerColor = MaterialTheme.colorScheme.surface,
