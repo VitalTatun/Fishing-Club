@@ -1,11 +1,6 @@
 package com.example.fishing.ui.components
 
 import android.content.ClipData
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -87,7 +82,7 @@ fun MapCell(
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
 
                             val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
-                            icon = BitmapDrawable(context.resources, createMarkerBitmap(markerColor))
+                            icon = MarkerDrawableUtils.getMarkerDrawable(context, MarkerShape.CIRCLE, markerColor, report.fishingMethod)
 
                             setOnMarkerClickListener { _, _ -> true }
                         })
@@ -190,25 +185,6 @@ fun ReportLocationSection(
         ),
         modifier = modifier.padding(horizontal = 16.dp)
     )
-}
-
-private fun createMarkerBitmap(color: Int): Bitmap {
-    val size = 60
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-    paint.color = color
-    val path = Path()
-    path.moveTo(size / 2f, size.toFloat())
-    path.cubicTo(0f, size * 0.6f, 0f, 0f, size / 2f, 0f)
-    path.cubicTo(size.toFloat(), 0f, size.toFloat(), size * 0.6f, size / 2f, size.toFloat())
-    canvas.drawPath(path, paint)
-
-    paint.color = android.graphics.Color.WHITE
-    canvas.drawCircle(size / 2f, size / 3f, size / 6f, paint)
-
-    return bitmap
 }
 
 @Preview(showBackground = true)

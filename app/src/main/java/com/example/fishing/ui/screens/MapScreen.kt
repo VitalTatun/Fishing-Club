@@ -1,10 +1,5 @@
 package com.example.fishing.ui.screens
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.drawable.BitmapDrawable
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -24,8 +19,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
+import com.example.fishing.ui.components.MarkerDrawableUtils
+import com.example.fishing.ui.components.MarkerShape
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
+import java.util.UUID
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -99,6 +97,9 @@ fun MapScreen(
     // Получаем цвета из темы
     val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
     val regularColor = MaterialTheme.colorScheme.primary.toArgb()
+
+    // Состояние выбранного маркера
+    var selectedReportId by remember { mutableStateOf<UUID?>(null) }
 
     val myLocationOverlay = remember(mapView) {
         MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
@@ -191,6 +192,8 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             reports = reports,
             onMarkerClick = onReportClick,
+            onReportSelected = { selectedReportId = it },
+            selectedReportId = selectedReportId,
             markersInteractive = markersInteractive,
             trophyColor = trophyColor,
             regularColor = regularColor,
@@ -242,6 +245,8 @@ fun OsmMapView(
     modifier: Modifier = Modifier,
     reports: List<FishingReport>,
     onMarkerClick: (FishingReport) -> Unit,
+    onReportSelected: (UUID?) -> Unit = {},
+    selectedReportId: UUID? = null,
     markersInteractive: Boolean = true,
     trophyColor: Int,
     regularColor: Int,
@@ -288,6 +293,9 @@ fun OsmMapView(
                             title = report.name
                             subDescription = report.water.waterName
                             setOnMarkerClickListener { _, _ ->
+                                onReportSelected(
+                                    if (selectedReportId == report.id) null else report.id
+                                )
                                 onMarkerClick(report)
                                 true
                             }
@@ -296,7 +304,8 @@ fun OsmMapView(
                         }
 
                         val color = if (report.type == FishingType.HAUL) trophyColor else regularColor
-                        icon = BitmapDrawable(context.resources, createMarkerBitmap(color))
+                        val shape = if (report.id == selectedReportId) MarkerShape.DROP else MarkerShape.CIRCLE
+                        icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, report.fishingMethod)
                     }
                     currentOverlays.add(marker)
                 } catch (e: Exception) {
@@ -306,25 +315,4 @@ fun OsmMapView(
             mv.invalidate()
         }
     )
-}
-
-private fun createMarkerBitmap(color: Int): Bitmap {
-    val size = 80
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-    // Рисуем каплю
-    paint.color = color
-    val path = Path()
-    path.moveTo(size / 2f, size.toFloat())
-    path.cubicTo(0f, size * 0.6f, 0f, 0f, size / 2f, 0f)
-    path.cubicTo(size.toFloat(), 0f, size.toFloat(), size * 0.6f, size / 2f, size.toFloat())
-    canvas.drawPath(path, paint)
-
-    // Рисуем белый круг внутри
-    paint.color = android.graphics.Color.WHITE
-    canvas.drawCircle(size / 2f, size / 3f, size / 6f, paint)
-
-    return bitmap
 }
