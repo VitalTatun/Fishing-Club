@@ -84,7 +84,7 @@ fun MapCell(
 
                             val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
                             val iconColor = if (report.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
-                            icon = MarkerDrawableUtils.getMarkerDrawable(context, MarkerShape.CIRCLE, markerColor, report.fishingMethod, iconColor)
+                            icon = MarkerDrawableUtils.getMarkerDrawable(context, MarkerShape.DROP, markerColor, report.fishingMethod, iconColor)
 
                             setOnMarkerClickListener { _, _ -> true }
                         })
