@@ -82,6 +82,7 @@ class MainViewModel @Inject constructor(
     private var allReportsLoadJob: Job? = null
     private var mapMarkersLoadJob: Job? = null
     private var reportDetailsJob: Job? = null
+    private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
     fun refresh() {
         loadReports(force = true)
@@ -137,7 +138,9 @@ class MainViewModel @Inject constructor(
 
     fun loadReportDetails(id: UUID) {
         reportDetailsJob?.cancel()
-        _currentReport.value = null
+        if (_currentReport.value?.id != id) {
+            _currentReport.value = null
+        }
         reportDetailsJob = viewModelScope.launch {
             // Observe Room cache
             launch {
@@ -145,11 +148,7 @@ class MainViewModel @Inject constructor(
                     repository.getReportDetails(id).collect { report ->
                         _currentReport.value = report?.let {
                             it.copy(
-                                photo = it.photo.map { path ->
-                                    if (repository.isStoragePath(path)) {
-                                        repository.getPhotoSignedUrl(path) ?: path
-                                    } else path
-                                }
+                                photo = resolvePhotoUrls(it.photo)
                             )
                         }
                     }
@@ -188,11 +187,7 @@ class MainViewModel @Inject constructor(
                 repository.getAllReports(userId = currentUserId).collect { reports ->
                     _reports.value = reports.map { report ->
                         report.copy(
-                            photo = report.photo.map { path ->
-                                if (repository.isStoragePath(path)) {
-                                    repository.getPhotoSignedUrl(path) ?: path
-                                } else path
-                            }
+                            photo = resolvePhotoUrls(report.photo)
                         )
                     }
                 }
@@ -222,11 +217,7 @@ class MainViewModel @Inject constructor(
                 repository.getAllReports().collect { reports ->
                     _allReports.value = reports.map { report ->
                         report.copy(
-                            photo = report.photo.map { path ->
-                                if (repository.isStoragePath(path)) {
-                                    repository.getPhotoSignedUrl(path) ?: path
-                                } else path
-                            }
+                            photo = resolvePhotoUrls(report.photo)
                         )
                     }
                 }
@@ -234,6 +225,18 @@ class MainViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    private suspend fun resolvePhotoUrls(paths: List<String>): List<String> {
+        return paths.map { path ->
+            if (repository.isStoragePath(path)) {
+                signedPhotoUrlCache.getOrPut(path) {
+                    repository.getPhotoSignedUrl(path) ?: path
+                }
+            } else {
+                path
             }
         }
     }

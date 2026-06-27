@@ -27,6 +27,7 @@ import com.example.fishing.ui.screens.LocationSearchScreen
 import com.example.fishing.ui.screens.MainScreen
 import com.example.fishing.ui.screens.MapScreen
 import com.example.fishing.ui.screens.ReportDetailScreen
+import com.example.fishing.ui.screens.ReportDetailLoadingScreen
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.Bait
@@ -345,7 +346,8 @@ class MainActivity : ComponentActivity() {
 
                             val currentReport by viewModel.currentReport.collectAsState()
 
-                            currentReport?.let { report ->
+                            val report = currentReport
+                            if (report != null && report.id == reportId) {
                                 ReportDetailScreen(
                                     report = report,
                                     onBackClick = { navController.popBackStack() },
@@ -353,6 +355,10 @@ class MainActivity : ComponentActivity() {
                                         viewModel.requestMapLocation(point)
                                         navController.navigate("full_map/${report.id}")
                                     }
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
+                                    onBackClick = { navController.popBackStack() }
                                 )
                             }
                         }
@@ -404,10 +410,15 @@ class MainActivity : ComponentActivity() {
 
                             val currentReport by viewModel.currentReport.collectAsState()
 
-                            currentReport?.let { report ->
+                            val report = currentReport
+                            if (report != null && report.id == reportId) {
                                 FullScreenPhotoScreen(
                                     photos = report.photo,
                                     initialPage = index,
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
                                     onBackClick = { navController.popBackStack() }
                                 )
                             }
