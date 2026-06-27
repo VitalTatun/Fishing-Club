@@ -2,17 +2,10 @@ package com.example.fishing.ui.screens
 
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MyLocation
@@ -21,11 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.data.FishingRepository
@@ -49,6 +39,7 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     reports: List<FishingReport>,
@@ -63,12 +54,14 @@ fun MapScreen(
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
     val coroutineScope = rememberCoroutineScope()
-    val density = LocalDensity.current
-
+    
+    // Обработка системной кнопки "Назад"
+    // Мы используем enabled = onBackClick != null, чтобы активировать его только на полноэкранной карте
     BackHandler(enabled = onBackClick != null) {
         onBackClick?.invoke()
     }
 
+    // Используем ViewModel для сохранения позиции карты между переключениями табов
     var lastCenterLat by remember { mutableStateOf(viewModel?.mapLastCenterLat) }
     var lastCenterLon by remember { mutableStateOf(viewModel?.mapLastCenterLon) }
     var lastZoom by remember { mutableDoubleStateOf(viewModel?.mapLastZoom ?: 6.0) }
@@ -97,59 +90,37 @@ fun MapScreen(
         }
     }
 
+    // Реакция на запрос конкретной локации
     LaunchedEffect(requestedLocation) {
         requestedLocation?.let { location ->
             mapView.controller.animateTo(location, 13.0, 500L)
-            viewModel?.requestMapLocation(null)
+            viewModel?.requestMapLocation(null) // Сбрасываем запрос после анимации
+            
+            // Обновляем сохраненное состояние
             lastCenterLat = location.latitude
             lastCenterLon = location.longitude
             lastZoom = 13.0
         }
     }
 
+    // Получаем цвета из темы
     val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
     val regularColor = MaterialTheme.colorScheme.primary.toArgb()
     val trophyIconColor = android.graphics.Color.parseColor("#50250A")
 
+    // Состояние выбранного маркера
     var selectedReportId by remember { mutableStateOf(initialReportId) }
 
-    // ===== Custom Sheet State =====
+    // Bottom sheet для отчёта
     var selectedReport by remember { mutableStateOf<FishingReport?>(null) }
-    var sheetVisible by remember { mutableStateOf(false) }
-    val sheetHeightFraction = 0.5f
-    val sheetAnimY = remember { Animatable(1f) } // 1 = скрыт, 0 = half, -1 = full
-    var isSheetExpanded by remember { mutableStateOf(false) }
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    fun dismissSheet() {
-        coroutineScope.launch {
-            sheetAnimY.animateTo(1f, tween(300))
-            sheetVisible = false
+    // Закрываем sheet при свайпе вниз
+    LaunchedEffect(sheetState.currentValue) {
+        if (sheetState.currentValue == SheetValue.Hidden && showSheet) {
+            showSheet = false
             selectedReport = null
-            isSheetExpanded = false
-        }
-    }
-
-    fun showSheetFor(report: FishingReport) {
-        selectedReport = report
-        sheetVisible = true
-        isSheetExpanded = false
-        coroutineScope.launch {
-            sheetAnimY.snapTo(1f)
-            sheetAnimY.animateTo(0f, tween(300))
-        }
-    }
-
-    fun expandSheet() {
-        isSheetExpanded = true
-        coroutineScope.launch {
-            sheetAnimY.animateTo(-1f, tween(300))
-        }
-    }
-
-    fun collapseSheet() {
-        isSheetExpanded = false
-        coroutineScope.launch {
-            sheetAnimY.animateTo(0f, tween(300))
         }
     }
 
@@ -184,8 +155,10 @@ fun MapScreen(
         }
     }
 
+    // Логика восстановления или установки начальной позиции
     LaunchedEffect(mapView) {
         if (lastCenterLat != null && lastCenterLon != null) {
+            // Восстанавливаем сохраненную позицию
             mapView.controller.setCenter(GeoPoint(lastCenterLat!!, lastCenterLon!!))
             mapView.controller.setZoom(lastZoom)
             myLocationOverlay.disableFollowLocation()
@@ -204,6 +177,7 @@ fun MapScreen(
         }
     }
 
+    // Слушатель для сохранения текущей позиции карты
     DisposableEffect(mapView) {
         val listener = object : MapListener {
             override fun onScroll(event: ScrollEvent?): Boolean {
@@ -219,9 +193,13 @@ fun MapScreen(
             }
         }
         mapView.addMapListener(listener)
-        onDispose { mapView.removeMapListener(listener) }
+        
+        onDispose {
+            mapView.removeMapListener(listener)
+        }
     }
 
+    // Синхронизируем позицию карты с ViewModel сразу при каждом изменении
     SideEffect {
         viewModel?.let {
             it.mapLastCenterLat = lastCenterLat
@@ -230,7 +208,6 @@ fun MapScreen(
         }
     }
 
-    // ===== Layout =====
     Box(modifier = Modifier.fillMaxSize()) {
         OsmMapView(
             mapView = mapView,
@@ -238,7 +215,8 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
             reports = reports,
             onMarkerClick = { report ->
-                showSheetFor(report)
+                selectedReport = report
+                showSheet = true
                 coroutineScope.launch {
                     delay(500L)
                     mapView.controller.animateTo(
@@ -257,6 +235,7 @@ fun MapScreen(
             initialZoom = lastZoom
         )
 
+        // Кнопка Назад
         if (onBackClick != null) {
             FilledIconButton(
                 onClick = onBackClick,
@@ -293,69 +272,22 @@ fun MapScreen(
         }
     }
 
-    // ===== Custom Bottom Sheet =====
-    if (sheetVisible && selectedReport != null) {
-        val screenHeightPx = with(density) { LocalContext.current.resources.displayMetrics.heightPixels.toFloat() }
-        val halfHeightPx = screenHeightPx * sheetHeightFraction
-        val fullHeightPx = screenHeightPx * 0.92f
-
-        // Вычисляем текущий offset Y (0 = верх экрана)
-        val currentOffsetY = when {
-            sheetAnimY.value >= 0f -> {
-                // От скрытого (screenHeight) до halfHeight
-                halfHeightPx + (screenHeightPx - halfHeightPx) * sheetAnimY.value
-            }
-            else -> {
-                // От halfHeight до fullHeight
-                halfHeightPx - (halfHeightPx - fullHeightPx) * (-sheetAnimY.value)
-            }
-        }
-        val currentHeightPx = screenHeightPx - currentOffsetY
-        val currentHeightDp = with(density) { currentHeightPx.toDp() }
-
-        Box(
-            modifier = Modifier.fillMaxSize()
+    // Bottom sheet для просмотра отчёта
+    if (showSheet && selectedReport != null) {
+        ModalBottomSheet(
+            onDismissRequest = { },
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrimColor = Color.Transparent,
+            tonalElevation = 0.dp
         ) {
-            // Карта ниже — полностью интерактивна, тапы проходят
-
-            // Sheet поверх
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(currentHeightDp)
-                    .align(Alignment.BottomCenter)
-                    .pointerInput(sheetVisible) {
-                        detectVerticalDragGestures(
-                            onDragEnd = {
-                                val y = sheetAnimY.value
-                                when {
-                                    y > 0.5f -> dismissSheet()
-                                    y > -0.3f -> collapseSheet()
-                                    else -> expandSheet()
-                                }
-                            },
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                coroutineScope.launch {
-                                    val range = fullHeightPx - halfHeightPx
-                                    val normalizedDelta = dragAmount / range
-                                    val newValue = (sheetAnimY.value + normalizedDelta).coerceIn(-1f, 1f)
-                                    sheetAnimY.snapTo(newValue)
-                                }
-                            }
-                        )
-                    },
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp
-            ) {
-                MapReportSheetContent(
-                    report = selectedReport!!,
-                    repository = repository,
-                    onPhotoClick = { },
-                    showMapPreview = false
-                )
-            }
+            MapReportSheetContent(
+                report = selectedReport!!,
+                repository = repository,
+                onPhotoClick = { /* открыть полноразмерное фото */ },
+                showMapPreview = false
+            )
         }
     }
 }
@@ -376,20 +308,21 @@ fun OsmMapView(
     initialZoom: Double = 6.0
 ) {
     val context = LocalContext.current
-
+    
     AndroidView(
         factory = {
+            // Удаляем из старого родителя
             (mapView.parent as? ViewGroup)?.removeView(mapView)
 
             mapView.apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 setBuiltInZoomControls(false)
-
+                
                 if (zoomLevelDouble <= 1.0) {
                     controller.setZoom(initialZoom)
                 }
-
+                
                 if (!overlays.contains(myLocationOverlay)) {
                     overlays.add(myLocationOverlay)
                 }
@@ -397,11 +330,14 @@ fun OsmMapView(
         },
         modifier = modifier,
         update = { mv ->
+            // Работаем с маркерами только когда MapView инициализирован
+            // Чтобы избежать NPE при обращении к репозиторию MapView
             val currentOverlays = mv.overlays
-
+            
+            // Удаляем только старые маркеры
             val markersToRemove = currentOverlays.filterIsInstance<Marker>()
             currentOverlays.removeAll(markersToRemove)
-
+            
             reports.forEach { report ->
                 try {
                     val shape = if (report.id == selectedReportId) MarkerShape.DROP else MarkerShape.CIRCLE
@@ -430,6 +366,7 @@ fun OsmMapView(
                     }
                     currentOverlays.add(marker)
                 } catch (e: Exception) {
+                    // Игнорируем ошибки инициализации маркеров в переходных состояниях
                 }
             }
             mv.invalidate()
