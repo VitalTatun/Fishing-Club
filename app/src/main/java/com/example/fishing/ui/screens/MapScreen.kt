@@ -206,16 +206,11 @@ fun MapScreen(
             onMarkerClick = { report ->
                 selectedReport = report
                 showSheet = true
-
-                // Центрируем камеру на маркере со смещением вверх (~70% от верха)
-                val mapHeight = mapView.height
-                val mapWidth = mapView.width
-                val centerGeoPoint = mapView.mapCenter
-                val centerPixel = mapView.projection.toPixels(centerGeoPoint, null)
-                // Смещаем центр карты вниз, чтобы маркер оказался на 30% от верха (70% от низа)
-                val targetPixelY = centerPixel.y + mapHeight / 2 - (mapHeight * 0.3).toInt()
-                val targetGeoPoint = mapView.projection.fromPixels(centerPixel.x, targetPixelY)
-                mapView.controller.animateTo(targetGeoPoint, mapView.zoomLevelDouble, 300L)
+                mapView.controller.animateTo(
+                    GeoPoint(report.water.latitude, report.water.longitude),
+                    mapView.zoomLevelDouble,
+                    300L
+                )
             },
             onReportSelected = { selectedReportId = it },
             selectedReportId = selectedReportId,
