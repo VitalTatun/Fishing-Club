@@ -41,7 +41,8 @@ fun MapScreen(
     viewModel: MainViewModel? = null,
     onBackClick: (() -> Unit)? = null,
     isLocationEnabled: Boolean = true,
-    markersInteractive: Boolean = true
+    markersInteractive: Boolean = true,
+    initialReportId: UUID? = null
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -100,7 +101,7 @@ fun MapScreen(
     val trophyIconColor = android.graphics.Color.parseColor("#50250A")
 
     // Состояние выбранного маркера
-    var selectedReportId by remember { mutableStateOf<UUID?>(null) }
+    var selectedReportId by remember { mutableStateOf(initialReportId) }
 
     val myLocationOverlay = remember(mapView) {
         MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)

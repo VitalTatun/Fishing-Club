@@ -368,7 +368,8 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("full_map/${reportId}") { inclusive = true }
                                     }
                                 },
-                                markersInteractive = false
+                                markersInteractive = false,
+                                initialReportId = reportId
                             )
                         }
 
