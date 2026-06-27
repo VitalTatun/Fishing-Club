@@ -163,28 +163,42 @@ fun CoordinatesCell(
 fun ReportLocationSection(
     report: FishingReport,
     modifier: Modifier = Modifier,
-    onMapClick: () -> Unit = {}
+    onMapClick: () -> Unit = {},
+    showMapPreview: Boolean = true
 ) {
     SectionCard(
         title = "Водоем",
-        items = listOf(
-            SectionEntry.ComposableItem(
-                padding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-            ) {
-                MapCell(report = report, onMapClick = onMapClick)
-            },
-            SectionEntry.ComposableItem() {
-                CoordinatesCell(report = report)
-            },
-            SectionEntry.TextItem(
-                label = "Ловля с берега",
-                value = if (report.fishingFromTheShore) "Да" else "Нет"
-            ),
-            SectionEntry.TextItem(
-                label = "Платный водоем",
-                value = if (report.water.isPaid) "Да" else "Нет"
+        items = buildList {
+            if (showMapPreview) {
+                add(
+                    SectionEntry.ComposableItem(
+                        padding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                    ) {
+                        MapCell(report = report, onMapClick = onMapClick)
+                    }
+                )
+                add(SectionEntry.ComposableItem() {
+                    CoordinatesCell(report = report)
+                })
+            } else {
+                add(SectionEntry.TextItem(
+                    label = "Название",
+                    value = report.water.waterName
+                ))
+            }
+            add(
+                SectionEntry.TextItem(
+                    label = "Ловля с берега",
+                    value = if (report.fishingFromTheShore) "Да" else "Нет"
+                )
             )
-        ),
+            add(
+                SectionEntry.TextItem(
+                    label = "Платный водоем",
+                    value = if (report.water.isPaid) "Да" else "Нет"
+                )
+            )
+        },
         modifier = modifier.padding(horizontal = 16.dp)
     )
 }

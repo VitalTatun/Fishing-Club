@@ -47,13 +47,12 @@ fun MapReportSheetContent(
             PublishBanner()
         }
 
-        // Секция местоположения (только если не из карты)
-        if (showMapPreview) {
-            ReportLocationSection(
-                report = report,
-                onMapClick = onMapClick
-            )
-        }
+        // Секция водоёма (без карты при просмотре из карты)
+        ReportLocationSection(
+            report = report,
+            onMapClick = onMapClick,
+            showMapPreview = showMapPreview
+        )
 
         // Общая информация (Mood, Details, Catch)
         ReportGeneralInfo(report = report)
