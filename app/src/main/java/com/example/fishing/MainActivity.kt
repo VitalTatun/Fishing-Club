@@ -369,7 +369,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 markersInteractive = false,
-                                initialReportId = reportId
+                                initialReportId = reportId,
+                                repository = fishingRepository
                             )
                         }
 

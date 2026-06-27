@@ -17,8 +17,10 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
+import com.example.fishing.ui.components.MapReportSheetContent
 import com.example.fishing.ui.components.MarkerDrawableUtils
 import com.example.fishing.ui.components.MarkerShape
 import com.example.fishing.ui.theme.FishingTheme
@@ -34,6 +36,7 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     reports: List<FishingReport>,
@@ -42,7 +45,8 @@ fun MapScreen(
     onBackClick: (() -> Unit)? = null,
     isLocationEnabled: Boolean = true,
     markersInteractive: Boolean = true,
-    initialReportId: UUID? = null
+    initialReportId: UUID? = null,
+    repository: FishingRepository
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -102,6 +106,11 @@ fun MapScreen(
 
     // Состояние выбранного маркера
     var selectedReportId by remember { mutableStateOf(initialReportId) }
+
+    // Bottom sheet для отчёта
+    var selectedReport by remember { mutableStateOf<FishingReport?>(null) }
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     val myLocationOverlay = remember(mapView) {
         MyLocationNewOverlay(GpsMyLocationProvider(context), mapView)
@@ -193,7 +202,10 @@ fun MapScreen(
             myLocationOverlay = myLocationOverlay,
             modifier = Modifier.fillMaxSize(),
             reports = reports,
-            onMarkerClick = onReportClick,
+            onMarkerClick = { report ->
+                selectedReport = report
+                showSheet = true
+            },
             onReportSelected = { selectedReportId = it },
             selectedReportId = selectedReportId,
             markersInteractive = markersInteractive,
@@ -236,6 +248,26 @@ fun MapScreen(
             Icon(
                 imageVector = Icons.Default.MyLocation,
                 contentDescription = "My Location"
+            )
+        }
+    }
+
+    // Bottom sheet для просмотра отчёта
+    if (showSheet && selectedReport != null) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showSheet = false
+                selectedReport = null
+            },
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp
+        ) {
+            MapReportSheetContent(
+                report = selectedReport!!,
+                repository = repository,
+                onPhotoClick = { /* открыть полноразмерное фото */ }
             )
         }
     }

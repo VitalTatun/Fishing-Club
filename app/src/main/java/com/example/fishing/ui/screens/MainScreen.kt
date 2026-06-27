@@ -158,7 +158,8 @@ fun MainScreen(
                     MapScreen(
                         reports = allReports,
                         onReportClick = onReportClick,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        repository = repository
                     )
                 }
                 2 -> {
