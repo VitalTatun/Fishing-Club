@@ -11,7 +11,6 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
@@ -42,34 +41,47 @@ class SupabaseFishingRepository @Inject constructor(
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
     )
 
-    override fun getAllReports(userId: UUID?): Flow<List<FishingReport>> = flow {
-        if (!authRepository.isLoggedIn()) {
-            emit(emptyList())
-            return@flow
+    override fun getAllReports(userId: UUID?): Flow<List<FishingReport>> {
+        val flow = if (userId != null) {
+            reportDetailsDao.getByUserId(userId)
+        } else {
+            reportDetailsDao.getAll()
         }
-        val fishings = supabase.postgrest["fishing"].select {
-            userId?.let { filter { eq("user_id", it) } }
-            order("fishing_time", Order.DESCENDING)
-        }.decodeList<FishingDto>()
-
-        val fish = supabase.postgrest["fishing_fish"].select().decodeList<FishDto>()
-        val baits = supabase.postgrest["fishing_baits"].select().decodeList<BaitDto>()
-        val photos = supabase.postgrest["fishing_photos"].select {
-            order("sort_order", Order.ASCENDING)
-        }.decodeList<PhotoDto>()
-
-        val fishByFishing = fish.groupBy { it.fishingId }
-        val baitsByFishing = baits.groupBy { it.fishingId }
-        val photosByFishing = photos.groupBy { it.fishingId }
-
-        val reports = fishings.map { dto ->
-            dto.toDomain(
-                fish = fishByFishing[dto.id] ?: emptyList(),
-                baits = baitsByFishing[dto.id] ?: emptyList(),
-                photos = photosByFishing[dto.id] ?: emptyList()
-            )
+        return flow.map { entities ->
+            entities.map { it.toDomain() }
         }
-        emit(reports)
+    }
+
+    override suspend fun refreshAllReports(userId: UUID?) {
+        if (!authRepository.isLoggedIn()) return
+        try {
+            val fishings = supabase.postgrest["fishing"].select {
+                userId?.let { filter { eq("user_id", it) } }
+                order("fishing_time", Order.DESCENDING)
+            }.decodeList<FishingDto>()
+
+            val fish = supabase.postgrest["fishing_fish"].select().decodeList<FishDto>()
+            val baits = supabase.postgrest["fishing_baits"].select().decodeList<BaitDto>()
+            val photos = supabase.postgrest["fishing_photos"].select {
+                order("sort_order", Order.ASCENDING)
+            }.decodeList<PhotoDto>()
+
+            val fishByFishing = fish.groupBy { it.fishingId }
+            val baitsByFishing = baits.groupBy { it.fishingId }
+            val photosByFishing = photos.groupBy { it.fishingId }
+
+            val entities = fishings.map { dto ->
+                dto.toReportDetailsEntity(
+                    fish = fishByFishing[dto.id] ?: emptyList(),
+                    baits = baitsByFishing[dto.id] ?: emptyList(),
+                    photos = photosByFishing[dto.id] ?: emptyList()
+                )
+            }
+            reportDetailsDao.deleteAll()
+            reportDetailsDao.insertAll(entities)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = markerDao.getAll().map { entities ->

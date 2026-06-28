@@ -11,6 +11,7 @@ interface FishingRepository {
     fun getAllReports(userId: UUID? = null): Flow<List<FishingReport>>
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
+    suspend fun refreshAllReports(userId: UUID? = null)
     suspend fun saveReport(report: FishingReport)
     suspend fun deleteReport(id: UUID)
     suspend fun getPhotoSignedUrl(storagePath: String): String?
@@ -39,6 +40,10 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun deleteReport(id: UUID) {
         // Mock delete
+    }
+
+    override suspend fun refreshAllReports(userId: UUID?) {
+        // Mock — no-op
     }
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? {

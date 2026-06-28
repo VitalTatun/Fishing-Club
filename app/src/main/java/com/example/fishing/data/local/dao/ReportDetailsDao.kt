@@ -13,6 +13,15 @@ interface ReportDetailsDao {
     @Query("SELECT * FROM report_details WHERE id = :id")
     fun getById(id: UUID): Flow<ReportDetailsEntity?>
 
+    @Query("SELECT * FROM report_details ORDER BY fishingTime DESC")
+    fun getAll(): Flow<List<ReportDetailsEntity>>
+
+    @Query("SELECT * FROM report_details WHERE userId = :userId ORDER BY fishingTime DESC")
+    fun getByUserId(userId: UUID): Flow<List<ReportDetailsEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(reports: List<ReportDetailsEntity>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(report: ReportDetailsEntity)
 

@@ -183,14 +183,25 @@ class MainViewModel @Inject constructor(
         reportsLoadJob?.cancel()
         reportsLoadJob = viewModelScope.launch {
             _isLoading.value = true
-            try {
-                repository.getAllReports(userId = currentUserId).collect { reports ->
-                    _reports.value = reports.map { report ->
-                        report.copy(
-                            photo = resolvePhotoUrls(report.photo)
-                        )
+            // Observe Room cache (updates UI on every DB change)
+            launch {
+                try {
+                    repository.getAllReports(userId = currentUserId).collect { reports ->
+                        _reports.value = reports.map { report ->
+                            report.copy(
+                                photo = resolvePhotoUrls(report.photo)
+                            )
+                        }
                     }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
+            }
+            // Refresh from network → saves to Room → Flow auto-updates UI
+            try {
+                repository.refreshAllReports(userId = currentUserId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -213,18 +224,31 @@ class MainViewModel @Inject constructor(
 
         allReportsLoadJob?.cancel()
         allReportsLoadJob = viewModelScope.launch {
-            try {
-                repository.getAllReports().collect { reports ->
-                    _allReports.value = reports.map { report ->
-                        report.copy(
-                            photo = resolvePhotoUrls(report.photo)
-                        )
+            // Observe Room cache
+            launch {
+                try {
+                    repository.getAllReports().collect { reports ->
+                        _allReports.value = reports.map { report ->
+                            report.copy(
+                                photo = resolvePhotoUrls(report.photo)
+                            )
+                        }
                     }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
+            }
+            // Refresh from network
+            launch {
+                try {
+                    repository.refreshAllReports()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
