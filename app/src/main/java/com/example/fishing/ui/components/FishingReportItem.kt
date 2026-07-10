@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -104,13 +103,6 @@ private fun FishingReportHeader(report: FishingReport) {
                     overflow = TextOverflow.Ellipsis
                 )
 
-                ReportBadges(
-                    report = report,
-                    showDraftBadge = false
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
-                
                 if (report.water.isPaid) {
                     Icon(
                         imageVector = Icons.Default.Paid,
@@ -146,6 +138,11 @@ private fun FishingReportHeader(report: FishingReport) {
                     color = MaterialTheme.colorScheme.outline
                 )
             }
+
+            ReportBadges(
+                report = report,
+                showDraftBadge = false
+            )
         }
     }
 }
@@ -316,33 +313,55 @@ fun ReportBadges(
 
 @Composable
 fun TrophyBadge() {
-    Surface(
-        color = FishingTheme.colors.trophyYellow,
-        shape = RoundedCornerShape(4.dp)
-    ) {
-        Text(
-            text = "Трофей",
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            color = FishingTheme.colors.textOnTrophy,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium
-        )
-    }
+    BadgeWithIcon(
+        icon = Icons.Default.Star,
+        text = "Трофей",
+        backgroundColor = FishingTheme.colors.trophyYellow,
+        contentColor = FishingTheme.colors.textOnTrophy
+    )
 }
 
 @Composable
 fun DraftBadge() {
+    BadgeWithIcon(
+        icon = Icons.Default.Lock,
+        text = "Не опубликован",
+        backgroundColor = MaterialTheme.colorScheme.primary,
+        contentColor = Color.White
+    )
+}
+
+@Composable
+private fun BadgeWithIcon(
+    icon: ImageVector,
+    text: String,
+    backgroundColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        color = MaterialTheme.colorScheme.primary,
-        shape = RoundedCornerShape(4.dp)
+        modifier = modifier,
+        color = backgroundColor,
+        shape = RoundedCornerShape(6.dp)
     ) {
-        Text(
-            text = "Не опубликован",
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            color = Color.White,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium
-        )
+        Row(
+            modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(15.dp),
+                tint = contentColor
+            )
+            Text(
+                text = text,
+                color = contentColor,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 

@@ -59,7 +59,6 @@ fun ReportGeneralInfo(report: FishingReport, modifier: Modifier = Modifier) {
     ) {
         InfoDetailsList(report = report)
         ReportCatchSection(report = report)
-        ReportDescriptionSection(report = report)
     }
 }
 

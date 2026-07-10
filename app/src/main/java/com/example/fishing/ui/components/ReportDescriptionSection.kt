@@ -4,17 +4,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fishing.model.*
+import com.example.fishing.ui.theme.FishingTheme
 import java.util.Date
 import java.util.UUID
 
@@ -30,38 +34,42 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
     )
 
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth(),
+//            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
         ) {
-            Text(
-                text = "Комментарий",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            if (isOverflowed) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 16.dp),
+//                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Text(
-                    text = "Подробнее",
+                    text = report.comment,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { showSheet = true }
+                    maxLines = 5,
+                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { isOverflowed = it.hasVisualOverflow }
                 )
+                if (isOverflowed) {
+                    Text(
+                        text = "Подробнее",
+                        color = Color(0xFF007AFF),
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showSheet = true },
+                        textAlign = TextAlign.End
+                    )
+                }
             }
         }
-        Text(
-            text = report.comment,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(horizontal = 8.dp),
-            maxLines = 5,
-            overflow = TextOverflow.Ellipsis,
-            onTextLayout = { isOverflowed = it.hasVisualOverflow }
-        )
     }
 
     if (showSheet) {
@@ -78,14 +86,8 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
                     .padding(horizontal = 16.dp)
                     .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
-                    .padding(bottom = 0.dp)
+                    .padding(bottom = 16.dp)
             ) {
-                Text(
-                    text = "Комментарий",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 16.dp)
-                )
                 Text(
                     text = report.comment,
                     style = MaterialTheme.typography.bodyLarge,
@@ -118,7 +120,7 @@ fun ReportDescriptionSectionPreview() {
     Box(
         modifier = Modifier
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+//            .padding(16.dp)
     ) {
         ReportDescriptionSection(report = sampleReport)
     }

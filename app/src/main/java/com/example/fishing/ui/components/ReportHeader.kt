@@ -135,8 +135,6 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                ReportBadges(report = report)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -159,6 +157,8 @@ fun ReportInfoRow(report: FishingReport, modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.outline
                 )
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            ReportBadges(report = report)
         }
 }
 
