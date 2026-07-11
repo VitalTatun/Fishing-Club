@@ -126,7 +126,7 @@ fun MainScreen(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(0.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
                             if (reports.isEmpty() && !isLoading) {
                                 item {
@@ -146,7 +146,7 @@ fun MainScreen(
                                 FishingReportItem(report = report, onClick = { onReportClick(report) }, onDeleteReport = onDeleteReport)
                                 if (index < reports.lastIndex) {
                                     HorizontalDivider(
-                                        modifier = Modifier.padding(vertical = 4.dp),
+                                        modifier = Modifier.padding(vertical = 0.dp),
                                         thickness = 1.dp,
                                         color = Color.LightGray.copy(alpha = 0.5f)
                                     )

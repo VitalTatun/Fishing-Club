@@ -1,7 +1,6 @@
 package com.example.fishing.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,8 +54,8 @@ fun FishingReportItem(
 
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
             if (report.photo.isNotEmpty()) {
@@ -74,74 +71,71 @@ fun FishingReportItem(
 private fun FishingReportHeader(report: FishingReport) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
 
-    Row(
+    val fishAndMethod = remember(report.fish, report.fishingMethod) {
+        val fishName = report.fish.firstOrNull()?.name ?: "Рыба"
+        val methodName = when (report.fishingMethod) {
+            FishingMethod.SPINNING -> "Спиннинг"
+            FishingMethod.BOBBER -> "Поплавок"
+            FishingMethod.FEEDER -> "Фидер"
+            else -> "Метод"
+        }
+        "$fishName • $methodName"
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp)
     ) {
-        if (!report.isPublic) {
-            PrivateReportBadge()
-            Spacer(modifier = Modifier.width(5.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = fishAndMethod,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 20.sp
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (report.water.isPaid) {
+                Icon(
+                    imageVector = Icons.Default.Paid,
+                    contentDescription = "Платный водоем",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Icon(
+                imageVector = Icons.Default.Bookmark,
+                contentDescription = "Bookmark",
+                tint = FishingTheme.colors.bookmarkRed,
+            )
         }
 
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = report.name,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 20.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                if (report.water.isPaid) {
-                    Icon(
-                        imageVector = Icons.Default.Paid,
-                        contentDescription = "Платный водоем",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Icon(
-                    imageVector = Icons.Default.Bookmark,
-                    contentDescription = "Bookmark",
-                    tint = FishingTheme.colors.bookmarkRed,
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = dateFormatter.format(report.fishingTime),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "  •  ",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = report.water.waterName,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-
-            ReportBadges(
-                report = report,
-                showDraftBadge = false
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = dateFormatter.format(report.fishingTime),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "  •  ",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = report.water.waterName,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -228,30 +222,18 @@ private fun FishingReportFooter(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (report.fish.isNotEmpty()) {
-                TagChip(text = report.fish.first().name, icon = Icons.Default.SetMeal)
-            }
+        ReportBadges(
+            report = report,
+            showDraftBadge = true
+        )
 
-            TagChip(
-                text = when(report.fishingMethod) {
-                    FishingMethod.SPINNING -> "Спиннинг"
-                    FishingMethod.BOBBER -> "Поплавок"
-                    FishingMethod.FEEDER -> "Фидер"
-                    else -> "Метод"
-                },
-                icon = Icons.Default.Phishing
-            )
-        }
+        Spacer(modifier = Modifier.weight(1f))
+
         Box {
             Icon(
                 imageVector = Icons.Default.MoreVert,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.outlineVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(24.dp)
                     .clickable { showMenu = true }
@@ -272,22 +254,6 @@ private fun FishingReportFooter(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun PrivateReportBadge(modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.size(32.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.primary
-    ) {
-        Icon(
-            imageVector = Icons.Default.Lock,
-            contentDescription = "Private",
-            tint = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.padding(6.dp)
-        )
     }
 }
 
@@ -314,7 +280,7 @@ fun ReportBadges(
 @Composable
 fun TrophyBadge() {
     BadgeWithIcon(
-        icon = Icons.Default.Star,
+        icon = Icons.Default.EmojiEvents,
         text = "Трофей",
         backgroundColor = FishingTheme.colors.trophyYellow,
         contentColor = FishingTheme.colors.textOnTrophy
@@ -396,16 +362,19 @@ fun TagChip(
 @Composable
 fun FishingReportItemPreview() {
     val sampleUser = User(name = "Иван", image = "", email = "ivan@example.com")
-    val sampleWater = Water(waterName = "Водохранилище Крылово", latitude = 55.0, longitude = 60.0)
-    val calendar = Calendar.getInstance().apply { 
-        set(2023, Calendar.AUGUST, 22) 
+    val sampleWater = Water(waterName = "Минское море", latitude = 55.0, longitude = 60.0, isPaid = true)
+    val calendar = Calendar.getInstance().apply {
+        set(2023, Calendar.AUGUST, 22)
     }
     val sampleReport = FishingReport(
         userId = UUID.randomUUID(),
         type = FishingType.HAUL,
         name = "Смеркалось...",
         water = sampleWater,
-        photo = emptyList(),
+        photo = listOf(
+            "https://picsum.photos/800/400?random=1",
+            "https://picsum.photos/800/400?random=2"
+        ),
         fishingTime = calendar.time,
         weight = 2.5,
         fish = listOf(Fish(name = "Окунь", count = 5)),

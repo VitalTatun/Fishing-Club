@@ -65,7 +65,9 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showSheet = true },
-                        textAlign = TextAlign.End
+                        textAlign = TextAlign.End,
+                        style = MaterialTheme.typography.bodyMedium
+
                     )
                 }
             }
@@ -90,8 +92,7 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
             ) {
                 Text(
                     text = report.comment,
-                    style = MaterialTheme.typography.bodyLarge,
-                    lineHeight = 26.sp
+                    style = MaterialTheme.typography.bodyLarge
                 )
             }
         }

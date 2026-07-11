@@ -120,7 +120,7 @@ fun ReportDetailScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(bottom = 32.dp, top = 16.dp),
+                .padding(bottom = 32.dp, top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)

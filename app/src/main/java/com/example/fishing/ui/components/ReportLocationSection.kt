@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -40,7 +42,7 @@ import java.util.*
 
 @Composable
 fun ReportLocationSection(
-    report: FishingReport, 
+    report: FishingReport,
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {}
 ) {
@@ -63,7 +65,6 @@ fun ReportLocationSection(
         ),
         modifier = modifier.padding(horizontal = 16.dp),
         beforeItems = {
-            // Map Cell
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
@@ -79,41 +80,76 @@ fun ReportLocationSection(
                             bottomStart = 2.dp, bottomEnd = 2.dp
                         ))
                 ) {
-                    AndroidView(
-                        factory = { ctx ->
-                            MapView(ctx).apply {
-                                setTileSource(TileSourceFactory.MAPNIK)
-                                setMultiTouchControls(false)
-                                isClickable = false
-                                isFocusable = false
+                    val inPreview = LocalInspectionMode.current
 
-                                controller.setZoom(15.0)
-                                val point = GeoPoint(report.water.latitude, report.water.longitude)
-                                controller.setCenter(point)
+                    if (inPreview) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ZoomOutMap,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    } else {
+                        AndroidView(
+                            factory = { ctx ->
+                                MapView(ctx).apply {
+                                    setTileSource(TileSourceFactory.MAPNIK)
+                                    setMultiTouchControls(false)
+                                    isClickable = false
+                                    isFocusable = false
 
-                                overlays.add(Marker(this).apply {
-                                    position = point
-                                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                    controller.setZoom(15.0)
+                                    val point = GeoPoint(report.water.latitude, report.water.longitude)
+                                    controller.setCenter(point)
 
-                                    val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
-                                    icon = BitmapDrawable(context.resources, createMarkerBitmap(markerColor))
+                                    overlays.add(Marker(this).apply {
+                                        position = point
+                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
 
-                                    setOnMarkerClickListener { _, _ -> true }
-                                })
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                        onRelease = { it.onDetach() }
-                    )
+                                        val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
+                                        icon = BitmapDrawable(context.resources, createMarkerBitmap(markerColor))
+
+                                        setOnMarkerClickListener { _, _ -> true }
+                                    })
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                            onRelease = { it.onDetach() }
+                        )
+                    }
 
                     Box(modifier = Modifier
                         .fillMaxSize()
                         .clickable(enabled = true, onClick = onMapClick)
                     )
+
+                    // Zoom button
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(32.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        onClick = onMapClick
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ZoomOutMap,
+                            contentDescription = "Открыть карту",
+                            modifier = Modifier.padding(6.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
 
-            // Info Cell (Name + Coordinates)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(2.dp),
@@ -195,12 +231,11 @@ fun LocationInfoRow(
 }
 
 private fun createMarkerBitmap(color: Int): Bitmap {
-    val size = 60 // Чуть меньше для превью
+    val size = 60
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    // Рисуем каплю
     paint.color = color
     val path = Path()
     path.moveTo(size / 2f, size.toFloat())
@@ -208,7 +243,6 @@ private fun createMarkerBitmap(color: Int): Bitmap {
     path.cubicTo(size.toFloat(), 0f, size.toFloat(), size * 0.6f, size / 2f, size.toFloat())
     canvas.drawPath(path, paint)
 
-    // Рисуем белый круг внутри
     paint.color = android.graphics.Color.WHITE
     canvas.drawCircle(size / 2f, size / 3f, size / 6f, paint)
 
