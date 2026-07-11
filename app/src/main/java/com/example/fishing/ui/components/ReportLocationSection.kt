@@ -1,17 +1,16 @@
 package com.example.fishing.ui.components
 
 import android.content.ClipData
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.drawable.BitmapDrawable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Anchor
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.*
@@ -23,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
@@ -47,174 +48,167 @@ fun ReportLocationSection(
     onMapClick: () -> Unit = {}
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val trophyColor = FishingTheme.colors.trophyYellow.toArgb()
-    val regularColor = MaterialTheme.colorScheme.primary.toArgb()
-    val context = LocalContext.current
 
-    SectionCard(
-        title = "Водоем",
-        items = listOf(
-            SectionItem(
-                label = "Ловля с берега",
-                value = if (report.fishingFromTheShore) "Да" else "Нет"
-            ),
-            SectionItem(
-                label = "Платный водоем",
-                value = if (report.water.isPaid) "Да" else "Нет"
-            )
-        ),
+    Column(
         modifier = modifier.padding(horizontal = 16.dp),
-        beforeItems = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
-                color = FishingTheme.colors.secondaryBackground
+
             ) {
+        Text(
+            text = "Водоем",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
+        )
+
+        // Map
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clip(RoundedCornerShape(16.dp))
+        ) {
+            val inPreview = LocalInspectionMode.current
+
+            if (inPreview) {
+                val ctx = LocalContext.current
+                val previewTrophyColor = FishingTheme.colors.trophyYellow.toArgb()
+                val markerDrawable = remember(previewTrophyColor, report.fishingMethod) {
+                    MarkerDrawableUtils.getMarkerDrawable(
+                        ctx,
+                        MarkerShape.DROP,
+                        previewTrophyColor,
+                        report.fishingMethod,
+                        android.graphics.Color.parseColor("#50250A")
+                    )
+                }
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .height(140.dp)
-                        .clip(RoundedCornerShape(
-                            topStart = 12.dp, topEnd = 12.dp,
-                            bottomStart = 2.dp, bottomEnd = 2.dp
-                        ))
-                ) {
-                    val inPreview = LocalInspectionMode.current
-
-                    if (inPreview) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ZoomOutMap,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    } else {
-                        AndroidView(
-                            factory = { ctx ->
-                                MapView(ctx).apply {
-                                    setTileSource(TileSourceFactory.MAPNIK)
-                                    setMultiTouchControls(false)
-                                    isClickable = false
-                                    isFocusable = false
-
-                                    controller.setZoom(15.0)
-                                    val point = GeoPoint(report.water.latitude, report.water.longitude)
-                                    controller.setCenter(point)
-
-                                    overlays.add(Marker(this).apply {
-                                        position = point
-                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-
-                                        val markerColor = if (report.type == FishingType.HAUL) trophyColor else regularColor
-                                        icon = BitmapDrawable(context.resources, createMarkerBitmap(markerColor))
-
-                                        setOnMarkerClickListener { _, _ -> true }
-                                    })
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                            onRelease = { it.onDetach() }
-                        )
-                    }
-
-                    Box(modifier = Modifier
                         .fillMaxSize()
-                        .clickable(enabled = true, onClick = onMapClick)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AndroidDrawable(
+                        drawable = markerDrawable,
+                        modifier = Modifier.size(48.dp)
                     )
-
-                    // Zoom button
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(32.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                        onClick = onMapClick
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ZoomOutMap,
-                            contentDescription = "Открыть карту",
-                            modifier = Modifier.padding(6.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
                 }
+            } else {
+                val regularColorInt = MaterialTheme.colorScheme.primary.toArgb()
+                val trophyColorInt = FishingTheme.colors.trophyYellow.toArgb()
+                val trophyIconColorInt = android.graphics.Color.parseColor("#50250A")
+
+                AndroidView(
+                    factory = { ctx ->
+                        MapView(ctx).apply {
+                            setTileSource(TileSourceFactory.MAPNIK)
+                            setMultiTouchControls(false)
+                            setBuiltInZoomControls(false)
+                            isClickable = false
+                            isFocusable = false
+
+                            controller.setZoom(15.0)
+                            val point = GeoPoint(report.water.latitude, report.water.longitude)
+                            controller.setCenter(point)
+
+                            val shape = MarkerShape.DROP
+                            val color = if (report.type == FishingType.HAUL) trophyColorInt else regularColorInt
+                            val iconColor = if (report.type == FishingType.HAUL) trophyIconColorInt else android.graphics.Color.WHITE
+
+                            overlays.add(Marker(this).apply {
+                                position = point
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                icon = MarkerDrawableUtils.getMarkerDrawable(ctx, shape, color, report.fishingMethod, iconColor)
+                                setOnMarkerClickListener { _, _ -> true }
+                            })
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    onRelease = { it.onDetach() }
+                )
+
+                // Block all touch events on the map
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { }
+                )
             }
 
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(2.dp),
-                color = FishingTheme.colors.secondaryBackground
+            // Zoom button
+            FilledTonalIconButton(
+                onClick = onMapClick,
+                modifier = Modifier
+                    .align(Alignment.TopEnd),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    Text(
-                        text = report.water.waterName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    LocationInfoRow(
-                        report = report,
-                        primaryColor = primaryColor
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.ZoomOutMap,
+                    contentDescription = "Открыть карту",
+                    tint = Color.White
+                )
             }
         }
-    )
-}
 
+        // Badges
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (report.water.isPaid) {
+                LocationBadge(
+                    icon = Icons.Default.AttachMoney,
+                    text = "Платный"
+                )
+            }
+            if (report.fishingFromTheShore) {
+                LocationBadge(
+                    icon = Icons.Default.Anchor,
+                    text = "Ловля с берега"
+                )
+            }
+            if (!report.fishingFromTheShore) {
+                LocationBadge(
+                    icon = Icons.Default.Anchor,
+                    text = "Ловля с лодки"
+                )
+            }
+        }
 
-@Composable
-fun LocationInfoRow(
-    report: FishingReport,
-    primaryColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-    val interactionSource = remember { MutableInteractionSource() }
+        // Water name and coordinates
+        val clipboard = LocalClipboard.current
+        val scope = rememberCoroutineScope()
 
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = "GPS координаты: ",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = primaryColor,
-            fontWeight = FontWeight.Normal
-        )
-
-        Icon(
-            imageVector = Icons.Default.ContentCopy,
-            contentDescription = null,
-            tint = primaryColor.copy(alpha = 0.8f),
+        Row(
             modifier = Modifier
-                .padding(start = 4.dp)
-                .size(18.dp)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null
-                ) {
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 0.dp, top = 0.dp, bottom = 0.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Text(
+                    text = report.water.waterName,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(
+                onClick = {
                     scope.launch {
                         clipboard.setClipEntry(
                             ClipEntry(
@@ -225,28 +219,64 @@ fun LocationInfoRow(
                             )
                         )
                     }
-                }
-        )
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = "Копировать координаты",
+                    tint = primaryColor
+                )
+            }
+        }
     }
 }
 
-private fun createMarkerBitmap(color: Int): Bitmap {
-    val size = 60
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+@Composable
+private fun AndroidDrawable(
+    drawable: android.graphics.drawable.Drawable,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        factory = { ctx ->
+            android.widget.ImageView(ctx).apply {
+                setImageDrawable(drawable)
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            }
+        },
+        modifier = modifier
+    )
+}
 
-    paint.color = color
-    val path = Path()
-    path.moveTo(size / 2f, size.toFloat())
-    path.cubicTo(0f, size * 0.6f, 0f, 0f, size / 2f, 0f)
-    path.cubicTo(size.toFloat(), 0f, size.toFloat(), size * 0.6f, size / 2f, size.toFloat())
-    canvas.drawPath(path, paint)
-
-    paint.color = android.graphics.Color.WHITE
-    canvas.drawCircle(size / 2f, size / 3f, size / 6f, paint)
-
-    return bitmap
+@Composable
+private fun LocationBadge(
+    icon: ImageVector,
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(15.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Preview(showBackground = true)
@@ -255,18 +285,19 @@ fun ReportLocationSectionPreview() {
     FishingTheme {
         val sampleReport = FishingReport(
             userId = UUID.randomUUID(),
-            type = FishingType.FISHING_LOG,
+            type = FishingType.HAUL,
             name = "Тестовый отчет",
             water = Water(
-                waterName = "Озеро Нарочь",
-                latitude = 54.8510,
-                longitude = 26.7086
+                waterName = "Заславское водохранилище, Дамба",
+                latitude = 54.32344,
+                longitude = 54.23425,
+                isPaid = true
             ),
             photo = listOf(),
             fishingTime = Date(),
             weight = 0.0,
             fish = listOf(),
-            fishingMethod = FishingMethod.BOBBER,
+            fishingMethod = FishingMethod.SPINNING,
             bait = listOf(),
             comment = "",
             user = User(name = "Иван Иванов", image = "", email = ""),
