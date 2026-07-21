@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fishing.ui.theme.FishingTheme
@@ -28,7 +29,7 @@ fun FishingBadge(
         shape = RoundedCornerShape(6.dp)
     ) {
         Row(
-            modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -56,8 +57,8 @@ fun FishingBadge(
 fun TrophyBadge(modifier: Modifier = Modifier) {
     FishingBadge(
         text = "Трофей",
-        containerColor = FishingTheme.colors.trophyYellow,
-        contentColor = FishingTheme.colors.textOnTrophy,
+        containerColor = Color(0xFFFFD71D), // FFD71D
+        contentColor = Color(0xFF50250A),   // 50250A
         modifier = modifier
     )
 }
@@ -66,8 +67,8 @@ fun TrophyBadge(modifier: Modifier = Modifier) {
 fun DraftBadge(modifier: Modifier = Modifier) {
     FishingBadge(
         text = "Не опубликован",
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        containerColor = Color(0xFFD8E2FF), // D8E2FF
+        contentColor = Color(0xFF2C4678),   // 2C4678
         modifier = modifier
     )
 }
@@ -80,4 +81,21 @@ fun PublishedBadge(modifier: Modifier = Modifier) {
         contentColor = Color(0xFF689F38),
         modifier = modifier
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun BadgesPreview() {
+    FishingTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TrophyBadge()
+            DraftBadge()
+            FishingBadge(text = "Ловля с берега")
+            FishingBadge(text = "Платный")
+            PublishedBadge()
+        }
+    }
 }

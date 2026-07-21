@@ -109,17 +109,23 @@ fun ReportSummary(report: FishingReport, modifier: Modifier = Modifier) {
         ) {
             Text(
                 text = dateFormatter.format(report.fishingTime),
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = " • ",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium),
                 color = Color.Black // Figma shows black dot? actually it's material-theme/sys/light/on-surface according to design tokens
             )
             Text(
                 text = report.water.waterName,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.secondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

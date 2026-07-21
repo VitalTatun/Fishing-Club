@@ -278,60 +278,6 @@ fun ReportBadges(
 }
 
 @Composable
-fun TrophyBadge() {
-    BadgeWithIcon(
-        icon = Icons.Default.EmojiEvents,
-        text = "Трофей",
-        backgroundColor = FishingTheme.colors.trophyYellow,
-        contentColor = FishingTheme.colors.textOnTrophy
-    )
-}
-
-@Composable
-fun DraftBadge() {
-    BadgeWithIcon(
-        icon = Icons.Default.Lock,
-        text = "Не опубликован",
-        backgroundColor = MaterialTheme.colorScheme.primary,
-        contentColor = Color.White
-    )
-}
-
-@Composable
-private fun BadgeWithIcon(
-    icon: ImageVector,
-    text: String,
-    backgroundColor: Color,
-    contentColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        color = backgroundColor,
-        shape = RoundedCornerShape(6.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(15.dp),
-                tint = contentColor
-            )
-            Text(
-                text = text,
-                color = contentColor,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
 fun TagChip(
     text: String,
     icon: ImageVector,

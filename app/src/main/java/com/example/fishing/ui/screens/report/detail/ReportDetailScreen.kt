@@ -36,9 +36,6 @@ fun ReportDetailScreen(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
                 title = { }, // Title is now in the content
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -57,7 +54,6 @@ fun ReportDetailScreen(
                         )
                     }
 
-                    Box {
                         IconButton(onClick = { menuExpanded = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
@@ -91,7 +87,7 @@ fun ReportDetailScreen(
                                 }
                             )
                         }
-                    }
+
                 }
             )
         },

@@ -7,8 +7,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Anchor
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.*
@@ -177,12 +175,10 @@ fun ReportLocationSection(
         ) {
             if (report.water.isPaid) {
                 FishingBadge(
-                    icon = Icons.Default.AttachMoney,
                     text = "Платный"
                 )
             }
             FishingBadge(
-                icon = Icons.Default.Anchor,
                 text = if (report.fishingFromTheShore) "Ловля с берега" else "Ловля с лодки"
             )
         }
