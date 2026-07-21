@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.report.create
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.HorizontalDivider

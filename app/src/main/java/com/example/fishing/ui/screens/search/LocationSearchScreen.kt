@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.search
 
 import android.location.Address
 import android.location.Geocoder

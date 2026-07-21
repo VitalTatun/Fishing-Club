@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.report.create
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

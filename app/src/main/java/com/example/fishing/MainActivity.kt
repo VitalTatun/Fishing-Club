@@ -17,17 +17,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.fishing.ui.screens.CatchEditScreen
-import com.example.fishing.ui.screens.CommentEditScreen
-import com.example.fishing.ui.screens.FishingMethodAndBaitScreen
-import com.example.fishing.ui.screens.FishingLocationScreen
-import com.example.fishing.ui.screens.FullScreenPhotoScreen
-import com.example.fishing.ui.screens.CreateReportScreen
-import com.example.fishing.ui.screens.LocationSearchScreen
-import com.example.fishing.ui.screens.MainScreen
-import com.example.fishing.ui.screens.MapScreen
-import com.example.fishing.ui.screens.ReportDetailScreen
-import com.example.fishing.ui.screens.ReportDetailLoadingScreen
+import com.example.fishing.ui.screens.report.create.CatchEditScreen
+import com.example.fishing.ui.screens.report.create.CommentEditScreen
+import com.example.fishing.ui.screens.report.create.FishingMethodAndBaitScreen
+import com.example.fishing.ui.screens.report.create.FishingLocationScreen
+import com.example.fishing.ui.screens.report.detail.FullScreenPhotoScreen
+import com.example.fishing.ui.screens.report.create.CreateReportScreen
+import com.example.fishing.ui.screens.search.LocationSearchScreen
+import com.example.fishing.ui.screens.main.MainScreen
+import com.example.fishing.ui.screens.map.MapScreen
+import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
+import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.Bait
@@ -36,8 +36,7 @@ import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.LoginViewModel
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.FishingRepository
-import com.example.fishing.ui.screens.LoginScreen
-import org.osmdroid.config.Configuration
+import com.example.fishing.ui.screens.login.LoginScreen
 import org.osmdroid.util.GeoPoint
 import android.Manifest
 import android.content.pm.PackageManager
@@ -69,11 +68,6 @@ class MainActivity : ComponentActivity() {
 
         // Запрос разрешений
         requestLocationPermissions()
-
-        // Инициализация конфигурации OSM
-        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
-        Configuration.getInstance().userAgentValue = packageName
-        Configuration.getInstance().osmdroidBasePath = cacheDir
 
         enableEdgeToEdge()
         setContent {

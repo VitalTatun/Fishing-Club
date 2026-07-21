@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.map
 
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler

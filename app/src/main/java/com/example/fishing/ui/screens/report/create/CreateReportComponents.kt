@@ -1,7 +1,6 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.report.create
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,7 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-internal object CreateReportColors {
+object CreateReportColors {
     val ScreenBackground = Color(0xFFF7F7F5)
     val Surface = Color.White
     val OnSurface = Color(0xFF1A1B20)

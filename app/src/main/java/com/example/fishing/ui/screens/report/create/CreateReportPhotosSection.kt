@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.report.create
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult

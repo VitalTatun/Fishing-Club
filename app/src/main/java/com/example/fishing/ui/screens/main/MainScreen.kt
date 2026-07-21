@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.main
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +23,8 @@ import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingReportItem
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.ui.screens.map.MapScreen
+import com.example.fishing.ui.screens.profile.ProfileScreen
 import java.util.*
 
 sealed class BottomNavItem(val title: String, val icon: ImageVector) {
@@ -186,30 +188,10 @@ fun MainScreen(
                     )
                 }
                 2 -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        if (userEmail != null) {
-                            Text(
-                                text = userEmail,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = CreateReportColors.OnSurface
-                            )
-                            Spacer(modifier = Modifier.height(24.dp))
-                        }
-                        OutlinedButton(
-                            onClick = onLogout,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = CreateReportColors.OnSurface
-                            )
-                        ) {
-                            Text("Выйти")
-                        }
-                    }
+                    ProfileScreen(
+                        userEmail = userEmail,
+                        onLogout = onLogout
+                    )
                 }
             }
         }

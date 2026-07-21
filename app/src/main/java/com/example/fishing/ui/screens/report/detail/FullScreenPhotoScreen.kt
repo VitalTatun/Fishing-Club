@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.report.detail
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState

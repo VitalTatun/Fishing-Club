@@ -1,4 +1,4 @@
-package com.example.fishing.ui.screens
+package com.example.fishing.ui.screens.report.detail
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.ui.screens.report.create.MoodSection
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.*
