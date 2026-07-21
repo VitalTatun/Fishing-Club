@@ -1,12 +1,10 @@
 package com.example.fishing.ui.components
 
 import android.content.ClipData
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Anchor
@@ -20,9 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -47,50 +43,29 @@ fun ReportLocationSection(
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {}
 ) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-
     Column(
-        modifier = modifier.padding(horizontal = 16.dp),
-
-            ) {
-        Text(
-            text = "Водоем",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-        )
-
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         // Map
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp)
+                .height(160.dp)
                 .clip(RoundedCornerShape(16.dp))
         ) {
             val inPreview = LocalInspectionMode.current
 
             if (inPreview) {
-                val ctx = LocalContext.current
-                val previewTrophyColor = FishingTheme.colors.trophyYellow.toArgb()
-                val markerDrawable = remember(previewTrophyColor, report.fishingMethod) {
-                    MarkerDrawableUtils.getMarkerDrawable(
-                        ctx,
-                        MarkerShape.DROP,
-                        previewTrophyColor,
-                        report.fishingMethod,
-                        android.graphics.Color.parseColor("#50250A")
-                    )
-                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    AndroidDrawable(
-                        drawable = markerDrawable,
-                        modifier = Modifier.size(48.dp)
-                    )
+                    Text("Карта")
                 }
             } else {
                 val regularColorInt = MaterialTheme.colorScheme.primary.toArgb()
@@ -138,67 +113,28 @@ fun ReportLocationSection(
             }
 
             // Zoom button
-            FilledTonalIconButton(
+            OverlayIconButton(
+                icon = Icons.Default.ZoomOutMap,
                 onClick = onMapClick,
                 modifier = Modifier
-                    .align(Alignment.TopEnd),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ZoomOutMap,
-                    contentDescription = "Открыть карту",
-                    tint = Color.White
-                )
-            }
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                contentDescription = "Открыть карту"
+            )
         }
 
-        // Badges
+        // Name and Coordinates Row
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            if (report.water.isPaid) {
-                LocationBadge(
-                    icon = Icons.Default.AttachMoney,
-                    text = "Платный"
-                )
-            }
-            if (report.fishingFromTheShore) {
-                LocationBadge(
-                    icon = Icons.Default.Anchor,
-                    text = "Ловля с берега"
-                )
-            }
-            if (!report.fishingFromTheShore) {
-                LocationBadge(
-                    icon = Icons.Default.Anchor,
-                    text = "Ловля с лодки"
-                )
-            }
-        }
-
-        // Water name and coordinates
-        val clipboard = LocalClipboard.current
-        val scope = rememberCoroutineScope()
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 0.dp, top = 0.dp, bottom = 0.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = report.water.waterName,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
@@ -207,6 +143,9 @@ fun ReportLocationSection(
                 )
             }
 
+            val clipboard = LocalClipboard.current
+            val scope = rememberCoroutineScope()
+            
             IconButton(
                 onClick = {
                     scope.launch {
@@ -219,61 +158,32 @@ fun ReportLocationSection(
                             )
                         )
                     }
-                },
+                }
             ) {
                 Icon(
                     imageVector = Icons.Default.ContentCopy,
                     contentDescription = "Копировать координаты",
-                    tint = primaryColor
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
-    }
-}
 
-@Composable
-private fun AndroidDrawable(
-    drawable: android.graphics.drawable.Drawable,
-    modifier: Modifier = Modifier
-) {
-    AndroidView(
-        factory = { ctx ->
-            android.widget.ImageView(ctx).apply {
-                setImageDrawable(drawable)
-                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-            }
-        },
-        modifier = modifier
-    )
-}
-
-@Composable
-private fun LocationBadge(
-    icon: ImageVector,
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(6.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
+        // Badges
         Row(
-            modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(15.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            if (report.water.isPaid) {
+                FishingBadge(
+                    icon = Icons.Default.AttachMoney,
+                    text = "Платный"
+                )
+            }
+            FishingBadge(
+                icon = Icons.Default.Anchor,
+                text = if (report.fishingFromTheShore) "Ловля с берега" else "Ловля с лодки"
             )
         }
     }
@@ -304,9 +214,6 @@ fun ReportLocationSectionPreview() {
             fishingFromTheShore = true,
             isPublic = true
         )
-        ReportLocationSection(
-            report = sampleReport,
-            modifier = Modifier.padding(16.dp)
-        )
+        ReportLocationSection(report = sampleReport)
     }
 }

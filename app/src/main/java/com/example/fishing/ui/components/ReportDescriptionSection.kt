@@ -35,41 +35,37 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
 
     Column(
         modifier = modifier
-            .fillMaxWidth(),
-//            .padding(horizontal = 16.dp),
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 16.dp, bottom = 16.dp),
-//                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Text(
+                text = report.comment,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    lineHeight = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                maxLines = 5,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { isOverflowed = it.hasVisualOverflow }
+            )
+            if (isOverflowed) {
                 Text(
-                    text = report.comment,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 5,
-                    overflow = TextOverflow.Ellipsis,
-                    onTextLayout = { isOverflowed = it.hasVisualOverflow }
+                    text = "Подробнее",
+                    color = Color(0xFF007AFF),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                        .clickable { showSheet = true },
+                    textAlign = TextAlign.End,
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                if (isOverflowed) {
-                    Text(
-                        text = "Подробнее",
-                        color = Color(0xFF007AFF),
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showSheet = true },
-                        textAlign = TextAlign.End,
-                        style = MaterialTheme.typography.bodyMedium
-
-                    )
-                }
             }
         }
     }

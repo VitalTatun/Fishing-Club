@@ -21,9 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
-import com.example.fishing.ui.screens.report.create.MoodSection
 import org.osmdroid.util.GeoPoint
-import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,33 +31,15 @@ fun ReportDetailScreen(
     onBackClick: () -> Unit,
     onMapClick: (GeoPoint) -> Unit = {}
 ) {
-    val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("ru"))
     var menuExpanded by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                title = {
-                    Column {
-                        Text(
-                            text = report.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = dateFormatter.format(report.fishingTime),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                },
+                title = { }, // Title is now in the content
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -126,9 +106,11 @@ fun ReportDetailScreen(
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(report = report)
+            
+            // 2. Описание отчета
             ReportDescriptionSection(report = report)
-            MoodSection(selectedMood = 5)
-            // Баннер публикации (если черновик)
+
+            // 3. Баннер публикации (если черновик)
             if (!report.isPublic) {
                 PublishBanner()
             }
@@ -140,8 +122,9 @@ fun ReportDetailScreen(
                     onMapClick(GeoPoint(report.water.latitude, report.water.longitude))
                 }
             )
-            // Общая информация (Mood, Details, Catch)
-            ReportGeneralInfo(report = report)
+            
+            // 5. Детальная информация в виде сетки
+            ReportInfoGrid(report = report)
         }
     }
 }
@@ -196,9 +179,7 @@ fun ReportDetailScreenPreview() {
             weight = 3.2,
             fish = listOf(
                 Fish(name = "Карась", count = 2),
-                Fish(name = "Окунь", count = 2),
-                Fish(name = "Лещ", count = 2),
-                Fish(name = "Подлещик", count = 2)
+                Fish(name = "Окунь", count = 2)
             ),
             fishingMethod = FishingMethod.BOBBER,
             bait = listOf(Bait.BLOODWORM, Bait.MAGGOT),
@@ -230,7 +211,7 @@ fun ReportDetailScreenTrophyPreview() {
             ),
             fishingMethod = FishingMethod.SPINNING,
             bait = listOf(Bait.WOBBLER),
-            comment = "Наконец-то поймал свой трофей! Щука на 8.5 кг и сом на 4 кг. Взяли на воблер, поклёвка была мощная. Ещё и погода порадовала — весь день солнце.",
+            comment = "Наконец-то поймал свой трофей! Щука на 8.5 кг и сом на 4 кг. Взяли на воблер, поклёвка была мощная.",
             user = sampleUser,
             fishingFromTheShore = false,
             isPublic = false
