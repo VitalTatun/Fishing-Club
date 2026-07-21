@@ -24,11 +24,15 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifier) {
+fun ReportDescriptionSection(
+    report: FishingReport,
+    modifier: Modifier = Modifier,
+    forceShowExpand: Boolean = false
+) {
     if (report.comment.isBlank()) return
 
     var showSheet by remember { mutableStateOf(false) }
-    var isOverflowed by remember { mutableStateOf(false) }
+    var isOverflowed by remember { mutableStateOf(forceShowExpand) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = false
     )
@@ -47,25 +51,24 @@ fun ReportDescriptionSection(report: FishingReport, modifier: Modifier = Modifie
             Text(
                 text = report.comment,
                 style = MaterialTheme.typography.bodyMedium.copy(
-                    lineHeight = 20.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 ),
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
-                onTextLayout = { isOverflowed = it.hasVisualOverflow }
+                onTextLayout = { 
+                    if (!forceShowExpand) {
+                        isOverflowed = it.hasVisualOverflow 
+                    }
+                }
             )
             if (isOverflowed) {
-                Text(
-                    text = "Подробнее",
-                    color = Color(0xFF007AFF),
-                    fontWeight = FontWeight.Medium,
+                TextButton(
+                    onClick = { showSheet = true },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                        .clickable { showSheet = true },
-                    textAlign = TextAlign.End,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                        .align(Alignment.End)
+                ) {
+                    Text(text = "Подробнее")
+                }
             }
         }
     }
@@ -109,17 +112,17 @@ fun ReportDescriptionSectionPreview() {
         fish = listOf(),
         fishingMethod = FishingMethod.FEEDER,
         bait = listOf(),
-        comment = "В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб! Замешав вечерком плотву с орехом от Feeder.by с утра поехал на мелководную часть вдх посмотреть как там обстоят дела с рыбкой...",
+        comment = "В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб! Замешав вечерком плотву с орехом от Feeder.by с утра поехал на мелководную часть вдх посмотреть как там обстоят дела с рыбкой. Место выбрал перспективное, глубина около полутора метров, дно песчано-илистое. Первые поклевки начались уже через полчаса после закорма. Сначала подошла мелкая плотва, но ближе к полудню проклюнулся и подлещик. Погода радовала, штиль и теплое июльское солнце создавали идеальную атмосферу. В итоге удалось поймать около пяти килограмм разнорыбицы, среди которых было несколько действительно достойных экземпляров. Обязательно вернусь сюда снова, чтобы проверить еще несколько точек на этом участке.",
         user = User(name = "Виталий", image = "", email = ""),
         fishingFromTheShore = true,
         isPublic = true
     )
     Box(
         modifier = Modifier
+            .width(360.dp)
             .background(MaterialTheme.colorScheme.background)
-//            .padding(16.dp)
     ) {
-        ReportDescriptionSection(report = sampleReport)
+        ReportDescriptionSection(report = sampleReport, forceShowExpand = true)
     }
 }
 
