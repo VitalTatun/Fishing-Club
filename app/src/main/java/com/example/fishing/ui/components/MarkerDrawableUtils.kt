@@ -11,7 +11,7 @@ import com.example.fishing.R
 import com.example.fishing.model.FishingMethod
 
 enum class MarkerShape {
-    CIRCLE, DROP
+    CIRCLE, DROP, DOT
 }
 
 object MarkerDrawableUtils {
@@ -38,9 +38,14 @@ object MarkerDrawableUtils {
         method: FishingMethod,
         iconColor: Int
     ): Drawable {
+        if (shape == MarkerShape.DOT) {
+            return createDotMarker(context, color)
+        }
+
         val bgRes = when (shape) {
             MarkerShape.CIRCLE -> R.drawable.ic_marker_circle
             MarkerShape.DROP -> R.drawable.ic_marker_drop
+            else -> R.drawable.ic_marker_drop
         }
 
         val bgDrawable = ContextCompat.getDrawable(context, bgRes)!!.mutate()
@@ -65,12 +70,40 @@ object MarkerDrawableUtils {
                 val iconTop = when (shape) {
                     MarkerShape.CIRCLE -> (height - iconSize) / 2
                     MarkerShape.DROP -> (height / 3 - iconSize / 2)
+                    else -> (height / 3 - iconSize / 2)
                 }
 
                 iconDrawable.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
                 iconDrawable.draw(canvas)
             }
         }
+
+        return BitmapDrawable(context.resources, bitmap)
+    }
+
+    private fun createDotMarker(context: Context, color: Int): Drawable {
+        val density = context.resources.displayMetrics.density
+        val size = (60 * density).toInt() // Outer circle diameter
+        val innerSize = (10 * density).toInt()
+        val strokeWidth = (2 * density)
+
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+        // 1. Outer circle
+        paint.color = android.graphics.Color.BLACK
+        paint.alpha = (0.2 * 255).toInt()
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+
+        // 2. White stroke for inner dot
+        paint.alpha = 255
+        paint.color = android.graphics.Color.WHITE
+        canvas.drawCircle(size / 2f, size / 2f, innerSize / 2f + strokeWidth, paint)
+
+        // 3. Inner dot
+        paint.color = color
+        canvas.drawCircle(size / 2f, size / 2f, innerSize / 2f, paint)
 
         return BitmapDrawable(context.resources, bitmap)
     }

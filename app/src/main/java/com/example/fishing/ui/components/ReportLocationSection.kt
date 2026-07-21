@@ -16,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -63,7 +64,32 @@ fun ReportLocationSection(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Карта")
+                    Text(
+                        text = "Карта",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    // Marker Preview
+                    val markerColor = if (report.type == FishingType.HAUL) 
+                        Color(0xFFFFD71D) else MaterialTheme.colorScheme.primary
+                        
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .background(Color.Black.copy(alpha = 0.2f), shape = RoundedCornerShape(50.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .background(markerColor, shape = RoundedCornerShape(50.dp))
+                                .padding(2.dp)
+                                .background(Color.White, shape = RoundedCornerShape(50.dp))
+                                .padding(2.dp)
+                                .background(markerColor, shape = RoundedCornerShape(50.dp))
+                        )
+                    }
                 }
             } else {
                 val regularColorInt = MaterialTheme.colorScheme.primary.toArgb()
@@ -83,13 +109,13 @@ fun ReportLocationSection(
                             val point = GeoPoint(report.water.latitude, report.water.longitude)
                             controller.setCenter(point)
 
-                            val shape = MarkerShape.DROP
+                            val shape = MarkerShape.DOT
                             val color = if (report.type == FishingType.HAUL) trophyColorInt else regularColorInt
                             val iconColor = if (report.type == FishingType.HAUL) trophyIconColorInt else android.graphics.Color.WHITE
 
                             overlays.add(Marker(this).apply {
                                 position = point
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                                 icon = MarkerDrawableUtils.getMarkerDrawable(ctx, shape, color, report.fishingMethod, iconColor)
                                 setOnMarkerClickListener { _, _ -> true }
                             })
