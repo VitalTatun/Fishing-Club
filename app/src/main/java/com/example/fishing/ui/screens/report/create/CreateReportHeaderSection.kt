@@ -1,17 +1,34 @@
 package com.example.fishing.ui.screens.report.create
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -113,42 +130,90 @@ internal fun ReportHeaderSection(
         }
     }
 
-    SectionCard(
-        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         val supportingText = when (reportType) {
             "Трофей" -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
             else -> "Отчет - для обычных заметок: можно без фото, количество рыб не ограничено."
         }
 
-        ReportDropdownField(
-            value = reportType,
-            onValueChange = onReportTypeChange,
-            label = "Тип",
-            options = listOf("Отчет", "Трофей"),
-            supportingText = supportingText
-        )
-        Spacer(Modifier.height(8.dp))
+        var expanded by remember { mutableStateOf(false) }
+        val options = listOf("Отчет", "Трофей")
+
+        Column {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    value = reportType,
+                    onValueChange = {},
+                    label = { Text("Тип") },
+                    readOnly = true,
+                    modifier = Modifier
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                        .fillMaxWidth(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                onReportTypeChange(option)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Text(
+                text = supportingText,
+                color = CreateReportColors.OnSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ReportPickerField(
-                value = fishingDate,
-                onValueChange = onFishingDateChange,
-                label = "Дата *",
+            OutlinedTextField(
+                value = fishingDate.ifEmpty { " " },
+                onValueChange = {},
+                label = { Text("Дата *") },
+                readOnly = true,
                 modifier = Modifier.weight(1f),
-                onClick = { showDatePicker = true }
+                singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDatePicker)
+                    }
+                }
             )
-            ReportPickerField(
-                value = fishingStartTime,
-                onValueChange = onFishingStartTimeChange,
-                label = "Время *",
+            OutlinedTextField(
+                value = fishingStartTime.ifEmpty { " " },
+                onValueChange = {},
+                label = { Text("Время *") },
+                readOnly = true,
                 modifier = Modifier.weight(1f),
-                onClick = { showTimePicker = true }
+                singleLine = true,
+                trailingIcon = {
+                    IconButton(onClick = { showTimePicker = true }) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTimePicker)
+                    }
+                }
             )
         }
-        Spacer(Modifier.height(8.dp))
         SwitchRow(
             title = "Опубликовать",
             checked = isPublic,

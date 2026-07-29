@@ -77,7 +77,7 @@ internal fun PhotosSectionContent(
             title = "Фотографии",
             subtitle = "Максимально 6 фотографий, до 10мб.",
             hasData = selectedPhotoUris.isNotEmpty(),
-            onAddClick = onAddClick)
+            onArrowClick = onAddClick)
 
         if (selectedPhotoUris.isNotEmpty()) {
             LazyRow(

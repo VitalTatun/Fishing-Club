@@ -40,16 +40,17 @@ internal fun WaterSection(
 ) {
     val hasData = (location != null) || waterName.isNotBlank()
     
-    SectionCard(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 0.dp)) {
+    SectionCard(contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 0.dp)) {
         val subtitle = if (location != null) {
             String.format(Locale.US, "%.4f, %.4f", location.latitude, location.longitude)
         } else {
             null
         }
         
-        SectionHeader(
+        Section(
             title = "Водоем*",
             subtitle = subtitle,
+            hasData = hasData,
             onArrowClick = onArrowClick,
         )
         

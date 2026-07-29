@@ -183,13 +183,7 @@ fun CreateReportScreen(
                     ) {
                         Icon(Icons.Default.Check, contentDescription = "Сохранить")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CreateReportColors.Surface,
-                    titleContentColor = CreateReportColors.OnSurface,
-                    navigationIconContentColor = CreateReportColors.OnSurface,
-                    actionIconContentColor = CreateReportColors.OnSurface
-                )
+                }
             )
         }
     ) { paddingValues ->

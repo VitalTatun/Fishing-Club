@@ -16,8 +16,9 @@ internal fun CommentSection(
     onArrowClick: () -> Unit = {}
 ) {
     SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
-        SectionHeader(
+        Section(
             title = "Комментарий",
+            hasData = comment.isNotBlank(),
             onArrowClick = onArrowClick
         )
         if (comment.isNotBlank()) {

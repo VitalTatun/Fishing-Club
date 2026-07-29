@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,7 +21,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -60,13 +58,15 @@ object CreateReportColors {
 internal fun SectionCard(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(CreateReportColors.Surface)
+            .background(MaterialTheme.colorScheme.surface)
             .padding(contentPadding),
+        verticalArrangement = verticalArrangement,
         content = content
     )
 }
@@ -101,7 +101,6 @@ internal fun ReportTextField(
         trailingIcon = trailingIcon,
         textStyle = MaterialTheme.typography.bodyLarge,
         shape = RoundedCornerShape(4.dp),
-        colors = reportTextFieldColors()
     )
 }
 
@@ -136,7 +135,6 @@ internal fun ReportDropdownField(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             textStyle = MaterialTheme.typography.bodyLarge,
             shape = RoundedCornerShape(4.dp),
-            colors = reportTextFieldColors()
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -162,98 +160,28 @@ internal fun ReportPickerField(
     label: String,
     modifier: Modifier = Modifier,
     leadingIcon: @Composable (() -> Unit)? = null,
+    supportingText: String? = null,
     onClick: () -> Unit = {}
 ) {
-    Box(modifier = modifier) {
-        ReportTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = label,
-            readOnly = true,
-            leadingIcon = leadingIcon,
-            trailingIcon = {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-            }
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clickable(onClick = onClick)
-        )
-    }
-}
-
-@Composable
-internal fun SectionHeader(
-    title: String,
-    modifier: Modifier = Modifier,
-    subtitle: String? = null,
-    badge: String? = null,
-    showArrow: Boolean = true,
-    enabled: Boolean = true,
-    onClick: (() -> Unit)? = null,
-    onArrowClick: (() -> Unit)? = null
-) {
-    Row(
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .then(
-                if (onClick != null && onArrowClick == null) {
-                    Modifier.clickable(enabled = enabled, onClick = onClick)
-                } else Modifier
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = title,
-                color = CreateReportColors.OnSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    color = CreateReportColors.OnSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-        if (badge != null) {
-            Text(
-                text = badge,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(21.dp))
-                    .background(CreateReportColors.SecondaryContainer)
-                    .padding(horizontal = 15.dp, vertical = 7.dp),
-                color = CreateReportColors.OnSecondaryContainer,
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
-        if (showArrow) {
-            if (onArrowClick != null) {
-                IconButton(onClick = onArrowClick, enabled = enabled) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = if (enabled) CreateReportColors.OnSurface else CreateReportColors.Outline
-                    )
-                }
-            } else {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = if (enabled) CreateReportColors.OnSurface else CreateReportColors.Outline,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-    }
+            .clickable(onClick = onClick),
+        label = { Text(label) },
+        supportingText = supportingText?.let { { Text(it) } },
+        readOnly = true,
+        singleLine = true,
+        leadingIcon = leadingIcon,
+        trailingIcon = {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+        },
+        textStyle = MaterialTheme.typography.bodyLarge,
+        shape = RoundedCornerShape(4.dp),
+        colors = reportTextFieldColors()
+    )
 }
 
 @Composable
@@ -272,14 +200,14 @@ internal fun InfoRow(
     ) {
         Text(
             text = label,
-            color = CreateReportColors.OnSurface,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyLarge,
             maxLines = 1
         )
         Text(
             text = value,
             modifier = Modifier.weight(1f),
-            color = CreateReportColors.OnSurface,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.End,
             maxLines = 2,
@@ -300,7 +228,7 @@ internal fun SwitchRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {

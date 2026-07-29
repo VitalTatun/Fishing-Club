@@ -28,7 +28,7 @@ internal fun Section(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     hasData: Boolean = false,
-    onAddClick: (() -> Unit)? = null
+    onArrowClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
@@ -55,9 +55,9 @@ internal fun Section(
                 )
             }
         }
-        if (onAddClick != null) {
+        if (onArrowClick != null) {
             FilledTonalIconButton(
-                onClick = onAddClick,
+                onClick = onArrowClick,
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -79,7 +79,7 @@ private fun SectionPreview() {
     FishingTheme {
         Section(
             title = "Фотографии",
-            onAddClick = {}
+            onArrowClick = {}
         )
     }
 }
@@ -91,7 +91,7 @@ private fun SectionWithDataPreview() {
         Section(
             title = "Фотографии",
             hasData = true,
-            onAddClick = {}
+            onArrowClick = {}
         )
     }
 }
@@ -103,7 +103,7 @@ private fun SectionWithSubtitlePreview() {
         Section(
             title = "Фотографии",
             subtitle = "Добавьте фото вашего улова",
-            onAddClick = {}
+            onArrowClick = {}
         )
     }
 }

@@ -38,9 +38,8 @@ internal fun MoodSection(
     onMoodChange: (Int) -> Unit,
 ) {
     SectionCard(contentPadding = PaddingValues(0.dp)) {
-        SectionHeader(
+        Section(
             title = "Эмоциональная оценка",
-            showArrow = false,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Column(

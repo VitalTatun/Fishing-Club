@@ -14,8 +14,9 @@ internal fun MethodAndBaitSection(
     onArrowClick: () -> Unit
 ) {
     SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
-        SectionHeader(
+        Section(
             title = "Способ ловли и наживка*",
+            hasData = selectedMethod != FishingMethod.NONE || selectedBaits.isNotEmpty(),
             onArrowClick = onArrowClick
         )
         if (selectedMethod != FishingMethod.NONE) {
