@@ -85,8 +85,7 @@ fun CreateReportScreen(
 
     val isSaveEnabled by remember {
         derivedStateOf {
-            viewModel.formTitle.isNotBlank() &&
-                    viewModel.formWaterName.isNotBlank() &&
+            viewModel.formWaterName.isNotBlank() &&
                     viewModel.formLocation != null &&
                     viewModel.formSelectedMethod != FishingMethod.NONE &&
                     viewModel.formSelectedFish.isNotEmpty()
@@ -95,8 +94,7 @@ fun CreateReportScreen(
 
     val formHasData by remember {
         derivedStateOf {
-            viewModel.formTitle.isNotBlank() ||
-                    viewModel.formWaterName.isNotBlank() ||
+            viewModel.formWaterName.isNotBlank() ||
                     viewModel.formLocation != null ||
                     viewModel.formSelectedMethod != FishingMethod.NONE ||
                     viewModel.formSelectedFish.isNotEmpty() ||
@@ -205,12 +203,14 @@ fun CreateReportScreen(
         ) {
             item {
                 ReportHeaderSection(
-                    title = viewModel.formTitle,
-                    onTitleChange = { viewModel.formTitle = it },
                     reportType = viewModel.formReportType,
                     onReportTypeChange = { viewModel.formReportType = it },
                     isPublic = viewModel.formIsPublic,
                     onPublicChange = { viewModel.formIsPublic = it },
+                    fishingDate = viewModel.formFishingDate,
+                    onFishingDateChange = { viewModel.formFishingDate = it },
+                    fishingStartTime = viewModel.formFishingStartTime,
+                    onFishingStartTimeChange = { viewModel.formFishingStartTime = it },
                 )
             }
             item {
@@ -242,14 +242,6 @@ fun CreateReportScreen(
                     selectedMethod = viewModel.formSelectedMethod,
                     selectedBaits = viewModel.formSelectedBaits,
                     onArrowClick = onNavigateToMethodAndBaitEdit
-                )
-            }
-            item {
-                DateAndTimeSection(
-                    fishingDate = viewModel.formFishingDate,
-                    onFishingDateChange = { viewModel.formFishingDate = it },
-                    fishingStartTime = viewModel.formFishingStartTime,
-                    onFishingStartTimeChange = { viewModel.formFishingStartTime = it },
                 )
             }
             item {

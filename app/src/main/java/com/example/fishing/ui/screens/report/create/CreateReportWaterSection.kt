@@ -69,8 +69,7 @@ internal fun WaterSection(
             SwitchRow(
                 title = "Платный водоем",
                 checked = isPaidWater,
-                onCheckedChange = onPaidWaterChange,
-                showDivider = false
+                onCheckedChange = onPaidWaterChange
             )
         }
     }

@@ -21,7 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +40,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.ui.theme.FishingTheme
 
 object CreateReportColors {
     val ScreenBackground = Color(0xFFF7F7F5)
@@ -80,6 +81,7 @@ internal fun ReportTextField(
     singleLine: Boolean = true,
     readOnly: Boolean = false,
     minLines: Int = 1,
+    supportingText: String? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
@@ -91,6 +93,7 @@ internal fun ReportTextField(
             .heightIn(min = 56.dp),
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
+        supportingText = supportingText?.let { { Text(it) } },
         readOnly = readOnly,
         singleLine = singleLine,
         minLines = minLines,
@@ -109,7 +112,8 @@ internal fun ReportDropdownField(
     onValueChange: (String) -> Unit,
     label: String,
     options: List<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    supportingText: String? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -126,6 +130,7 @@ internal fun ReportDropdownField(
                 .fillMaxWidth()
                 .heightIn(min = 56.dp),
             label = { Text(label) },
+            supportingText = supportingText?.let { { Text(it) } },
             readOnly = true,
             singleLine = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -288,24 +293,34 @@ internal fun SwitchRow(
     title: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    showDivider: Boolean = true
+    supportingText: String? = null
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            modifier = Modifier.weight(1f),
-            color = CreateReportColors.OnSurface,
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-    if (showDivider) {
-        HorizontalDivider(color = CreateReportColors.Outline)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = CreateReportColors.OnSurface,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+
+                )
+                if (supportingText != null) {
+                    Text(
+                        text = supportingText,
+                        color = CreateReportColors.OnSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
     }
 }
 
@@ -327,3 +342,23 @@ private fun reportTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTrailingIconColor = CreateReportColors.OnSurfaceVariant,
     unfocusedTrailingIconColor = CreateReportColors.OnSurfaceVariant
 )
+
+@Preview(showBackground = true)
+@Composable
+private fun SwitchRowPreview() {
+    FishingTheme {
+        Column {
+            SwitchRow(
+                title = "Публичный отчет",
+                checked = true,
+                onCheckedChange = {},
+                supportingText = "Ваш отчет будет виден всем пользователям"
+            )
+            SwitchRow(
+                title = "Рыбалка с берега",
+                checked = false,
+                onCheckedChange = {},
+            )
+        }
+    }
+}
