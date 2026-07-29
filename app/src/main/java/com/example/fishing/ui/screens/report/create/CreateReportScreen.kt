@@ -214,12 +214,6 @@ fun CreateReportScreen(
                 )
             }
             item {
-                MoodSection(
-                    selectedMood = viewModel.formMood,
-                    onMoodChange = { viewModel.formMood = it },
-                )
-            }
-            item {
                 PhotosSection(
                     selectedPhotoUris = viewModel.formSelectedPhotoUris,
                     onPhotosChange = { viewModel.formSelectedPhotoUris = it }

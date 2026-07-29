@@ -73,13 +73,12 @@ internal fun PhotosSectionContent(
     onRemoveClick: (Uri) -> Unit
 ) {
     SectionCard(contentPadding = PaddingValues(0.dp)) {
-        SectionHeader(
+        Section(
             title = "Фотографии",
-            badge = "${selectedPhotoUris.size}/$MaxPhotos",
-            onArrowClick = onAddClick,
-            enabled = selectedPhotoUris.size < MaxPhotos,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+            subtitle = "Максимально 6 фотографий, до 10мб.",
+            hasData = selectedPhotoUris.isNotEmpty(),
+            onAddClick = onAddClick)
+
         if (selectedPhotoUris.isNotEmpty()) {
             LazyRow(
                 modifier = Modifier
