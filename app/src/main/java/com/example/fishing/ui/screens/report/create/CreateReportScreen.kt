@@ -189,7 +189,7 @@ fun CreateReportScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             item {

@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,7 +20,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -98,6 +102,10 @@ internal fun PhotosSectionContent(
                 }
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 
@@ -107,27 +115,32 @@ private fun PhotoTile(
     onRemoveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.clip(RoundedCornerShape(16.dp))) {
+    Box(
+        modifier = modifier
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clip(RoundedCornerShape(16.dp))
+    ) {
         AsyncImage(
             model = photoUri,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        Surface(
+        FilledTonalIconButton(
+            onClick = onRemoveClick,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(2.dp)
-                .size(28.dp),
-            onClick = onRemoveClick,
-            shape = CircleShape,
-            color = CreateReportColors.SecondaryContainer,
-            contentColor = CreateReportColors.OnSecondaryContainer
+                .padding(8.dp)
+                .size(32.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Удалить фото",
-                modifier = Modifier.padding(6.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }

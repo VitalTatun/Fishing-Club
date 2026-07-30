@@ -73,6 +73,10 @@ internal fun WaterSection(
                 onCheckedChange = onPaidWaterChange
             )
         }
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 

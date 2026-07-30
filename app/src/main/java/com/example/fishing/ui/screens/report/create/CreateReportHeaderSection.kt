@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -97,90 +98,99 @@ internal fun ReportHeaderSection(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val supportingText = when (reportType) {
-            FishingType.HAUL -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
-            FishingType.FISHING_LOG -> "Отчет - для обычных заметок: можно без фото, количество рыб не ограничено."
-        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val supportingText = when (reportType) {
+                FishingType.HAUL -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
+                FishingType.FISHING_LOG -> "Отчет - для обычных заметок: можно без фото, количество рыб не ограничено."
+            }
 
-        var expanded by remember { mutableStateOf(false) }
+            var expanded by remember { mutableStateOf(false) }
 
-        Column {
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+            Column {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = reportType.displayName,
+                        onValueChange = {},
+                        label = { Text("Тип") },
+                        readOnly = true,
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                            .fillMaxWidth(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        FishingType.entries.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.displayName) },
+                                onClick = {
+                                    onReportTypeChange(type)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = supportingText,
+                    color = CreateReportColors.OnSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedTextField(
-                    value = reportType.displayName,
+                    value = fishingDate.ifEmpty { " " },
                     onValueChange = {},
-                    label = { Text("Тип") },
+                    label = { Text("Дата *") },
                     readOnly = true,
-                    modifier = Modifier
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
-                        .fillMaxWidth(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDatePicker)
+                        }
+                    }
                 )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    FishingType.entries.forEach { type ->
-                        DropdownMenuItem(
-                            text = { Text(type.displayName) },
-                            onClick = {
-                                onReportTypeChange(type)
-                                expanded = false
-                            }
-                        )
+                OutlinedTextField(
+                    value = fishingStartTime.ifEmpty { " " },
+                    onValueChange = {},
+                    label = { Text("Время *") },
+                    readOnly = true,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { showTimePicker = true }) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTimePicker)
+                        }
                     }
-                }
+                )
             }
-            Text(
-                text = supportingText,
-                color = CreateReportColors.OnSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            SwitchRow(
+                title = "Опубликовать",
+                checked = isPublic,
+                onCheckedChange = onPublicChange,
+                supportingText = "Ваш отчет пополнит карту уловов и вдохновит других рыбаков. Если хотите сохранить место в секрете - просто отключите публикацию."
             )
         }
-
-        Row(
+        HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = fishingDate.ifEmpty { " " },
-                onValueChange = {},
-                label = { Text("Дата *") },
-                readOnly = true,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                trailingIcon = {
-                    IconButton(onClick = { showDatePicker = true }) {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDatePicker)
-                    }
-                }
-            )
-            OutlinedTextField(
-                value = fishingStartTime.ifEmpty { " " },
-                onValueChange = {},
-                label = { Text("Время *") },
-                readOnly = true,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                trailingIcon = {
-                    IconButton(onClick = { showTimePicker = true }) {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTimePicker)
-                    }
-                }
-            )
-        }
-        SwitchRow(
-            title = "Опубликовать",
-            checked = isPublic,
-            onCheckedChange = onPublicChange,
-            supportingText = "Ваш отчет пополнит карту уловов и вдохновит других рыбаков. Если хотите сохранить место в секрете - просто отключите публикацию."
+            color = MaterialTheme.colorScheme.outlineVariant
         )
     }
 }
