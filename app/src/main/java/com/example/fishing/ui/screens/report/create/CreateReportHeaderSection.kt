@@ -1,22 +1,12 @@
 package com.example.fishing.ui.screens.report.create
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
@@ -25,7 +15,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -36,24 +25,25 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import com.example.fishing.model.FishingType
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ReportHeaderSection(
-    reportType: String,
-    onReportTypeChange: (String) -> Unit,
+    reportType: FishingType,
+    onReportTypeChange: (FishingType) -> Unit,
     isPublic: Boolean,
     onPublicChange: (Boolean) -> Unit,
     fishingDate: String,
@@ -64,69 +54,42 @@ internal fun ReportHeaderSection(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
-    val datePickerState = rememberDatePickerState()
-    val timePickerState = rememberTimePickerState()
+    val currentTime = Calendar.getInstance()
+    val timePickerState = rememberTimePickerState(
+        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
+        initialMinute = currentTime.get(Calendar.MINUTE),
+        is24Hour = true,
+    )
 
     if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val date = Date(millis)
-                        val formatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
-                        onFishingDateChange(formatter.format(date))
-                    }
-                    showDatePicker = false
-                }) {
-                    Text("OK")
+        FishingDatePickerDialog(
+            onDismiss = { showDatePicker = false },
+            onConfirm = { millis ->
+                millis?.let {
+                    val date = Date(it)
+                    val formatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
+                    onFishingDateChange(formatter.format(date))
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Отмена")
-                }
+                showDatePicker = false
             }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+        )
     }
 
     if (showTimePicker) {
-        Dialog(onDismissRequest = { showTimePicker = false }) {
-            SectionCard {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = "Выберите время",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    TimePicker(state = timePickerState)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showTimePicker = false }) {
-                            Text("Отмена")
-                        }
-                        TextButton(onClick = {
-                            val formattedTime = String.format(
-                                Locale.getDefault(),
-                                "%02d:%02d",
-                                timePickerState.hour,
-                                timePickerState.minute
-                            )
-                            onFishingStartTimeChange(formattedTime)
-                            showTimePicker = false
-                        }) {
-                            Text("OK")
-                        }
-                    }
-                }
+        TimePickerDialog(
+            onDismiss = { showTimePicker = false },
+            onConfirm = {
+                val formattedTime = String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    timePickerState.hour,
+                    timePickerState.minute
+                )
+                onFishingStartTimeChange(formattedTime)
+                showTimePicker = false
             }
+        ) {
+            TimePicker(state = timePickerState)
         }
     }
 
@@ -138,12 +101,11 @@ internal fun ReportHeaderSection(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         val supportingText = when (reportType) {
-            "Трофей" -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
-            else -> "Отчет - для обычных заметок: можно без фото, количество рыб не ограничено."
+            FishingType.HAUL -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
+            FishingType.FISHING_LOG -> "Отчет - для обычных заметок: можно без фото, количество рыб не ограничено."
         }
 
         var expanded by remember { mutableStateOf(false) }
-        val options = listOf("Отчет", "Трофей")
 
         Column {
             ExposedDropdownMenuBox(
@@ -151,7 +113,7 @@ internal fun ReportHeaderSection(
                 onExpandedChange = { expanded = !expanded }
             ) {
                 OutlinedTextField(
-                    value = reportType,
+                    value = reportType.displayName,
                     onValueChange = {},
                     label = { Text("Тип") },
                     readOnly = true,
@@ -164,11 +126,11 @@ internal fun ReportHeaderSection(
                     expanded = expanded,
                     onDismissRequest = { expanded = false }
                 ) {
-                    options.forEach { option ->
+                    FishingType.entries.forEach { type ->
                         DropdownMenuItem(
-                            text = { Text(option) },
+                            text = { Text(type.displayName) },
                             onClick = {
-                                onReportTypeChange(option)
+                                onReportTypeChange(type)
                                 expanded = false
                             }
                         )
@@ -228,7 +190,7 @@ internal fun ReportHeaderSection(
 private fun ReportHeaderSectionPreview() {
     FishingTheme {
         ReportHeaderSection(
-            reportType = "Отчет",
+            reportType = FishingType.FISHING_LOG,
             onReportTypeChange = {},
             isPublic = false,
             onPublicChange = {},
@@ -245,7 +207,7 @@ private fun ReportHeaderSectionPreview() {
 private fun ReportHeaderSectionTrophyPreview() {
     FishingTheme {
         ReportHeaderSection(
-            reportType = "Трофей",
+            reportType = FishingType.HAUL,
             onReportTypeChange = {},
             isPublic = true,
             onPublicChange = {},
@@ -255,4 +217,51 @@ private fun ReportHeaderSectionTrophyPreview() {
             onFishingStartTimeChange = {}
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FishingDatePickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Long?) -> Unit
+) {
+    val datePickerState = rememberDatePickerState()
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onConfirm(datePickerState.selectedDateMillis) }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }) {
+                Text("Отмена")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
+@Composable
+private fun TimePickerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }) {
+                Text("Отмена")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm() }) {
+                Text("OK")
+            }
+        },
+        text = { content() }
+    )
 }

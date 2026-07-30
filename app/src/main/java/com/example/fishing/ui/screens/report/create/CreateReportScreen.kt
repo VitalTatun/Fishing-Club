@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.FishingType
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
 import org.osmdroid.util.GeoPoint
@@ -50,7 +51,7 @@ fun CreateReportScreen(
     onBackClick: () -> Unit,
     onSaveClick: (
         title: String,
-        type: String,
+        type: FishingType,
         waterName: String,
         location: GeoPoint?,
         fishingTime: Date,
@@ -141,7 +142,6 @@ fun CreateReportScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = CreateReportColors.ScreenBackground,
         topBar = {
             TopAppBar(
                 title = {
@@ -160,14 +160,11 @@ fun CreateReportScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val combinedDateTime = Calendar.getInstance().apply {
-                                time = dateFormatter.parse(viewModel.formFishingDate) ?: Date()
-                                val timeParts = viewModel.formFishingStartTime.split(":")
-                                if (timeParts.size == 2) {
-                                    set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
-                                    set(Calendar.MINUTE, timeParts[1].toInt())
-                                }
-                            }.time
+                            val combinedDateTime = combineDateAndTime(
+                                viewModel.formFishingDate,
+                                viewModel.formFishingStartTime,
+                                dateFormatter
+                            )
 
                             onSaveClick(
                                 viewModel.formTitle, viewModel.formReportType, viewModel.formWaterName,
@@ -258,6 +255,21 @@ fun CreateReportScreen(
             }
         }
     }
+}
+
+private fun combineDateAndTime(
+    dateString: String,
+    timeString: String,
+    dateFormatter: SimpleDateFormat
+): Date {
+    val calendar = Calendar.getInstance()
+    calendar.time = dateFormatter.parse(dateString) ?: Date()
+    val timeParts = timeString.split(":")
+    if (timeParts.size == 2) {
+        calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+        calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+    }
+    return calendar.time
 }
 
 @Preview(showBackground = true, widthDp = 412)

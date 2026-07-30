@@ -13,7 +13,7 @@ internal fun MethodAndBaitSection(
     selectedBaits: List<Bait>,
     onArrowClick: () -> Unit
 ) {
-    SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
+    SectionCard(contentPadding = PaddingValues(horizontal = 0.dp)) {
         Section(
             title = "Способ ловли и наживка*",
             hasData = selectedMethod != FishingMethod.NONE || selectedBaits.isNotEmpty(),

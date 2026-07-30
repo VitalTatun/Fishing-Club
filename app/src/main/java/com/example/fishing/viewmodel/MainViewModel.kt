@@ -59,7 +59,7 @@ class MainViewModel @Inject constructor(
 
     // Create report form state (survives navigation — ViewModel scoped to Activity)
     var formTitle by mutableStateOf("")
-    var formReportType by mutableStateOf("Отчет")
+    var formReportType by mutableStateOf(FishingType.FISHING_LOG)
     var formWaterName by mutableStateOf("")
     var formSelectedPhotoUris by mutableStateOf<List<Uri>>(emptyList())
     var formFishingDate by mutableStateOf("")
@@ -267,7 +267,7 @@ class MainViewModel @Inject constructor(
 
     fun saveNewReport(
         title: String,
-        type: String,
+        type: FishingType,
         waterName: String,
         location: GeoPoint?,
         fishingTime: Date,
@@ -285,7 +285,7 @@ class MainViewModel @Inject constructor(
             val currentUser = authRepository.currentUser()
             val report = FishingReport(
                 userId = currentUser?.id ?: UUID.randomUUID(),
-                type = if (type == "Отчет") FishingType.FISHING_LOG else FishingType.HAUL,
+                type = type,
                 name = title,
                 water = Water(
                     waterName = waterName,
@@ -322,7 +322,7 @@ class MainViewModel @Inject constructor(
 
     fun resetFormState() {
         formTitle = ""
-        formReportType = "Отчет"
+        formReportType = FishingType.FISHING_LOG
         formWaterName = ""
         formSelectedPhotoUris = emptyList()
         formFishingDate = ""
