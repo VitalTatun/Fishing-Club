@@ -207,6 +207,9 @@ class MainActivity : ComponentActivity() {
                             currentEntry.savedStateHandle.get<List<Fish>>("fish")?.let {
                                 viewModel.formSelectedFish = it
                             }
+                            currentEntry.savedStateHandle.get<Float>("weight")?.let {
+                                viewModel.formWeight = it
+                            }
                             currentEntry.savedStateHandle.get<String>("comment")?.let {
                                 viewModel.formComment = it
                             }
@@ -225,6 +228,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToCatchEdit = {
                                     currentEntry.savedStateHandle["fish"] = ArrayList(viewModel.formSelectedFish)
+                                    currentEntry.savedStateHandle["weight"] = viewModel.formWeight
                                     navController.navigate("catch_edit")
                                 },
                                 onNavigateToMethodAndBaitEdit = {
@@ -316,14 +320,21 @@ class MainActivity : ComponentActivity() {
                             val currentFish = navController.previousBackStackEntry
                                 ?.savedStateHandle
                                 ?.get<List<Fish>>("fish") ?: emptyList()
+                            val currentWeight = navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.get<Float>("weight") ?: 0f
 
                             CatchEditScreen(
                                 fishList = currentFish,
+                                initialWeight = currentWeight,
                                 onBackClick = { navController.popBackStack() },
-                                onSaveClick = { fish ->
+                                onSaveClick = { fish, weight ->
                                     navController.previousBackStackEntry
                                         ?.savedStateHandle
                                         ?.set("fish", ArrayList(fish))
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("weight", weight)
                                     navController.popBackStack()
                                 }
                             )

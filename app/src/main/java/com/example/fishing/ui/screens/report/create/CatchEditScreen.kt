@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,11 +54,13 @@ import com.example.fishing.ui.theme.FishingTheme
 @Composable
 fun CatchEditScreen(
     fishList: List<Fish>,
+    initialWeight: Float = 0f,
     onBackClick: () -> Unit,
-    onSaveClick: (List<Fish>) -> Unit,
+    onSaveClick: (List<Fish>, Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var fishNameInput by remember { mutableStateOf("") }
+    var weightInput by remember { mutableStateOf(if (initialWeight > 0f) initialWeight.toString() else "") }
     var isDuplicateError by remember { mutableStateOf(false) }
     val editableFish = remember(fishList) {
         mutableStateListOf<Fish>().also { it.addAll(fishList) }
@@ -104,7 +107,10 @@ fun CatchEditScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { onSaveClick(editableFish.toList()) },
+                        onClick = {
+                            val weight = weightInput.toFloatOrNull() ?: 0f
+                            onSaveClick(editableFish.toList(), weight)
+                        },
                         enabled = editableFish.isNotEmpty()
                     ) {
                         Icon(Icons.Default.Check, contentDescription = "Сохранить")
@@ -133,19 +139,49 @@ fun CatchEditScreen(
                     { Text("Уже есть в списке") }
                 } else null,
                 trailingIcon = {
-                    IconButton(
-                        onClick = { addFishFromInput() },
-                        enabled = fishNameInput.isNotBlank()
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Добавить",
-                            tint = if (fishNameInput.isNotBlank()) 
-                                MaterialTheme.colorScheme.primary 
-                            else MaterialTheme.colorScheme.outline
-                        )
+                    if (isDuplicateError) {
+                        IconButton(
+                            onClick = {
+                                fishNameInput = ""
+                                isDuplicateError = false
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Очистить",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else {
+                        IconButton(
+                            onClick = { addFishFromInput() },
+                            enabled = fishNameInput.isNotBlank()
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Добавить",
+                                tint = if (fishNameInput.isNotBlank())
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
                 },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+
+            OutlinedTextField(
+                value = weightInput,
+                onValueChange = { newValue ->
+                    if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,1}$"))) {
+                        weightInput = newValue
+                    }
+                },
+                label = { Text("Общий вес") },
+                suffix = { Text("кг") },
+                singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
@@ -301,8 +337,9 @@ private fun CatchEditScreenPreview() {
                 Fish(name = "Окунь", count = 1),
                 Fish(name = "Плотва", count = 4)
             ),
+            initialWeight = 2.5f,
             onBackClick = {},
-            onSaveClick = { }
+            onSaveClick = { _, _ -> }
         )
     }
 }

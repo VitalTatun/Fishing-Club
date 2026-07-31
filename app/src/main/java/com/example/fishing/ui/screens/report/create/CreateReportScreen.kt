@@ -234,7 +234,6 @@ fun CreateReportScreen(
                     selectedFish = viewModel.formSelectedFish,
                     onArrowClick = onNavigateToCatchEdit,
                     weight = viewModel.formWeight,
-                    onWeightChange = { viewModel.formWeight = it },
                 )
             }
             item {
