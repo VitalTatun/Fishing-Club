@@ -3,6 +3,7 @@ package com.example.fishing.ui.screens.report.create
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,7 +16,7 @@ internal fun CommentSection(
     comment: String = "",
     onArrowClick: () -> Unit = {}
 ) {
-    SectionCard(contentPadding = PaddingValues(horizontal = 16.dp)) {
+    SectionCard(contentPadding = PaddingValues(horizontal = 0.dp)) {
         Section(
             title = "Комментарий",
             hasData = comment.isNotBlank(),
@@ -33,5 +34,9 @@ internal fun CommentSection(
                 overflow = TextOverflow.Ellipsis
             )
         }
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }

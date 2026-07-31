@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.fishing.ui.theme.FishingTheme
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -41,15 +43,9 @@ internal fun WaterSection(
     val hasData = (location != null) || waterName.isNotBlank()
     
     SectionCard(contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 0.dp)) {
-        val subtitle = if (location != null) {
-            String.format(Locale.US, "%.4f, %.4f", location.latitude, location.longitude)
-        } else {
-            null
-        }
-        
+
         Section(
             title = "Водоем*",
-            subtitle = subtitle,
             hasData = hasData,
             onArrowClick = onArrowClick,
         )
@@ -88,6 +84,7 @@ private fun MapPreview(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp)
             .height(114.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFFBFE3EA))
@@ -137,6 +134,34 @@ private fun MapPreview(
                 .align(Alignment.Center)
                 .size(36.dp),
             tint = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Без данных")
+@Composable
+private fun WaterSectionEmptyPreview() {
+    FishingTheme {
+        WaterSection(
+            waterName = "",
+            onWaterNameChange = {},
+            onArrowClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "С данными")
+@Composable
+private fun WaterSectionWithDataPreview() {
+    FishingTheme {
+        WaterSection(
+            waterName = "Озеро Байкал",
+            onWaterNameChange = {},
+            onArrowClick = {},
+            fishingFromShore = true,
+            onFishingFromShoreChange = {},
+            isPaidWater = false,
+            onPaidWaterChange = {}
         )
     }
 }

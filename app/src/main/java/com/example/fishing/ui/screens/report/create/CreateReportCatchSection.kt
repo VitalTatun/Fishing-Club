@@ -34,20 +34,24 @@ internal fun CatchSection(
                 InfoRow(
                     label = fish.name,
                     value = "${fish.count} шт.",
-                    contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp)
+                    contentPadding = PaddingValues(vertical = 12.dp, horizontal = 32.dp)
                 )
                 if (index < selectedFish.lastIndex) {
                     HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
                         color = CreateReportColors.Divider
                     )
                 }
             }
             if (weight > 0f) {
-                HorizontalDivider(color = CreateReportColors.Divider)
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = CreateReportColors.Divider
+                )
                 InfoRow(
                     label = "Общий вес",
                     value = "${(weight * 10).toInt() / 10f} кг",
-                    contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp)
+                    contentPadding = PaddingValues(vertical = 16.dp, horizontal = 32.dp)
                 )
             }
         }
