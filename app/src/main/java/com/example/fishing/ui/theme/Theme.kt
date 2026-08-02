@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// 1. Класс для ваших кастомных цветов
 @Immutable
 data class FishingCustomColors(
     val trophyYellow: Color = Color.Unspecified,
@@ -29,7 +28,6 @@ data class FishingCustomColors(
     val secondaryBackground: Color = Color.Unspecified
 )
 
-// 2. Значения для светлой темы
 val LightCustomColors = FishingCustomColors(
     trophyYellow = Color(0xFFFFD71D),
     bookmarkRed = Color(0xFFFF3E00),
@@ -37,18 +35,15 @@ val LightCustomColors = FishingCustomColors(
     secondaryBackground = Color(0xFFF2F3F4)
 )
 
-// 3. Значения для темной темы
 val DarkCustomColors = FishingCustomColors(
     trophyYellow = Color(0xFFFFE04D),
     bookmarkRed = Color(0xFFFF521A),
     textOnTrophy = Color(0xFF331706),
-    secondaryBackground = Color(0xFF1E1F25) // Темный вариант для блоков
+    secondaryBackground = Color(0xFF1E1F25)
 )
 
-// 4. Local для доступа
 val LocalFishingCustomColors = staticCompositionLocalOf { FishingCustomColors() }
 
-// Объект-помощник
 object FishingTheme {
     val colors: FishingCustomColors
         @Composable
@@ -80,7 +75,18 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = surfaceVariantDark,
     onSurfaceVariant = onSurfaceVariantDark,
     outline = outlineDark,
-    outlineVariant = outlineVariantDark
+    outlineVariant = outlineVariantDark,
+    scrim = scrimDark,
+    inverseSurface = inverseSurfaceDark,
+    inverseOnSurface = inverseOnSurfaceDark,
+    inversePrimary = inversePrimaryDark,
+    surfaceDim = surfaceDimDark,
+    surfaceBright = surfaceBrightDark,
+    surfaceContainerLowest = surfaceContainerLowestDark,
+    surfaceContainerLow = surfaceContainerLowDark,
+    surfaceContainer = surfaceContainerDark,
+    surfaceContainerHigh = surfaceContainerHighDark,
+    surfaceContainerHighest = surfaceContainerHighestDark
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -107,13 +113,23 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = surfaceVariantLight,
     onSurfaceVariant = onSurfaceVariantLight,
     outline = outlineLight,
-    outlineVariant = outlineVariantLight
+    outlineVariant = outlineVariantLight,
+    scrim = scrimLight,
+    inverseSurface = inverseSurfaceLight,
+    inverseOnSurface = inverseOnSurfaceLight,
+    inversePrimary = inversePrimaryLight,
+    surfaceDim = surfaceDimLight,
+    surfaceBright = surfaceBrightLight,
+    surfaceContainerLowest = surfaceContainerLowestLight,
+    surfaceContainerLow = surfaceContainerLowLight,
+    surfaceContainer = surfaceContainerLight,
+    surfaceContainerHigh = surfaceContainerHighLight,
+    surfaceContainerHighest = surfaceContainerHighestLight
 )
 
 @Composable
 fun FishingTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -128,7 +144,7 @@ fun FishingTheme(
     }
 
     val customColors = if (darkTheme) DarkCustomColors else LightCustomColors
-    
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
