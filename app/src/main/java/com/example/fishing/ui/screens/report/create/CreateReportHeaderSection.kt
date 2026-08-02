@@ -1,6 +1,7 @@
 package com.example.fishing.ui.screens.report.create
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,16 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -26,11 +22,12 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.model.FishingType
@@ -52,6 +49,85 @@ internal fun ReportHeaderSection(
     fishingStartTime: String,
     onFishingStartTimeChange: (String) -> Unit,
 ) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ReportTypeSelector(
+                reportType = reportType,
+                onReportTypeChange = onReportTypeChange
+            )
+
+            ReportDateTimeRow(
+                date = fishingDate,
+                onDateChange = onFishingDateChange,
+                time = fishingStartTime,
+                onTimeChange = onFishingStartTimeChange
+            )
+
+            SwitchRow(
+                title = "Опубликовать",
+                checked = isPublic,
+                onCheckedChange = onPublicChange,
+                supportingText = "Ваш отчет пополнит карту уловов и вдохновит других рыбаков. Если хотите сохранить место в секрете — просто отключите публикацию."
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+    }
+}
+
+@Composable
+internal fun ReportTypeSelector(
+    reportType: FishingType,
+    onReportTypeChange: (FishingType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val supportingText = when (reportType) {
+        FishingType.HAUL -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
+        FishingType.FISHING_LOG -> "Отчет — для обычных заметок: можно без фото, количество рыб не ограничено."
+    }
+
+    Column(modifier = modifier) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FishingType.entries.forEach { type ->
+                FilterChip(
+                    selected = reportType == type,
+                    onClick = { onReportTypeChange(type) },
+                    label = { Text(type.displayName) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                )
+            }
+        }
+        Text(
+            text = supportingText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ReportDateTimeRow(
+    date: String,
+    onDateChange: (String) -> Unit,
+    time: String,
+    onTimeChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
@@ -67,9 +143,9 @@ internal fun ReportHeaderSection(
             onDismiss = { showDatePicker = false },
             onConfirm = { millis ->
                 millis?.let {
-                    val date = Date(it)
+                    val d = Date(it)
                     val formatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
-                    onFishingDateChange(formatter.format(date))
+                    onDateChange(formatter.format(d))
                 }
                 showDatePicker = false
             }
@@ -86,7 +162,7 @@ internal fun ReportHeaderSection(
                     timePickerState.hour,
                     timePickerState.minute
                 )
-                onFishingStartTimeChange(formattedTime)
+                onTimeChange(formattedTime)
                 showTimePicker = false
             }
         ) {
@@ -94,104 +170,47 @@ internal fun ReportHeaderSection(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            val supportingText = when (reportType) {
-                FishingType.HAUL -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
-                FishingType.FISHING_LOG -> "Отчет - для обычных заметок: можно без фото, количество рыб не ограничено."
-            }
-
-            var expanded by remember { mutableStateOf(false) }
-
-            Column {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = reportType.displayName,
-                        onValueChange = {},
-                        label = { Text("Тип") },
-                        readOnly = true,
-                        modifier = Modifier
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
-                            .fillMaxWidth(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        FishingType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.displayName) },
-                                onClick = {
-                                    onReportTypeChange(type)
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Text(
-                    text = supportingText,
-                    color = CreateReportColors.OnSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = fishingDate.ifEmpty { " " },
-                    onValueChange = {},
-                    label = { Text("Дата *") },
-                    readOnly = true,
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDatePicker)
-                        }
-                    }
-                )
-                OutlinedTextField(
-                    value = fishingStartTime.ifEmpty { " " },
-                    onValueChange = {},
-                    label = { Text("Время *") },
-                    readOnly = true,
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(onClick = { showTimePicker = true }) {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTimePicker)
-                        }
-                    }
-                )
-            }
-            SwitchRow(
-                title = "Опубликовать",
-                checked = isPublic,
-                onCheckedChange = onPublicChange,
-                supportingText = "Ваш отчет пополнит карту уловов и вдохновит других рыбаков. Если хотите сохранить место в секрете - просто отключите публикацию."
+            Text(
+                text = "Дата",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = date.ifEmpty { "—" },
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable { showDatePicker = true }
             )
         }
-        HorizontalDivider(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Время",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = time.ifEmpty { "—" },
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable { showTimePicker = true }
+            )
+        }
     }
 }
 
@@ -212,19 +231,26 @@ private fun ReportHeaderSectionPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Трофей")
+@Preview(showBackground = true, name = "Тип отчета")
 @Composable
-private fun ReportHeaderSectionTrophyPreview() {
+private fun ReportTypeSelectorPreview() {
     FishingTheme {
-        ReportHeaderSection(
-            reportType = FishingType.HAUL,
-            onReportTypeChange = {},
-            isPublic = true,
-            onPublicChange = {},
-            fishingDate = "29 июля 2026",
-            onFishingDateChange = {},
-            fishingStartTime = "16:30",
-            onFishingStartTimeChange = {}
+        ReportTypeSelector(
+            reportType = FishingType.FISHING_LOG,
+            onReportTypeChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Дата и время")
+@Composable
+private fun ReportDateTimeRowPreview() {
+    FishingTheme {
+        ReportDateTimeRow(
+            date = "2 августа 2026",
+            onDateChange = {},
+            time = "19:30",
+            onTimeChange = {}
         )
     }
 }

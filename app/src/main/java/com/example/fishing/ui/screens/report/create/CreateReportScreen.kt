@@ -193,16 +193,32 @@ fun CreateReportScreen(
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             item {
-                ReportHeaderSection(
-                    reportType = viewModel.formReportType,
-                    onReportTypeChange = { viewModel.formReportType = it },
-                    isPublic = viewModel.formIsPublic,
-                    onPublicChange = { viewModel.formIsPublic = it },
-                    fishingDate = viewModel.formFishingDate,
-                    onFishingDateChange = { viewModel.formFishingDate = it },
-                    fishingStartTime = viewModel.formFishingStartTime,
-                    onFishingStartTimeChange = { viewModel.formFishingStartTime = it },
-                )
+                SectionCard {
+                    ReportTypeSelector(
+                        reportType = viewModel.formReportType,
+                        onReportTypeChange = { viewModel.formReportType = it }
+                    )
+                }
+            }
+            item {
+                SectionCard {
+                    ReportDateTimeRow(
+                        date = viewModel.formFishingDate,
+                        onDateChange = { viewModel.formFishingDate = it },
+                        time = viewModel.formFishingStartTime,
+                        onTimeChange = { viewModel.formFishingStartTime = it }
+                    )
+                }
+            }
+            item {
+                SectionCard {
+                    SwitchRow(
+                        title = "Опубликовать",
+                        checked = viewModel.formIsPublic,
+                        onCheckedChange = { viewModel.formIsPublic = it },
+                        supportingText = "Ваш отчет пополнит карту уловов и вдохновит других рыбаков. Если хотите сохранить место в секрете — просто отключите публикацию."
+                    )
+                }
             }
             item {
                 PhotosSection(
