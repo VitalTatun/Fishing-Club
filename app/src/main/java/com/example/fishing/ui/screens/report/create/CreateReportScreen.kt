@@ -208,7 +208,12 @@ fun CreateReportScreen(
                 SectionCard {
                     ReportTypeSelector(
                         reportType = viewModel.formReportType,
-                        onReportTypeChange = { viewModel.formReportType = it }
+                        onReportTypeChange = { newType ->
+                            viewModel.formReportType = newType
+                            if (newType == FishingType.HAUL && viewModel.formSelectedFish.size > 1) {
+                                viewModel.formSelectedFish = listOf(viewModel.formSelectedFish.first().copy(count = 1))
+                            }
+                        }
                     )
                 }
             }
