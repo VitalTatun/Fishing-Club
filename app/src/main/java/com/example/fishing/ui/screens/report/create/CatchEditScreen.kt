@@ -70,15 +70,19 @@ fun CatchEditScreen(
         mutableStateListOf<Fish>().also { it.addAll(fishList) }
     }
 
+    fun addFishToList(name: String) {
+        if (isTrophy && editableFish.isNotEmpty()) {
+            editableFish.clear()
+        }
+        editableFish.add(0, Fish(name = name, count = 1))
+    }
+
     fun toggleFishSelection(name: String) {
         val existingIndex = editableFish.indexOfFirst { it.name.equals(name, ignoreCase = true) }
         if (existingIndex != -1) {
             editableFish.removeAt(existingIndex)
         } else {
-            if (isTrophy && editableFish.isNotEmpty()) {
-                editableFish.clear()
-            }
-            editableFish.add(0, Fish(name = name, count = 1))
+            addFishToList(name)
         }
     }
 
@@ -87,10 +91,7 @@ fun CatchEditScreen(
             val trimmedName = fishNameInput.trim().replaceFirstChar { it.titlecase() }
             val exists = editableFish.any { it.name.equals(trimmedName, ignoreCase = true) }
             if (!exists) {
-                if (isTrophy && editableFish.isNotEmpty()) {
-                    editableFish.clear()
-                }
-                editableFish.add(0, Fish(name = trimmedName, count = 1))
+                addFishToList(trimmedName)
                 fishNameInput = ""
                 isDuplicateError = false
             } else {
