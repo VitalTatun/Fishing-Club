@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
@@ -59,7 +60,8 @@ fun CatchEditScreen(
     initialWeight: Float = 0f,
     onBackClick: () -> Unit,
     onSaveClick: (List<Fish>, Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isTrophy: Boolean = false
 ) {
     var fishNameInput by remember { mutableStateOf("") }
     var weightInput by remember { mutableStateOf(if (initialWeight > 0f) initialWeight.toString() else "") }
@@ -73,6 +75,9 @@ fun CatchEditScreen(
         if (existingIndex != -1) {
             editableFish.removeAt(existingIndex)
         } else {
+            if (isTrophy && editableFish.isNotEmpty()) {
+                editableFish.clear()
+            }
             editableFish.add(0, Fish(name = name, count = 1))
         }
     }
@@ -81,6 +86,9 @@ fun CatchEditScreen(
         if (fishNameInput.isNotBlank()) {
             val exists = editableFish.any { it.name.equals(fishNameInput, ignoreCase = true) }
             if (!exists) {
+                if (isTrophy && editableFish.isNotEmpty()) {
+                    editableFish.clear()
+                }
                 editableFish.add(0, Fish(name = fishNameInput, count = 1))
                 fishNameInput = ""
                 isDuplicateError = false
@@ -233,6 +241,27 @@ fun CatchEditScreen(
                         )
                     }
                 }
+
+                if (isTrophy) {
+                    Row(
+                        modifier = Modifier.padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Вы выбрали тип рыбалки «Трофей». Для данного типа доступна только одна рыба, и соответственно один вид.",
+                            color = CreateReportColors.OnSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
 
             Column(
@@ -253,8 +282,11 @@ fun CatchEditScreen(
                             }
                         },
                         onIncrement = {
-                            editableFish[index] = fish.copy(count = fish.count + 1)
-                        }
+                            if (!isTrophy) {
+                                editableFish[index] = fish.copy(count = fish.count + 1)
+                            }
+                        },
+                        isMaxCount = isTrophy && fish.count >= 1
                     )
                 }
             }
@@ -267,7 +299,8 @@ private fun FishQuantityRow(
     name: String,
     count: Int,
     onDecrement: () -> Unit,
-    onIncrement: () -> Unit
+    onIncrement: () -> Unit,
+    isMaxCount: Boolean = false
 ) {
     Row(
         modifier = Modifier
@@ -315,10 +348,11 @@ private fun FishQuantityRow(
             FilledTonalIconButton(
                 onClick = onIncrement,
                 modifier = Modifier.size(52.dp, 40.dp),
+                enabled = !isMaxCount,
                 shape = RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp, topEnd = 16.dp, bottomEnd = 16.dp),
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = CreateReportColors.SecondaryContainer,
-                    contentColor = CreateReportColors.OnSecondaryContainer
+                    containerColor = if (isMaxCount) Color(0xFFE0E0E0) else CreateReportColors.SecondaryContainer,
+                    contentColor = if (isMaxCount) Color(0xFF9E9E9E) else CreateReportColors.OnSecondaryContainer
                 )
             ) {
                 Icon(

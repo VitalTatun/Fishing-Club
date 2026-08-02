@@ -18,6 +18,7 @@ internal fun CatchSection(
     selectedFish: List<Fish> = emptyList(),
     onArrowClick: () -> Unit = {},
     weight: Float = 0f,
+    isRequired: Boolean = false
 ) {
     SectionCard(
         contentPadding = PaddingValues(
@@ -25,8 +26,9 @@ internal fun CatchSection(
         )
     ) {
         Section(
-            title = "Улов*",
+            title = "Улов",
             hasData = selectedFish.isNotEmpty(),
+            isRequired = isRequired,
             onArrowClick = onArrowClick
         )
         if (selectedFish.isNotEmpty()) {

@@ -84,12 +84,24 @@ fun CreateReportScreen(
         }
     }
 
+    val isTrophy = viewModel.formReportType == FishingType.HAUL
+
     val isSaveEnabled by remember {
         derivedStateOf {
-            viewModel.formWaterName.isNotBlank() &&
+            val baseValid = viewModel.formWaterName.isNotBlank() &&
                     viewModel.formLocation != null &&
                     viewModel.formSelectedMethod != FishingMethod.NONE &&
-                    viewModel.formSelectedFish.isNotEmpty()
+                    viewModel.formSelectedBaits.isNotEmpty() &&
+                    viewModel.formSelectedFish.isNotEmpty() &&
+                    viewModel.formFishingDate.isNotBlank()
+
+            if (isTrophy) {
+                baseValid &&
+                        viewModel.formSelectedPhotoUris.isNotEmpty() &&
+                        viewModel.formSelectedFish.size == 1
+            } else {
+                baseValid
+            }
         }
     }
 
@@ -223,7 +235,8 @@ fun CreateReportScreen(
             item {
                 PhotosSection(
                     selectedPhotoUris = viewModel.formSelectedPhotoUris,
-                    onPhotosChange = { viewModel.formSelectedPhotoUris = it }
+                    onPhotosChange = { viewModel.formSelectedPhotoUris = it },
+                    isRequired = isTrophy
                 )
             }
             item {
@@ -236,13 +249,15 @@ fun CreateReportScreen(
                     onFishingFromShoreChange = { viewModel.formFishingFromShore = it },
                     isPaidWater = viewModel.formIsPaidWater,
                     onPaidWaterChange = { viewModel.formIsPaidWater = it },
+                    isRequired = true
                 )
             }
             item {
                 MethodAndBaitSection(
                     selectedMethod = viewModel.formSelectedMethod,
                     selectedBaits = viewModel.formSelectedBaits,
-                    onArrowClick = onNavigateToMethodAndBaitEdit
+                    onArrowClick = onNavigateToMethodAndBaitEdit,
+                    isRequired = true
                 )
             }
             item {
@@ -250,6 +265,7 @@ fun CreateReportScreen(
                     selectedFish = viewModel.formSelectedFish,
                     onArrowClick = onNavigateToCatchEdit,
                     weight = viewModel.formWeight,
+                    isRequired = true
                 )
             }
             item {

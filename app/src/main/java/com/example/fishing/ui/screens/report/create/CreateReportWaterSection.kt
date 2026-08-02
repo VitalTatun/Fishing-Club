@@ -39,14 +39,16 @@ internal fun WaterSection(
     onFishingFromShoreChange: (Boolean) -> Unit = {},
     isPaidWater: Boolean = false,
     onPaidWaterChange: (Boolean) -> Unit = {},
+    isRequired: Boolean = false,
 ) {
     val hasData = (location != null) || waterName.isNotBlank()
     
     SectionCard(contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 0.dp)) {
 
         Section(
-            title = "Водоем*",
+            title = "Водоем",
             hasData = hasData,
+            isRequired = isRequired,
             onArrowClick = onArrowClick,
         )
         

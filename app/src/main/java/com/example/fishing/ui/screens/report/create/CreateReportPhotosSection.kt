@@ -43,7 +43,8 @@ private const val MaxPhotos = 6
 @Composable
 internal fun PhotosSection(
     selectedPhotoUris: List<Uri> = emptyList(),
-    onPhotosChange: (List<Uri>) -> Unit = {}
+    onPhotosChange: (List<Uri>) -> Unit = {},
+    isRequired: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
     val photoPicker = rememberLauncherForActivityResult(
@@ -66,7 +67,8 @@ internal fun PhotosSection(
         },
         onRemoveClick = { uri ->
             onPhotosChange(selectedPhotoUris - uri)
-        }
+        },
+        isRequired = isRequired
     )
 }
 
@@ -74,13 +76,15 @@ internal fun PhotosSection(
 internal fun PhotosSectionContent(
     selectedPhotoUris: List<Uri>,
     onAddClick: () -> Unit,
-    onRemoveClick: (Uri) -> Unit
+    onRemoveClick: (Uri) -> Unit,
+    isRequired: Boolean = false
 ) {
     SectionCard(contentPadding = PaddingValues(0.dp)) {
         Section(
             title = "Фотографии",
             subtitle = "Максимально 6 фотографий, до 10мб.",
             hasData = selectedPhotoUris.isNotEmpty(),
+            isRequired = isRequired,
             onArrowClick = onAddClick)
 
         if (selectedPhotoUris.isNotEmpty()) {

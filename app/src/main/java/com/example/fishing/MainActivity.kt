@@ -323,6 +323,7 @@ class MainActivity : ComponentActivity() {
                             val currentWeight = navController.previousBackStackEntry
                                 ?.savedStateHandle
                                 ?.get<Float>("weight") ?: 0f
+                            val isTrophy = viewModel.formReportType == com.example.fishing.model.FishingType.HAUL
 
                             CatchEditScreen(
                                 fishList = currentFish,
@@ -336,7 +337,8 @@ class MainActivity : ComponentActivity() {
                                         ?.savedStateHandle
                                         ?.set("weight", weight)
                                     navController.popBackStack()
-                                }
+                                },
+                                isTrophy = isTrophy
                             )
                         }
 

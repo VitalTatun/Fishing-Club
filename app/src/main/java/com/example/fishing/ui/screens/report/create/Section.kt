@@ -28,6 +28,7 @@ internal fun Section(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     hasData: Boolean = false,
+    isRequired: Boolean = false,
     onArrowClick: (() -> Unit)? = null
 ) {
     Row(
@@ -42,7 +43,7 @@ internal fun Section(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = title,
+                text = if (isRequired) "$title*" else title,
                 color = CreateReportColors.OnSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium

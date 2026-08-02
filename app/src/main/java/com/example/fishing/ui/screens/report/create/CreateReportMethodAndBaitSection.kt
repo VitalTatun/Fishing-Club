@@ -15,12 +15,14 @@ import com.example.fishing.model.FishingMethod
 internal fun MethodAndBaitSection(
     selectedMethod: FishingMethod,
     selectedBaits: List<Bait>,
-    onArrowClick: () -> Unit
+    onArrowClick: () -> Unit,
+    isRequired: Boolean = false
 ) {
     SectionCard(contentPadding = PaddingValues(horizontal = 0.dp)) {
         Section(
-            title = "Способ ловли и наживка*",
+            title = "Способ ловли и наживка",
             hasData = selectedMethod != FishingMethod.NONE || selectedBaits.isNotEmpty(),
+            isRequired = isRequired,
             onArrowClick = onArrowClick
         )
         if (selectedMethod != FishingMethod.NONE) {
