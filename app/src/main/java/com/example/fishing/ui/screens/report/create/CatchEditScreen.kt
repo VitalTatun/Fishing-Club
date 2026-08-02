@@ -84,12 +84,13 @@ fun CatchEditScreen(
 
     fun addFishFromInput() {
         if (fishNameInput.isNotBlank()) {
-            val exists = editableFish.any { it.name.equals(fishNameInput, ignoreCase = true) }
+            val trimmedName = fishNameInput.trim().replaceFirstChar { it.titlecase() }
+            val exists = editableFish.any { it.name.equals(trimmedName, ignoreCase = true) }
             if (!exists) {
                 if (isTrophy && editableFish.isNotEmpty()) {
                     editableFish.clear()
                 }
-                editableFish.add(0, Fish(name = fishNameInput, count = 1))
+                editableFish.add(0, Fish(name = trimmedName, count = 1))
                 fishNameInput = ""
                 isDuplicateError = false
             } else {
