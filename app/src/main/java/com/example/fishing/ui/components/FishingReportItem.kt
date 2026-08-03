@@ -40,6 +40,7 @@ fun FishingReportItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onDeleteReport: (FishingReport) -> Unit = {},
+    isFavorite: Boolean = false,
 ) {
     Card(
         modifier = modifier
@@ -61,7 +62,7 @@ fun FishingReportItem(
             if (report.photo.isNotEmpty()) {
                 FishingReportPhotos(photos = report.photo)
             }
-            FishingReportHeader(report = report)
+            FishingReportHeader(report = report, isFavorite = isFavorite)
 
             if (report.comment.isNotBlank()) {
                 Text(
@@ -81,7 +82,10 @@ fun FishingReportItem(
 }
 
 @Composable
-private fun FishingReportHeader(report: FishingReport) {
+private fun FishingReportHeader(
+    report: FishingReport,
+    isFavorite: Boolean = false,
+) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
 
     val fishAndMethod = remember(report.fish, report.fishingMethod) {
@@ -116,19 +120,25 @@ private fun FishingReportHeader(report: FishingReport) {
                 overflow = TextOverflow.Ellipsis
             )
 
-            if (report.water.isPaid) {
-                Icon(
-                    imageVector = Icons.Default.Paid,
-                    contentDescription = "Платный водоем",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (report.water.isPaid) {
+                    Icon(
+                        imageVector = Icons.Default.Paid,
+                        contentDescription = "Платный водоем",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (isFavorite) {
+                    Icon(
+                        imageVector = Icons.Default.Bookmark,
+                        contentDescription = "В избранном",
+                        tint = FishingTheme.colors.bookmarkRed,
+                    )
+                }
             }
-            Icon(
-                imageVector = Icons.Default.Bookmark,
-                contentDescription = "Bookmark",
-                tint = FishingTheme.colors.bookmarkRed,
-            )
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {

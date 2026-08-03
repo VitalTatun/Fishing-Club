@@ -38,6 +38,7 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 fun MainScreen(
     reports: List<FishingReport>,
     allReports: List<FishingReport> = reports,
+    favoriteReports: List<FishingReport> = emptyList(),
     mapMarkers: List<MarkerDomain> = emptyList(),
     isLoading: Boolean = false,
     selectedTab: Int = 0,
@@ -120,6 +121,9 @@ fun MainScreen(
             }
             when (selectedTab) {
                 0 -> {
+                    val mergedReports = (reports + favoriteReports)
+                        .distinctBy { it.id }
+                        .sortedByDescending { it.fishingTime }
                     PullToRefreshBox(
                         isRefreshing = isLoading,
                         onRefresh = { viewModel?.refresh() },
@@ -130,7 +134,7 @@ fun MainScreen(
                             contentPadding = PaddingValues(0.dp),
                             verticalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
-                            if (reports.isEmpty() && !isLoading) {
+                            if (mergedReports.isEmpty() && !isLoading) {
                                 item {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -144,9 +148,14 @@ fun MainScreen(
                                     }
                                 }
                             }
-                            itemsIndexed(reports) { index, report ->
-                                FishingReportItem(report = report, onClick = { onReportClick(report) }, onDeleteReport = onDeleteReport)
-                                if (index < reports.lastIndex) {
+                            itemsIndexed(mergedReports) { index, report ->
+                                FishingReportItem(
+                                    report = report,
+                                    onClick = { onReportClick(report) },
+                                    onDeleteReport = onDeleteReport,
+                                    isFavorite = favoriteReports.any { it.id == report.id }
+                                )
+                                if (index < mergedReports.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 0.dp),
                                         thickness = 1.dp,

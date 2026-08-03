@@ -38,6 +38,9 @@ class MainViewModel @Inject constructor(
     private val _allReports = MutableStateFlow<List<FishingReport>>(emptyList())
     val allReports: StateFlow<List<FishingReport>> = _allReports.asStateFlow()
 
+    private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
+    val favoriteReports: StateFlow<List<FishingReport>> = _favoriteReports.asStateFlow()
+
     private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
     val mapMarkers: StateFlow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
 
@@ -82,10 +85,12 @@ class MainViewModel @Inject constructor(
     private var allReportsLoadJob: Job? = null
     private var mapMarkersLoadJob: Job? = null
     private var reportDetailsJob: Job? = null
+    private var favoritesLoadJob: Job? = null
     private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
     fun refresh() {
         loadReports(force = true)
+        loadFavorites(force = true)
     }
 
     fun selectTab(index: Int) {
@@ -99,6 +104,7 @@ class MainViewModel @Inject constructor(
 
     fun loadReportsIfNeeded() {
         loadReports(force = false)
+        loadFavorites(force = false)
     }
 
     fun loadMapMarkers(force: Boolean = false) {
@@ -133,6 +139,60 @@ class MainViewModel @Inject constructor(
                     _error.value = "Ошибка загрузки маркеров: ${e.message ?: "неизвестная"}"
                 }
             }
+        }
+    }
+
+    fun loadFavorites(force: Boolean = false) {
+        if (!force && (_favoriteReports.value.isNotEmpty() || favoritesLoadJob?.isActive == true)) {
+            return
+        }
+
+        favoritesLoadJob?.cancel()
+        favoritesLoadJob = viewModelScope.launch {
+            // Observe Room cache
+            launch {
+                try {
+                    repository.getFavoriteReports().collect { reports ->
+                        _favoriteReports.value = reports.map { report ->
+                            report.copy(
+                                photo = resolvePhotoUrls(report.photo)
+                            )
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            // Refresh from network
+            launch {
+                try {
+                    authRepository.currentUser()?.let { currentUser ->
+                        if (repository is SupabaseFishingRepository) {
+                            repository.refreshFavorites(currentUser.id)
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    fun toggleFavorite(report: FishingReport) {
+        val isFavorite = _favoriteReports.value.any { it.id == report.id }
+        viewModelScope.launch {
+            if (isFavorite) {
+                repository.removeFavorite(report.id)
+                _favoriteReports.value = _favoriteReports.value.filterNot { it.id == report.id }
+            } else {
+                repository.addFavorite(report)
+                _favoriteReports.value = (_favoriteReports.value + report).distinctBy { it.id }
+            }
+            loadFavorites(force = true)
         }
     }
 

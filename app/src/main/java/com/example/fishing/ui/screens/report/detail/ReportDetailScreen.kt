@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
@@ -29,7 +30,9 @@ import java.util.*
 fun ReportDetailScreen(
     report: FishingReport,
     onBackClick: () -> Unit,
-    onMapClick: (GeoPoint) -> Unit = {}
+    onMapClick: (GeoPoint) -> Unit = {},
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Scaffold(
@@ -46,11 +49,11 @@ fun ReportDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = onToggleFavorite) {
                         Icon(
-                            imageVector = Icons.Default.Bookmark,
-                            contentDescription = "Сохранить",
-                            tint = Color.Red
+                            imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Outlined.Bookmark,
+                            contentDescription = "Избранное",
+                            tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 

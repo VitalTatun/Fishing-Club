@@ -2,6 +2,7 @@ package com.example.fishing.data.local
 
 import android.content.Context
 import androidx.room.Room
+import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import dagger.Module
@@ -34,5 +35,10 @@ object DatabaseModule {
     @Provides
     fun provideReportDetailsDao(database: AppDatabase): ReportDetailsDao {
         return database.reportDetailsDao()
+    }
+
+    @Provides
+    fun provideFavoriteReportDao(database: AppDatabase): FavoriteReportDao {
+        return database.favoriteDao()
     }
 }

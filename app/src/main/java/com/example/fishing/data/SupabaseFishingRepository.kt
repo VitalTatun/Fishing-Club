@@ -1,7 +1,9 @@
 package com.example.fishing.data
 
+import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
+import com.example.fishing.data.local.entity.FavoriteReportEntity
 import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import com.example.fishing.data.supabase.*
@@ -29,7 +31,8 @@ class SupabaseFishingRepository @Inject constructor(
     private val supabase: SupabaseClient,
     private val authRepository: AuthRepository,
     private val markerDao: MarkerDao,
-    private val reportDetailsDao: ReportDetailsDao
+    private val reportDetailsDao: ReportDetailsDao,
+    private val favoriteReportDao: FavoriteReportDao
 ) : FishingRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -87,6 +90,11 @@ class SupabaseFishingRepository @Inject constructor(
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = markerDao.getAll().map { entities ->
         entities.map { it.toDomain() }
     }
+
+    override fun getFavoriteReports(userId: UUID?): Flow<List<FishingReport>> =
+        favoriteReportDao.getAll().map { entities ->
+            entities.map { it.toDomain() }
+        }
 
     override fun getReportDetails(id: UUID): Flow<FishingReport?> = reportDetailsDao.getById(id).map { entity ->
         entity?.toDomain()
@@ -182,6 +190,76 @@ class SupabaseFishingRepository @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    override suspend fun addFavorite(report: FishingReport) {
+        val currentUser = authRepository.currentUser() ?: return
+        try {
+            supabase.postgrest["favorites"].insert(FavoriteDto(userId = currentUser.id, fishingId = report.id))
+            favoriteReportDao.insert(
+                report.toFavoriteEntity(
+                    authorName = report.user.name,
+                    authorAvatar = report.user.image
+                )
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override suspend fun removeFavorite(reportId: UUID) {
+        val currentUser = authRepository.currentUser() ?: return
+        try {
+            supabase.postgrest["favorites"].delete {
+                filter { eq("user_id", currentUser.id) }
+                filter { eq("fishing_id", reportId) }
+            }
+            favoriteReportDao.deleteById(reportId)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override suspend fun refreshFavorites(userId: UUID) {
+        if (!authRepository.isLoggedIn()) return
+        try {
+            val favorites = supabase.postgrest["favorites"].select {
+                filter { eq("user_id", userId) }
+            }.decodeList<FavoriteDto>()
+
+            val entities = favorites.mapNotNull { favorite ->
+                refreshFavoriteReport(favorite.fishingId)
+            }
+            favoriteReportDao.deleteAll()
+            favoriteReportDao.insertAll(entities)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private suspend fun refreshFavoriteReport(fishingId: UUID): FavoriteReportEntity? {
+        val fishing = supabase.postgrest["fishing"].select {
+            filter { eq("id", fishingId) }
+        }.decodeList<FishingDto>().firstOrNull() ?: return null
+
+        val fish = supabase.postgrest["fishing_fish"].select {
+            filter { eq("fishing_id", fishingId) }
+        }.decodeList<FishDto>()
+
+        val baits = supabase.postgrest["fishing_baits"].select {
+            filter { eq("fishing_id", fishingId) }
+        }.decodeList<BaitDto>()
+
+        val photos = supabase.postgrest["fishing_photos"].select {
+            filter { eq("fishing_id", fishingId) }
+            order("sort_order", Order.ASCENDING)
+        }.decodeList<PhotoDto>()
+
+        val author = supabase.postgrest["profiles"].select {
+            filter { eq("id", fishing.userId) }
+        }.decodeList<ProfileDto>().firstOrNull()
+
+        return fishing.toFavoriteEntity(fish, baits, photos, author)
     }
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? {
@@ -298,6 +376,99 @@ class SupabaseFishingRepository @Inject constructor(
             imageUrls = photos.map { it.storagePath },
             fishJson = json.encodeToString(fish),
             baitsJson = json.encodeToString(baits)
+        )
+    }
+
+    private fun FishingDto.toFavoriteEntity(
+        fish: List<FishDto>,
+        baits: List<BaitDto>,
+        photos: List<PhotoDto>,
+        author: ProfileDto?
+    ): FavoriteReportEntity {
+        return FavoriteReportEntity(
+            id = id,
+            userId = userId,
+            publishedAt = publishedAt,
+            type = type,
+            name = name,
+            waterName = waterName,
+            waterLat = waterLat,
+            waterLng = waterLng,
+            waterPaid = waterPaid,
+            spotLat = spotLat,
+            spotLng = spotLng,
+            fishingTime = fishingTime,
+            weight = weight,
+            fishingMethod = fishingMethod,
+            comment = comment,
+            shore = shore,
+            isPublic = isPublic,
+            imageUrls = photos.map { it.storagePath },
+            fishJson = json.encodeToString(fish),
+            baitsJson = json.encodeToString(baits),
+            authorName = author?.name,
+            authorAvatar = author?.avatarUrl
+        )
+    }
+
+    private fun FishingReport.toFavoriteEntity(
+        authorName: String?,
+        authorAvatar: String?
+    ): FavoriteReportEntity {
+        return FavoriteReportEntity(
+            id = id,
+            userId = userId,
+            publishedAt = publishedAt?.let { formatDate(it) },
+            type = type.name,
+            name = name,
+            waterName = water.waterName,
+            waterLat = water.latitude,
+            waterLng = water.longitude,
+            waterPaid = water.isPaid,
+            spotLat = spotLat,
+            spotLng = spotLng,
+            fishingTime = formatDate(fishingTime),
+            weight = weight,
+            fishingMethod = fishingMethod.name,
+            comment = comment,
+            shore = fishingFromTheShore,
+            isPublic = isPublic,
+            imageUrls = photo,
+            fishJson = json.encodeToString(fish.map { it.toFishDto(id) }),
+            baitsJson = json.encodeToString(bait.map { BaitDto(id, it.name) }),
+            authorName = authorName,
+            authorAvatar = authorAvatar
+        )
+    }
+
+    private fun FavoriteReportEntity.toDomain(): FishingReport {
+        val fish = json.decodeFromString<List<FishDto>>(fishJson)
+        val baits = json.decodeFromString<List<BaitDto>>(baitsJson)
+
+        return FishingReport(
+            id = id,
+            userId = userId,
+            publishedAt = publishedAt?.let { parseDate(it) },
+            type = (enumValueOf(type, FishingType.entries.toTypedArray()) as? FishingType) ?: FishingType.FISHING_LOG,
+            name = name,
+            water = Water(
+                waterName = waterName ?: "",
+                latitude = waterLat ?: 0.0,
+                longitude = waterLng ?: 0.0,
+                isPaid = waterPaid
+            ),
+            spotLat = spotLat,
+            spotLng = spotLng,
+            photo = imageUrls,
+            fishingTime = parseDate(fishingTime) ?: Date(),
+            weight = weight,
+            fish = fish.map { Fish(id = it.id, name = it.name, count = it.count) },
+            fishingMethod = (enumValueOf(fishingMethod ?: "", FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
+            bait = baits.map { (enumValueOf(it.baitCode, Bait.entries.toTypedArray()) as? Bait) ?: Bait.NONE },
+            comment = comment ?: "",
+            user = User(id = userId, name = authorName ?: "", image = authorAvatar ?: "", email = ""),
+            fishingFromTheShore = shore,
+            isPublic = isPublic
         )
     }
 

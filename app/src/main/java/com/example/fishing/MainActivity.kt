@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
                 val viewModel: MainViewModel = hiltViewModel()
                 val reports by viewModel.reports.collectAsState()
                 val allReports by viewModel.allReports.collectAsState()
+                val favoriteReports by viewModel.favoriteReports.collectAsState()
                 val mapMarkers by viewModel.mapMarkers.collectAsState()
                 val isLoading by viewModel.isLoading.collectAsState()
                 val selectedTab by viewModel.selectedTab.collectAsState()
@@ -145,6 +146,7 @@ class MainActivity : ComponentActivity() {
                                 isLoading = isLoading,
                                 selectedTab = selectedTab,
                                 allReports = allReports,
+                                favoriteReports = favoriteReports,
                                 mapMarkers = mapMarkers,
                                 viewModel = viewModel,
                                 repository = fishingRepository,
@@ -361,6 +363,8 @@ class MainActivity : ComponentActivity() {
                                 ReportDetailScreen(
                                     report = report,
                                     onBackClick = { navController.popBackStack() },
+                                    isFavorite = favoriteReports.any { it.id == report.id },
+                                    onToggleFavorite = { viewModel.toggleFavorite(report) },
                                     onMapClick = { point ->
                                         viewModel.requestMapLocation(point)
                                         navController.navigate("full_map/${report.id}")

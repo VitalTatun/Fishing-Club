@@ -9,9 +9,13 @@ import java.util.UUID
 
 interface FishingRepository {
     fun getAllReports(userId: UUID? = null): Flow<List<FishingReport>>
+    fun getFavoriteReports(userId: UUID? = null): Flow<List<FishingReport>>
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
     suspend fun refreshAllReports(userId: UUID? = null)
+    suspend fun refreshFavorites(userId: UUID)
+    suspend fun addFavorite(report: FishingReport)
+    suspend fun removeFavorite(reportId: UUID)
     suspend fun saveReport(report: FishingReport)
     suspend fun deleteReport(id: UUID)
     suspend fun getPhotoSignedUrl(storagePath: String): String?
@@ -19,9 +23,16 @@ interface FishingRepository {
 }
 
 class MockFishingRepository : FishingRepository {
+    private val favoriteReports = mutableListOf<FishingReport>()
+
     override fun getAllReports(userId: UUID?): Flow<List<FishingReport>> = flow {
         delay(1000)
         emit(MockData.sampleReports)
+    }
+
+    override fun getFavoriteReports(userId: UUID?): Flow<List<FishingReport>> = flow {
+        delay(1000)
+        emit(favoriteReports.toList())
     }
 
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = flow {
@@ -44,6 +55,20 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun refreshAllReports(userId: UUID?) {
         // Mock — no-op
+    }
+
+    override suspend fun refreshFavorites(userId: UUID) {
+        // Mock — no-op
+    }
+
+    override suspend fun addFavorite(report: FishingReport) {
+        if (favoriteReports.none { it.id == report.id }) {
+            favoriteReports.add(report)
+        }
+    }
+
+    override suspend fun removeFavorite(reportId: UUID) {
+        favoriteReports.removeAll { it.id == reportId }
     }
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? {

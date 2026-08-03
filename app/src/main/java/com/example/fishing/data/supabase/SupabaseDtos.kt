@@ -62,6 +62,13 @@ data class PhotoDto(
 )
 
 @Serializable
+data class FavoriteDto(
+    @Serializable(with = UuidSerializer::class) @SerialName("user_id") val userId: UUID,
+    @Serializable(with = UuidSerializer::class) @SerialName("fishing_id") val fishingId: UUID,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
 data class ProfileDto(
     @Serializable(with = UuidSerializer::class) val id: UUID,
     val name: String? = null,
