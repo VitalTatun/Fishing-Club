@@ -62,6 +62,19 @@ fun FishingReportItem(
                 FishingReportPhotos(photos = report.photo)
             }
             FishingReportHeader(report = report)
+
+            if (report.comment.isNotBlank()) {
+                Text(
+                    text = report.comment,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
             FishingReportFooter(report = report, onDeleteReport = { onDeleteReport(report) })
         }
     }
