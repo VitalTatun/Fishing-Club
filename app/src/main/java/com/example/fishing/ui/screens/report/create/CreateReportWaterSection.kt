@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -85,6 +86,8 @@ private fun MapPreview(
     location: GeoPoint?,
     modifier: Modifier = Modifier
 ) {
+    val isPreview = LocalInspectionMode.current
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -93,7 +96,7 @@ private fun MapPreview(
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFFBFE3EA))
     ) {
-        if (location != null) {
+        if (location != null && !isPreview) {
             AndroidView(
                 factory = { context ->
                     MapView(context).apply {

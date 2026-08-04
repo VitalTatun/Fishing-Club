@@ -323,6 +323,7 @@ private fun CreateReportScreenPreview() {
                     override suspend fun logout() {}
                     override fun currentUser(): com.example.fishing.model.User? = null
                     override fun isLoggedIn() = false
+                    override suspend fun loadSession() {}
                 }
             ),
             onBackClick = {},
