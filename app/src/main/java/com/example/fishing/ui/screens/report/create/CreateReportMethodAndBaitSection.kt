@@ -30,7 +30,7 @@ internal fun MethodAndBaitSection(
         if (selectedMethod != FishingMethod.NONE) {
             InfoRow(
                 label = stringResource(R.string.fishing_method),
-                value = selectedMethod.russianName,
+                value = stringResource(selectedMethod.labelRes),
                 contentPadding = PaddingValues(vertical = 12.dp, horizontal = 32.dp)
             )
             if (selectedBaits.isNotEmpty()) {
@@ -40,7 +40,7 @@ internal fun MethodAndBaitSection(
                 )
                 InfoRow(
                     label = stringResource(R.string.bait),
-                    value = selectedBaits.joinToString(", ") { it.russianName },
+                    value = selectedBaits.map { stringResource(it.labelRes) }.joinToString(", "),
                     contentPadding = PaddingValues(vertical = 12.dp, horizontal = 32.dp)
                 )
             }

@@ -116,7 +116,30 @@
     <string name="method_spinning">Спиннинг</string>
     <string name="method_bobber">Поплавок</string>
     <string name="method_feeder">Фидер</string>
-    <string name="method_fallback">Метод</string>
+    <string name="method_fly">Нахлыст</string>
+    <string name="method_none">Не указан</string>
+
+    <!-- Типы отчета -->
+    <string name="type_report">Отчет</string>
+    <string name="type_trophy">Трофей</string>
+
+    <!-- Наживки -->
+    <string name="bait_worm">Червь</string>
+    <string name="bait_maggot">Опарыш</string>
+    <string name="bait_bloodworm">Мотыль</string>
+    <string name="bait_baitfish">Малек</string>
+    <string name="bait_barley">Перловка</string>
+    <string name="bait_corn">Кукуруза</string>
+    <string name="bait_bread">Хлеб</string>
+    <string name="bait_potato">Картофель</string>
+    <string name="bait_semolina">Манка</string>
+    <string name="bait_spoonbait">Блесна</string>
+    <string name="bait_wobbler">Воблер</string>
+    <string name="bait_edible_rubber">Съедобная резина</string>
+    <string name="bait_fly">Мушка</string>
+    <string name="bait_grasshopper">Кузнечик</string>
+    <string name="bait_butterfly">Мотылек</string>
+    <string name="bait_none">Не выбран</string>
 
     <!-- Рыбы -->
     <string name="fish_roach">Плотва</string>

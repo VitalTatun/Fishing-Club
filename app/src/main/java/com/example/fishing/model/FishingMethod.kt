@@ -1,11 +1,14 @@
 package com.example.fishing.model
 
-enum class FishingMethod(val russianName: String) {
-    NONE("Не указан"),
-    BOBBER("Поплавок"),
-    SPINNING("Спиннинг"),
-    FEEDER("Фидер"),
-    FLY_FISHING("Нахлыст");
+import androidx.annotation.StringRes
+import com.example.fishing.R
+
+enum class FishingMethod(@StringRes val labelRes: Int) {
+    NONE(R.string.method_none),
+    BOBBER(R.string.method_bobber),
+    SPINNING(R.string.method_spinning),
+    FEEDER(R.string.method_feeder),
+    FLY_FISHING(R.string.method_fly);
 
     companion object {
         val methodsAndBaits: Map<FishingMethod, List<Bait>> = mapOf(

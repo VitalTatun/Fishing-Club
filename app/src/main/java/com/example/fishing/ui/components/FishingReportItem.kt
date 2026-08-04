@@ -1,10 +1,8 @@
 package com.example.fishing.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -22,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -100,19 +97,10 @@ private fun FishingReportHeader(
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
 
     val fishFallback = stringResource(R.string.fish_fallback)
-    val methodSpinning = stringResource(R.string.method_spinning)
-    val methodBobber = stringResource(R.string.method_bobber)
-    val methodFeeder = stringResource(R.string.method_feeder)
-    val methodFallback = stringResource(R.string.method_fallback)
+    val methodName = stringResource(report.fishingMethod.labelRes)
 
     val fishAndMethod = remember(report.fish, report.fishingMethod) {
         val fishName = report.fish.firstOrNull()?.name ?: fishFallback
-        val methodName = when (report.fishingMethod) {
-            FishingMethod.SPINNING -> methodSpinning
-            FishingMethod.BOBBER -> methodBobber
-            FishingMethod.FEEDER -> methodFeeder
-            else -> methodFallback
-        }
         "$fishName • $methodName"
     }
 
@@ -376,33 +364,6 @@ private fun ReportAuthor(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-    }
-}
-
-@Composable
-fun TagChip(
-    text: String,
-    icon: ImageVector,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
-    borderColor: Color = MaterialTheme.colorScheme.outlineVariant,
-    contentColor: Color = MaterialTheme.colorScheme.primary
-) {
-    Surface(
-        color = containerColor,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, borderColor)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = contentColor
-            )
-        }
     }
 }
 

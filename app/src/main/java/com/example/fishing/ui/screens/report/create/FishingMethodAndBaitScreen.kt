@@ -91,17 +91,19 @@ fun FishingMethodAndBaitScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val methods = FishingMethod.entries
+            val methodOptions = methods.map { stringResource(it.labelRes) }
             ReportDropdownField(
-                value = selectedMethod.russianName,
+                value = stringResource(selectedMethod.labelRes),
                 onValueChange = { name ->
-                    val newMethod = FishingMethod.entries.find { it.russianName == name } ?: FishingMethod.NONE
+                    val newMethod = methods.getOrElse(methodOptions.indexOf(name)) { FishingMethod.NONE }
                     if (newMethod != selectedMethod) {
                         selectedMethod = newMethod
                         selectedBaits.clear()
                     }
                 },
                 label = stringResource(R.string.fishing_method),
-                options = FishingMethod.entries.map { it.russianName }
+                options = methodOptions
             )
 
             if (selectedMethod == FishingMethod.NONE) {
@@ -134,7 +136,7 @@ fun FishingMethodAndBaitScreen(
                                 modifier = Modifier.padding(start = 8.dp)
                             )
                             Text(
-                                text = bait.russianName,
+                                text = stringResource(bait.labelRes),
                                 style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.padding(start = 16.dp)
                             )

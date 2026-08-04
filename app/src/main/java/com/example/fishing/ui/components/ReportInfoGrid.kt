@@ -43,12 +43,12 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
         Row(modifier = Modifier.fillMaxWidth()) {
             InfoGridItem(
                 title = stringResource(R.string.bait),
-                value = report.bait.joinToString(", ") { it.russianName },
+                value = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
                 modifier = Modifier.weight(1f)
             )
             InfoGridItem(
                 title = stringResource(R.string.fishing_method),
-                value = report.fishingMethod.russianName,
+                value = stringResource(report.fishingMethod.labelRes),
                 modifier = Modifier.weight(1f)
             )
         }

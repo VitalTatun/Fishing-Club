@@ -105,7 +105,7 @@ internal fun ReportTypeSelector(
                 FilterChip(
                     selected = reportType == type,
                     onClick = { onReportTypeChange(type) },
-                    label = { Text(type.displayName) },
+                    label = { Text(stringResource(type.labelRes)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,

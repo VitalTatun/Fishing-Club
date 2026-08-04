@@ -88,10 +88,10 @@ fun ReportSummary(report: FishingReport, modifier: Modifier = Modifier) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
     
     val fishFallback = stringResource(R.string.fish_fallback)
+    val methodName = stringResource(report.fishingMethod.labelRes)
 
     val fishAndMethod = remember(report.fish, report.fishingMethod) {
         val fishName = report.fish.firstOrNull()?.name ?: fishFallback
-        val methodName = report.fishingMethod.russianName
         "$fishName • $methodName"
     }
 
