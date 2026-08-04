@@ -12,12 +12,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -85,8 +87,10 @@ fun ReportPhotoCarousel(photos: List<String>, modifier: Modifier = Modifier) {
 fun ReportSummary(report: FishingReport, modifier: Modifier = Modifier) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
     
+    val fishFallback = stringResource(R.string.fish_fallback)
+
     val fishAndMethod = remember(report.fish, report.fishingMethod) {
-        val fishName = report.fish.firstOrNull()?.name ?: "Рыба"
+        val fishName = report.fish.firstOrNull()?.name ?: fishFallback
         val methodName = report.fishingMethod.russianName
         "$fishName • $methodName"
     }

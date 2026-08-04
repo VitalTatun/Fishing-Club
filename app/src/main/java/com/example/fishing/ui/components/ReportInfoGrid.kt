@@ -7,9 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fishing.R
 import com.example.fishing.model.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -27,12 +29,12 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             InfoGridItem(
-                title = "Дата",
+                title = stringResource(R.string.date),
                 value = dateFormatter.format(report.fishingTime),
                 modifier = Modifier.weight(1f)
             )
             InfoGridItem(
-                title = "Время",
+                title = stringResource(R.string.time),
                 value = timeFormatter.format(report.fishingTime),
                 modifier = Modifier.weight(1f)
             )
@@ -40,12 +42,12 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
 
         Row(modifier = Modifier.fillMaxWidth()) {
             InfoGridItem(
-                title = "Наживка",
+                title = stringResource(R.string.bait),
                 value = report.bait.joinToString(", ") { it.russianName },
                 modifier = Modifier.weight(1f)
             )
             InfoGridItem(
-                title = "Способ ловли",
+                title = stringResource(R.string.fishing_method),
                 value = report.fishingMethod.russianName,
                 modifier = Modifier.weight(1f)
             )
@@ -55,7 +57,7 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "Улов",
+                        text = stringResource(R.string.catch_label),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -74,7 +76,7 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 } else {
                     report.fish.forEach { fish ->
                         Text(
-                            text = "${fish.name} — ${fish.count} шт.",
+                            text = stringResource(R.string.fish_count, fish.name, fish.count),
                             style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
@@ -83,8 +85,8 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 }
             }
             InfoGridItem(
-                title = "Общий вес",
-                value = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} кг." else "Не указан",
+                title = stringResource(R.string.total_weight),
+                value = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} ${stringResource(R.string.weight_unit)}" else stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f)
             )
         }

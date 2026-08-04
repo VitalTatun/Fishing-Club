@@ -41,10 +41,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.fishing.R
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -152,7 +154,7 @@ fun FishingLocationScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Место ловли",
+                        text = stringResource(R.string.fishing_place),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -160,18 +162,18 @@ fun FishingLocationScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onSearchClick) {
-                        Icon(Icons.Default.Search, contentDescription = "Поиск")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                     }
                     IconButton(
                         onClick = { selectedLocation?.let { onSaveClick(it) } },
                         enabled = selectedLocation != null
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "Сохранить")
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -261,7 +263,7 @@ fun FishingLocationScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.MyLocation,
-                    contentDescription = "Мое местоположение"
+                    contentDescription = stringResource(R.string.my_location)
                 )
             }
         }

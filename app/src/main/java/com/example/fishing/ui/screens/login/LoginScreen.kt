@@ -28,9 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.ui.screens.report.create.CreateReportColors
 
 @Composable
@@ -60,7 +62,7 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Fishing Journal",
+            text = stringResource(R.string.fishing_journal),
             style = MaterialTheme.typography.headlineMedium,
             color = CreateReportColors.OnSurface,
             textAlign = TextAlign.Center
@@ -71,7 +73,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = email,
             onValueChange = { viewModel.email = it },
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.email)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             textStyle = MaterialTheme.typography.bodyLarge,
@@ -98,7 +100,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = password,
             onValueChange = { viewModel.password = it },
-            label = { Text("Пароль") },
+            label = { Text(stringResource(R.string.password)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             textStyle = MaterialTheme.typography.bodyLarge,
@@ -152,7 +154,7 @@ fun LoginScreen(
                 )
             } else {
                 Text(
-                    text = "Войти",
+                    text = stringResource(R.string.login),
                     style = MaterialTheme.typography.labelLarge,
                     color = CreateReportColors.Surface
                 )
@@ -173,7 +175,7 @@ fun LoginScreen(
             )
         ) {
             Text(
-                text = "Создать аккаунт",
+                text = stringResource(R.string.create_account),
                 style = MaterialTheme.typography.labelLarge
             )
         }

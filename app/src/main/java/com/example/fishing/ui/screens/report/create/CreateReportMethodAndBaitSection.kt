@@ -7,7 +7,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.model.Bait
 import com.example.fishing.model.FishingMethod
 
@@ -20,14 +22,14 @@ internal fun MethodAndBaitSection(
 ) {
     SectionCard(contentPadding = PaddingValues(horizontal = 0.dp)) {
         Section(
-            title = "Способ ловли и наживка",
+            title = stringResource(R.string.method_and_bait),
             hasData = selectedMethod != FishingMethod.NONE || selectedBaits.isNotEmpty(),
             isRequired = isRequired,
             onArrowClick = onArrowClick
         )
         if (selectedMethod != FishingMethod.NONE) {
             InfoRow(
-                label = "Способ ловли",
+                label = stringResource(R.string.fishing_method),
                 value = selectedMethod.russianName,
                 contentPadding = PaddingValues(vertical = 12.dp, horizontal = 32.dp)
             )
@@ -37,7 +39,7 @@ internal fun MethodAndBaitSection(
                     color = CreateReportColors.Divider
                 )
                 InfoRow(
-                    label = "Наживка",
+                    label = stringResource(R.string.bait),
                     value = selectedBaits.joinToString(", ") { it.russianName },
                     contentPadding = PaddingValues(vertical = 12.dp, horizontal = 32.dp)
                 )

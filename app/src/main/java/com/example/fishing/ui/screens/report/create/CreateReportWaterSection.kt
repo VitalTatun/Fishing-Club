@@ -20,9 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.fishing.R
 import com.example.fishing.ui.theme.FishingTheme
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -46,7 +48,7 @@ internal fun WaterSection(
     SectionCard(contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 0.dp)) {
 
         Section(
-            title = "Водоем",
+            title = stringResource(R.string.water_body),
             hasData = hasData,
             isRequired = isRequired,
             onArrowClick = onArrowClick,
@@ -58,15 +60,15 @@ internal fun WaterSection(
             ReportTextField(
                 value = waterName,
                 onValueChange = onWaterNameChange,
-                label = "Название водоема *"
+                label = stringResource(R.string.water_name_required)
             )
             SwitchRow(
-                title = "Ловля с берега",
+                title = stringResource(R.string.fishing_from_shore),
                 checked = fishingFromShore,
                 onCheckedChange = onFishingFromShoreChange
             )
             SwitchRow(
-                title = "Платный водоем",
+                title = stringResource(R.string.paid_water),
                 checked = isPaidWater,
                 onCheckedChange = onPaidWaterChange
             )

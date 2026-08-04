@@ -11,12 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.util.Date
@@ -67,7 +69,7 @@ fun ReportDescriptionSection(
                     modifier = Modifier
                         .align(Alignment.End)
                 ) {
-                    Text(text = "Подробнее")
+                    Text(text = stringResource(R.string.more_details))
                 }
             }
         }

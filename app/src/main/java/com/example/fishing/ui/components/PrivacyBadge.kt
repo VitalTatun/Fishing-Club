@@ -10,7 +10,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 
 @Composable
 fun PrivacyBadge(
@@ -25,7 +27,7 @@ fun PrivacyBadge(
         ) {
             Icon(
                 imageVector = Icons.Default.Lock,
-                contentDescription = "Private",
+                contentDescription = stringResource(R.string.private_label),
                 tint = Color.White,
                 modifier = Modifier.padding(6.dp)
             )

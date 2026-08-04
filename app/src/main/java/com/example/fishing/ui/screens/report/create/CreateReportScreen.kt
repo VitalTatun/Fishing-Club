@@ -29,9 +29,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
@@ -133,20 +135,20 @@ fun CreateReportScreen(
     if (showDiscardDialog) {
         AlertDialog(
             onDismissRequest = { showDiscardDialog = false },
-            title = { Text("Отмена") },
-            text = { Text("Введённые данные не сохранятся. Продолжить?") },
+            title = { Text(stringResource(R.string.cancel)) },
+            text = { Text(stringResource(R.string.discard_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDiscardDialog = false
                     viewModel.resetFormState()
                     onBackClick()
                 }) {
-                    Text("Закрыть")
+                    Text(stringResource(R.string.close))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDiscardDialog = false }) {
-                    Text("Остаться")
+                    Text(stringResource(R.string.stay))
                 }
             }
         )
@@ -158,7 +160,7 @@ fun CreateReportScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Новый отчет",
+                        text = stringResource(R.string.new_report),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -166,7 +168,7 @@ fun CreateReportScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { handleBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -190,7 +192,7 @@ fun CreateReportScreen(
                         },
                         enabled = isSaveEnabled
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "Сохранить")
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
                 }
             )
@@ -230,10 +232,10 @@ fun CreateReportScreen(
             item {
                 SectionCard {
                     SwitchRow(
-                        title = "Опубликовать",
+                        title = stringResource(R.string.publish),
                         checked = viewModel.formIsPublic,
                         onCheckedChange = { viewModel.formIsPublic = it },
-                        supportingText = "Ваш отчет пополнит карту уловов и вдохновит других рыбаков. Если хотите сохранить место в секрете — просто отключите публикацию."
+                        supportingText = stringResource(R.string.publish_supporting)
                     )
                 }
             }
@@ -281,7 +283,7 @@ fun CreateReportScreen(
             }
             item {
                 Text(
-                    text = "*Обязательные поля",
+                    text = stringResource(R.string.required_fields),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),

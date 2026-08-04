@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fishing.R
 import com.example.fishing.model.Fish
 import com.example.fishing.ui.theme.FishingTheme
 
@@ -106,7 +108,7 @@ fun CatchEditScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Пойманная рыба",
+                        text = stringResource(R.string.caught_fish),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -114,7 +116,7 @@ fun CatchEditScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -125,7 +127,7 @@ fun CatchEditScreen(
                         },
                         enabled = editableFish.isNotEmpty()
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "Сохранить")
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
                 },
             )
@@ -144,11 +146,11 @@ fun CatchEditScreen(
                     fishNameInput = it
                     isDuplicateError = false
                 },
-                label = { Text("Название рыбы") },
+                label = { Text(stringResource(R.string.fish_name_label)) },
                 singleLine = true,
                 isError = isDuplicateError,
                 supportingText = if (isDuplicateError) {
-                    { Text("Уже есть в списке") }
+                    { Text(stringResource(R.string.already_in_list)) }
                 } else null,
                 trailingIcon = {
                     if (isDuplicateError) {
@@ -160,7 +162,7 @@ fun CatchEditScreen(
                         ) {
                             Icon(
                                 Icons.Default.Clear,
-                                contentDescription = "Очистить",
+                                contentDescription = stringResource(R.string.clear),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -171,7 +173,7 @@ fun CatchEditScreen(
                         ) {
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "Добавить",
+                                contentDescription = stringResource(R.string.add),
                                 tint = if (fishNameInput.isNotBlank())
                                     MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.outline
@@ -191,8 +193,8 @@ fun CatchEditScreen(
                         weightInput = newValue
                     }
                 },
-                label = { Text("Общий вес") },
-                suffix = { Text("кг") },
+                label = { Text(stringResource(R.string.total_weight)) },
+                suffix = { Text(stringResource(R.string.kg)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier
@@ -206,13 +208,21 @@ fun CatchEditScreen(
                     .padding(horizontal = 16.dp)
             ) {
                 Text(
-                    text = "Рыба, которую вы уже указывали в отчетах",
+                    text = stringResource(R.string.fish_suggestion_title),
                     color = CreateReportColors.OnSurface,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                val chipLabels = listOf("Плотва", "Карась", "Щука", "Лещ", "Окунь", "Подлещик", "Язь")
+                val chipLabels = listOf(
+                    stringResource(R.string.fish_roach),
+                    stringResource(R.string.fish_crucian),
+                    stringResource(R.string.fish_pike),
+                    stringResource(R.string.fish_bream),
+                    stringResource(R.string.fish_perch),
+                    stringResource(R.string.fish_white_bream),
+                    stringResource(R.string.fish_ide)
+                )
 
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -257,7 +267,7 @@ fun CatchEditScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Вы выбрали тип рыбалки «Трофей». Для данного типа доступна только одна рыба, и соответственно один вид.",
+                            text = stringResource(R.string.trophy_one_fish_info),
                             color = CreateReportColors.OnSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f)
@@ -343,7 +353,7 @@ private fun FishQuantityRow(
             ) {
                 Icon(
                     imageVector = if (isMinCount) Icons.Default.Delete else Icons.Default.Remove,
-                    contentDescription = if (isMinCount) "Удалить" else "Уменьшить"
+                    contentDescription = if (isMinCount) stringResource(R.string.delete) else stringResource(R.string.decrease)
                 )
             }
 
@@ -359,7 +369,7 @@ private fun FishQuantityRow(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Увеличить"
+                    contentDescription = stringResource(R.string.increase)
                 )
             }
         }

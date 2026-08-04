@@ -22,11 +22,13 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import kotlinx.coroutines.launch
@@ -65,7 +67,7 @@ fun ReportLocationSection(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Карта",
+                        text = stringResource(R.string.map_label),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -143,7 +145,7 @@ fun ReportLocationSection(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(8.dp),
-                contentDescription = "Открыть карту"
+                contentDescription = stringResource(R.string.open_map)
             )
         }
 
@@ -186,7 +188,7 @@ fun ReportLocationSection(
             ) {
                 Icon(
                     imageVector = Icons.Default.ContentCopy,
-                    contentDescription = "Копировать координаты",
+                    contentDescription = stringResource(R.string.copy_coordinates),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -201,11 +203,13 @@ fun ReportLocationSection(
         ) {
             if (report.water.isPaid) {
                 FishingBadge(
-                    text = "Платный"
+                    text = stringResource(R.string.paid)
                 )
             }
             FishingBadge(
-                text = if (report.fishingFromTheShore) "Ловля с берега" else "Ловля с лодки"
+                text = stringResource(
+                    if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat
+                )
             )
         }
     }

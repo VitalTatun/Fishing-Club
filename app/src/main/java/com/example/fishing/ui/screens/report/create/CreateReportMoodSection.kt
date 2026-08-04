@@ -21,8 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 
 private val moodIcons = listOf(
     Icons.Default.SentimentVeryDissatisfied,
@@ -39,7 +41,7 @@ internal fun MoodSection(
 ) {
     SectionCard(contentPadding = PaddingValues(0.dp)) {
         Section(
-            title = "Эмоциональная оценка",
+            title = stringResource(R.string.emotional_assessment),
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Column(
@@ -65,13 +67,13 @@ internal fun MoodSection(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Очень плохая",
+                    text = stringResource(R.string.mood_very_bad),
                     color = Color(0xFF3E5481),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Очень хорошая",
+                    text = stringResource(R.string.mood_very_good),
                     color = Color(0xFF3E5481),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium

@@ -29,9 +29,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import com.example.fishing.R
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -94,7 +96,7 @@ fun FullScreenPhotoScreen(
                         contentColor = Color.White
                     )
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                 }
 
                 if (photos.size > 1) {

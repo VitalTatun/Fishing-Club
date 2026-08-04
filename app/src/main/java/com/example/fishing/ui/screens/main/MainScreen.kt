@@ -16,9 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingReportItem
 import com.example.fishing.ui.theme.FishingTheme
@@ -27,10 +29,10 @@ import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.screens.profile.ProfileScreen
 import java.util.*
 
-sealed class BottomNavItem(val title: String, val icon: ImageVector) {
-    object Home : BottomNavItem("Главная", Icons.Default.Home)
-    object Map : BottomNavItem("Карта", Icons.Default.Map)
-    object Profile : BottomNavItem("Профиль", Icons.Default.Person)
+sealed class BottomNavItem(val titleRes: Int, val icon: ImageVector) {
+    object Home : BottomNavItem(R.string.tab_home, Icons.Default.Home)
+    object Map : BottomNavItem(R.string.tab_map, Icons.Default.Map)
+    object Profile : BottomNavItem(R.string.tab_profile, Icons.Default.Person)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,8 +69,8 @@ fun MainScreen(
                 title = {
                     Text(
                         when (selectedTab) {
-                            1 -> "Карта"
-                            else -> "Fishing Journal"
+                            1 -> stringResource(R.string.tab_map)
+                            else -> stringResource(R.string.fishing_journal)
                         },
                         fontWeight = FontWeight.Medium
                     )
@@ -76,15 +78,15 @@ fun MainScreen(
                 actions = {
                     if (selectedTab == 0) {
                         IconButton(onClick = { /* TODO */ }) {
-                            Icon(Icons.Default.Search, contentDescription = "Поиск")
+                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
                         IconButton(onClick = onCreateReportClick) {
-                            Icon(Icons.Default.Add, contentDescription = "Новый отчет")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_report))
                         }
                     }
                     if (selectedTab == 1) {
                         IconButton(onClick = onSearchClick) {
-                            Icon(Icons.Default.Search, contentDescription = "Поиск")
+                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
                     }
                 }
@@ -94,8 +96,8 @@ fun MainScreen(
             NavigationBar {
                 items.forEachIndexed { index, item ->
                     NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
+                        icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
+                        label = { Text(stringResource(item.titleRes)) },
                         selected = selectedTab == index,
                         onClick = {
                             onTabSelected(index)
@@ -113,7 +115,7 @@ fun MainScreen(
                         .padding(8.dp),
                     action = {
                         TextButton(onClick = onErrorDismiss) {
-                            Text("Повторить")
+                            Text(stringResource(R.string.retry))
                         }
                     }
                 ) {
@@ -142,7 +144,7 @@ fun MainScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = "Нет отчетов",
+                                            text = stringResource(R.string.no_reports),
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

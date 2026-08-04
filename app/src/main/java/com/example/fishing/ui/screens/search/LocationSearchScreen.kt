@@ -22,9 +22,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import org.osmdroid.util.GeoPoint
 import java.util.Locale
 
@@ -91,7 +93,7 @@ fun LocationSearchScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(top = 120.dp),
-                        text = "Ничего не найдено",
+                        text = stringResource(R.string.nothing_found),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -195,13 +197,13 @@ private fun EmptySearchPlaceholder() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Поиск мест",
+                text = stringResource(R.string.search_places),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Введите название места",
+                text = stringResource(R.string.enter_place_name),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -230,12 +232,12 @@ private fun SearchFieldHeader(
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
                 .focusRequester(focusRequester),
-            placeholder = { Text("Поиск...") },
+            placeholder = { Text(stringResource(R.string.search_placeholder)) },
             leadingIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Назад",
+                        contentDescription = stringResource(R.string.back),
                     )
                 }
             },
@@ -258,7 +260,7 @@ private fun SearchFieldHeader(
                     IconButton(onClick = { onQueryChange("") }) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Очистить",
+                            contentDescription = stringResource(R.string.clear),
                         )
                     }
                 }

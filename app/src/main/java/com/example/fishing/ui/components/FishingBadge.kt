@@ -8,11 +8,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fishing.R
 import com.example.fishing.ui.theme.FishingTheme
 
 @Composable
@@ -56,7 +58,7 @@ fun FishingBadge(
 @Composable
 fun TrophyBadge(modifier: Modifier = Modifier) {
     FishingBadge(
-        text = "Трофей",
+        text = stringResource(R.string.trophy),
         containerColor = Color(0xFFFFD71D), // FFD71D
         contentColor = Color(0xFF50250A),   // 50250A
         modifier = modifier
@@ -66,7 +68,7 @@ fun TrophyBadge(modifier: Modifier = Modifier) {
 @Composable
 fun DraftBadge(modifier: Modifier = Modifier) {
     FishingBadge(
-        text = "Не опубликован",
+        text = stringResource(R.string.draft),
         containerColor = Color(0xFFD8E2FF), // D8E2FF
         contentColor = Color(0xFF2C4678),   // 2C4678
         modifier = modifier
@@ -76,7 +78,7 @@ fun DraftBadge(modifier: Modifier = Modifier) {
 @Composable
 fun PublishedBadge(modifier: Modifier = Modifier) {
     FishingBadge(
-        text = "Опубликован",
+        text = stringResource(R.string.published),
         containerColor = Color(0xFFDCEDC8),
         contentColor = Color(0xFF689F38),
         modifier = modifier

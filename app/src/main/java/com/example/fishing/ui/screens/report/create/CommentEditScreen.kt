@@ -24,8 +24,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.fishing.R
 import com.example.fishing.ui.theme.FishingTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +47,7 @@ fun CommentEditScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Комментарий",
+                        text = stringResource(R.string.comment),
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -53,7 +55,7 @@ fun CommentEditScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -61,7 +63,7 @@ fun CommentEditScreen(
                         onClick = { onSaveClick(comment) },
                         enabled = comment.isNotBlank()
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "Сохранить")
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -86,7 +88,7 @@ fun CommentEditScreen(
                     .weight(1f),
                 placeholder = {
                     Text(
-                        text = "Текст",
+                        text = stringResource(R.string.text),
                         style = MaterialTheme.typography.bodyLarge,
                         color = CreateReportColors.Outline
                     )

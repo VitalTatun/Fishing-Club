@@ -15,8 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.fishing.R
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MarkerDomain
@@ -198,7 +200,7 @@ fun MapScreen(
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
             }
         }
 
@@ -216,7 +218,7 @@ fun MapScreen(
                 .padding(16.dp)
                 .size(56.dp)
         ) {
-            Icon(imageVector = Icons.Default.MyLocation, contentDescription = "My Location")
+            Icon(imageVector = Icons.Default.MyLocation, contentDescription = stringResource(R.string.my_location))
         }
     }
 }

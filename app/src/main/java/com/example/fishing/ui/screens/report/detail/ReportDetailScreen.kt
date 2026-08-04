@@ -16,10 +16,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
@@ -45,7 +47,7 @@ fun ReportDetailScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
+                            contentDescription = stringResource(R.string.back),
                         )
                     }
                 },
@@ -53,7 +55,7 @@ fun ReportDetailScreen(
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = "Избранное",
+                            contentDescription = stringResource(R.string.favorites),
                             tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -61,7 +63,7 @@ fun ReportDetailScreen(
                         IconButton(onClick = { menuExpanded = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Меню",
+                                contentDescription = stringResource(R.string.menu),
                             )
                         }
                         DropdownMenu(
@@ -69,14 +71,14 @@ fun ReportDetailScreen(
                             onDismissRequest = { menuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Редактировать") },
+                                text = { Text(stringResource(R.string.edit)) },
                                 onClick = { menuExpanded = false },
                                 leadingIcon = {
                                     Icon(Icons.Outlined.BorderColor, contentDescription = null)
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text(if (report.isPublic) "Сделать приватным" else "Сделать публичным") },
+                                text = { Text(if (report.isPublic) stringResource(R.string.make_private) else stringResource(R.string.make_public)) },
                                 onClick = { menuExpanded = false },
                                 leadingIcon = {
                                     Icon(Icons.Outlined.Lock, contentDescription = null)
@@ -84,7 +86,7 @@ fun ReportDetailScreen(
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
-                                text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
+                                text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                                 onClick = { menuExpanded = false },
                                 leadingIcon = {
                                     Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
@@ -141,12 +143,12 @@ fun ReportDetailLoadingScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                title = { Text(text = "Загрузка") },
+                title = { Text(text = stringResource(R.string.loading)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад",
+                            contentDescription = stringResource(R.string.back),
                         )
                     }
                 }

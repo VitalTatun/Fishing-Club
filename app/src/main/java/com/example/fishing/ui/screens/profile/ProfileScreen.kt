@@ -5,7 +5,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.ui.screens.report.create.CreateReportColors
 
 @Composable
@@ -35,7 +37,7 @@ fun ProfileScreen(
                 contentColor = CreateReportColors.OnSurface
             )
         ) {
-            Text("Выйти")
+            Text(stringResource(R.string.logout))
         }
     }
 }

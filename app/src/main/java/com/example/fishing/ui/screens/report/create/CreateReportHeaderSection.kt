@@ -27,9 +27,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.model.FishingType
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -73,10 +75,10 @@ internal fun ReportHeaderSection(
             )
 
             SwitchRow(
-                title = "Опубликовать",
+                title = stringResource(R.string.publish),
                 checked = isPublic,
                 onCheckedChange = onPublicChange,
-                supportingText = "Ваш отчет пополнит карту уловов и вдохновит других рыбаков. Если хотите сохранить место в секрете — просто отключите публикацию."
+                supportingText = stringResource(R.string.publish_supporting)
             )
         }
         HorizontalDivider(
@@ -93,8 +95,8 @@ internal fun ReportTypeSelector(
     modifier: Modifier = Modifier
 ) {
     val supportingText = when (reportType) {
-        FishingType.HAUL -> "Трофей — для особого улова: фото обязательно, в отчете только одна рыба, остальные поля без изменений."
-        FishingType.FISHING_LOG -> "Отчет — для обычных заметок: можно без фото, количество рыб не ограничено."
+        FishingType.HAUL -> stringResource(R.string.report_type_trophy_supporting)
+        FishingType.FISHING_LOG -> stringResource(R.string.report_type_log_supporting)
     }
 
     Column(modifier = modifier) {
@@ -179,7 +181,7 @@ internal fun ReportDateTimeRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Дата",
+                text = stringResource(R.string.date),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -199,7 +201,7 @@ internal fun ReportDateTimeRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Время",
+                text = stringResource(R.string.time),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -267,12 +269,12 @@ private fun FishingDatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = { onConfirm(datePickerState.selectedDateMillis) }) {
-                Text("OK")
+                Text(stringResource(R.string.ok))
             }
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text("Отмена")
+                Text(stringResource(R.string.cancel))
             }
         }
     ) {
@@ -290,12 +292,12 @@ private fun TimePickerDialog(
         onDismissRequest = onDismiss,
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text("Отмена")
+                Text(stringResource(R.string.cancel))
             }
         },
         confirmButton = {
             TextButton(onClick = { onConfirm() }) {
-                Text("OK")
+                Text(stringResource(R.string.ok))
             }
         },
         text = { content() }

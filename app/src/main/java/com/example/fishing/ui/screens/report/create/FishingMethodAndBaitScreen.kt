@@ -27,8 +27,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.model.Bait
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.ui.theme.FishingTheme
@@ -52,12 +54,12 @@ fun FishingMethodAndBaitScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Способ ловли и наживка",
+                        text = stringResource(R.string.method_and_bait),
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -68,7 +70,7 @@ fun FishingMethodAndBaitScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = "Сохранить",
+                            contentDescription = stringResource(R.string.save),
                             tint = if (isSaveEnabled) Color.Black else Color.Gray
                         )
                     }
@@ -98,13 +100,13 @@ fun FishingMethodAndBaitScreen(
                         selectedBaits.clear()
                     }
                 },
-                label = "Способ ловли",
+                label = stringResource(R.string.fishing_method),
                 options = FishingMethod.entries.map { it.russianName }
             )
 
             if (selectedMethod == FishingMethod.NONE) {
                 Text(
-                    text = "Чтобы появился выбор наживок, сначала выберите способ ловли",
+                    text = stringResource(R.string.select_method_first),
                     style = MaterialTheme.typography.bodySmall,
                     color = CreateReportColors.OnSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 12.dp)

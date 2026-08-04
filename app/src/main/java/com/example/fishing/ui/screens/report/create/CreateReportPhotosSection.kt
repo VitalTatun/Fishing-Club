@@ -33,9 +33,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
+import com.example.fishing.R
 import com.example.fishing.ui.theme.FishingTheme
 
 private const val MaxPhotos = 6
@@ -81,8 +83,8 @@ internal fun PhotosSectionContent(
 ) {
     SectionCard(contentPadding = PaddingValues(0.dp)) {
         Section(
-            title = "Фотографии",
-            subtitle = "Максимально 6 фотографий, до 10мб.",
+            title = stringResource(R.string.photos),
+            subtitle = stringResource(R.string.photos_subtitle),
             hasData = selectedPhotoUris.isNotEmpty(),
             isRequired = isRequired,
             onArrowClick = onAddClick)
@@ -143,7 +145,7 @@ private fun PhotoTile(
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Удалить фото",
+                contentDescription = stringResource(R.string.delete_photo),
                 modifier = Modifier.size(20.dp)
             )
         }

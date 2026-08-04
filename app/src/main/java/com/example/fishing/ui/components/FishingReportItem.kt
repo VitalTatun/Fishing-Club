@@ -24,12 +24,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
@@ -97,13 +99,19 @@ private fun FishingReportHeader(
 ) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
 
+    val fishFallback = stringResource(R.string.fish_fallback)
+    val methodSpinning = stringResource(R.string.method_spinning)
+    val methodBobber = stringResource(R.string.method_bobber)
+    val methodFeeder = stringResource(R.string.method_feeder)
+    val methodFallback = stringResource(R.string.method_fallback)
+
     val fishAndMethod = remember(report.fish, report.fishingMethod) {
-        val fishName = report.fish.firstOrNull()?.name ?: "Рыба"
+        val fishName = report.fish.firstOrNull()?.name ?: fishFallback
         val methodName = when (report.fishingMethod) {
-            FishingMethod.SPINNING -> "Спиннинг"
-            FishingMethod.BOBBER -> "Поплавок"
-            FishingMethod.FEEDER -> "Фидер"
-            else -> "Метод"
+            FishingMethod.SPINNING -> methodSpinning
+            FishingMethod.BOBBER -> methodBobber
+            FishingMethod.FEEDER -> methodFeeder
+            else -> methodFallback
         }
         "$fishName • $methodName"
     }
@@ -136,21 +144,21 @@ private fun FishingReportHeader(
                 if (report.water.isPaid) {
                     Icon(
                         imageVector = Icons.Default.Paid,
-                        contentDescription = "Платный водоем",
+                        contentDescription = stringResource(R.string.paid_water),
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
                 if (isFavorite) {
                     Icon(
                         imageVector = Icons.Default.Bookmark,
-                        contentDescription = "В избранном",
+                        contentDescription = stringResource(R.string.in_favorites),
                         tint = FishingTheme.colors.bookmarkRed,
                     )
                 }
                 if (!report.isPublic) {
                     Icon(
                         imageVector = Icons.Default.VisibilityOff,
-                        contentDescription = "Не опубликован",
+                        contentDescription = stringResource(R.string.draft),
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
@@ -228,7 +236,7 @@ private fun FishingReportPhotos(
                         tint = Color(0xFF50250A)
                     )
                     Text(
-                        text = "Трофей",
+                        text = stringResource(R.string.trophy),
                         color = Color(0xFF50250A),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium,
@@ -271,19 +279,19 @@ private fun FishingReportFooter(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Удалить отчет") },
-            text = { Text("Вы уверены, что хотите удалить этот отчет?") },
+            title = { Text(stringResource(R.string.delete_report)) },
+            text = { Text(stringResource(R.string.delete_report_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
                     onDeleteReport()
                 }) {
-                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -313,7 +321,7 @@ private fun FishingReportFooter(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Удалить отчет") },
+                    text = { Text(stringResource(R.string.delete_report)) },
                     onClick = {
                         showMenu = false
                         showDeleteDialog = true
@@ -361,7 +369,7 @@ private fun ReportAuthor(
             }
         }
         Text(
-            text = if (isCurrentUser) "${user.name.ifBlank { "Рыбак" }} (Вы)" else user.name.ifBlank { "Рыбак" },
+            text = if (isCurrentUser) "${user.name.ifBlank { stringResource(R.string.fisherman) }} ${stringResource(R.string.you_suffix)}" else user.name.ifBlank { stringResource(R.string.fisherman) },
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

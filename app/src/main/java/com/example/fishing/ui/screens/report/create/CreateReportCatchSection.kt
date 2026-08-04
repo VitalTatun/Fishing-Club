@@ -8,8 +8,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.fishing.R
 import com.example.fishing.model.Fish
 import com.example.fishing.ui.theme.FishingTheme
 
@@ -26,7 +28,7 @@ internal fun CatchSection(
         )
     ) {
         Section(
-            title = "Улов",
+            title = stringResource(R.string.catch_label),
             hasData = selectedFish.isNotEmpty(),
             isRequired = isRequired,
             onArrowClick = onArrowClick
@@ -35,7 +37,7 @@ internal fun CatchSection(
             selectedFish.forEachIndexed { index, fish ->
                 InfoRow(
                     label = fish.name,
-                    value = "${fish.count} шт.",
+                    value = stringResource(R.string.fish_count_short, fish.count),
                     contentPadding = PaddingValues(vertical = 12.dp, horizontal = 32.dp)
                 )
                 if (index < selectedFish.lastIndex) {
@@ -51,8 +53,8 @@ internal fun CatchSection(
                     color = CreateReportColors.Divider
                 )
                 InfoRow(
-                    label = "Общий вес",
-                    value = "${(weight * 10).toInt() / 10f} кг",
+                    label = stringResource(R.string.total_weight),
+                    value = "${(weight * 10).toInt() / 10f} ${stringResource(R.string.kg)}",
                     contentPadding = PaddingValues(vertical = 16.dp, horizontal = 32.dp)
                 )
             }
