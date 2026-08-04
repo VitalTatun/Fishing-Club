@@ -52,6 +52,10 @@ class SupabaseAuthRepository @Inject constructor(
         return supabase.auth.currentSessionOrNull() != null
     }
 
+    override suspend fun loadSession() {
+        supabase.auth.awaitInitialization()
+    }
+
     private fun UserInfo.toDomainUser(): User {
         return User(
             id = UUID.fromString(id),

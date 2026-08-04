@@ -6,10 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.navigation.NavType
@@ -84,17 +87,21 @@ class MainActivity : ComponentActivity() {
                 val selectedTab by viewModel.selectedTab.collectAsState()
 
                 val navController = rememberNavController()
-                val startDestination = remember {
-                    if (authRepository.isLoggedIn()) "main" else "login"
+                var startDestination by remember { mutableStateOf<String?>(null) }
+
+                LaunchedEffect(Unit) {
+                    authRepository.loadSession()
+                    startDestination = if (authRepository.isLoggedIn()) "main" else "login"
                 }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavHost(
-                        navController = navController,
-                        startDestination = startDestination,
+                    if (startDestination != null) {
+                        NavHost(
+                            navController = navController,
+                            startDestination = startDestination!!,
                         modifier = Modifier.fillMaxSize(),
                         enterTransition = {
                             slideInHorizontally(
@@ -437,6 +444,14 @@ class MainActivity : ComponentActivity() {
                                     onBackClick = { navController.popBackStack() }
                                 )
                             }
+                        }
+                    }
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
                         }
                     }
                 }
