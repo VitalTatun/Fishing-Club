@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BorderColor
@@ -51,7 +52,7 @@ fun ReportDetailScreen(
                 actions = {
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
-                            imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Outlined.Bookmark,
+                            imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                             contentDescription = "Избранное",
                             tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -50,6 +50,7 @@ fun MainScreen(
     onDeleteReport: (FishingReport) -> Unit = {},
     onSearchClick: () -> Unit = {},
     userEmail: String? = null,
+    currentUserId: UUID? = null,
     onLogout: () -> Unit = {},
     errorText: String? = null,
     onErrorDismiss: () -> Unit = {},
@@ -153,7 +154,8 @@ fun MainScreen(
                                     report = report,
                                     onClick = { onReportClick(report) },
                                     onDeleteReport = onDeleteReport,
-                                    isFavorite = favoriteReports.any { it.id == report.id }
+                                    isFavorite = favoriteReports.any { it.id == report.id },
+                                    currentUserId = currentUserId
                                 )
                                 if (index < mergedReports.lastIndex) {
                                     HorizontalDivider(

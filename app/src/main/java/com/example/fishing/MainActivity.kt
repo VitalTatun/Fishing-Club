@@ -164,6 +164,7 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate("report_search")
                                 },
                                 userEmail = authRepository.currentUser()?.email,
+                                currentUserId = authRepository.currentUser()?.id,
                                 onLogout = {
                                     coroutineScope.launch {
                                         authRepository.logout()

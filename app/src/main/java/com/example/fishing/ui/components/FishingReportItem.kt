@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -41,6 +42,7 @@ fun FishingReportItem(
     onClick: () -> Unit = {},
     onDeleteReport: (FishingReport) -> Unit = {},
     isFavorite: Boolean = false,
+    currentUserId: UUID? = null,
 ) {
     Card(
         modifier = modifier
@@ -60,7 +62,10 @@ fun FishingReportItem(
         ) {
 
             if (report.photo.isNotEmpty()) {
-                FishingReportPhotos(photos = report.photo)
+                FishingReportPhotos(
+                    photos = report.photo,
+                    showTrophyBadge = report.type == FishingType.HAUL
+                )
             }
             FishingReportHeader(report = report, isFavorite = isFavorite)
 
@@ -76,7 +81,11 @@ fun FishingReportItem(
                 )
             }
 
-            FishingReportFooter(report = report, onDeleteReport = { onDeleteReport(report) })
+            FishingReportFooter(
+                report = report,
+                onDeleteReport = { onDeleteReport(report) },
+                currentUserId = currentUserId
+            )
         }
     }
 }
@@ -138,6 +147,13 @@ private fun FishingReportHeader(
                         tint = FishingTheme.colors.bookmarkRed,
                     )
                 }
+                if (!report.isPublic) {
+                    Icon(
+                        imageVector = Icons.Default.VisibilityOff,
+                        contentDescription = "Не опубликован",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
 
@@ -165,7 +181,10 @@ private fun FishingReportHeader(
 }
 
 @Composable
-private fun FishingReportPhotos(photos: List<String>) {
+private fun FishingReportPhotos(
+    photos: List<String>,
+    showTrophyBadge: Boolean = false,
+) {
     val pagerState = rememberPagerState { photos.size }
 
     Box(
@@ -189,6 +208,36 @@ private fun FishingReportPhotos(photos: List<String>) {
             )
         }
         
+        if (showTrophyBadge) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 8.dp, start = 24.dp),
+                color = Color(0xFFFFD71D),
+                shape = RoundedCornerShape(30.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EmojiEvents,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color(0xFF50250A)
+                    )
+                    Text(
+                        text = "Трофей",
+                        color = Color(0xFF50250A),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                        )
+                    )
+                }
+            }
+        }
+
         if (photos.size > 1) {
             Surface(
                 modifier = Modifier
@@ -214,6 +263,7 @@ private fun FishingReportPhotos(photos: List<String>) {
 private fun FishingReportFooter(
     report: FishingReport,
     onDeleteReport: () -> Unit = {},
+    currentUserId: UUID? = null,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -245,10 +295,7 @@ private fun FishingReportFooter(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ReportBadges(
-            report = report,
-            showDraftBadge = true
-        )
+        ReportAuthor(user = report.user, isCurrentUser = report.userId == currentUserId)
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -281,22 +328,46 @@ private fun FishingReportFooter(
 }
 
 @Composable
-fun ReportBadges(
-    report: FishingReport,
-    modifier: Modifier = Modifier,
-    showDraftBadge: Boolean = true
+private fun ReportAuthor(
+    user: User,
+    isCurrentUser: Boolean = false,
 ) {
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (!report.isPublic && showDraftBadge) {
-            DraftBadge()
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            if (user.image.isNotBlank()) {
+                AsyncImage(
+                    model = user.image,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
-        if (report.type == FishingType.HAUL) {
-            TrophyBadge()
-        }
+        Text(
+            text = if (isCurrentUser) "${user.name.ifBlank { "Рыбак" }} (Вы)" else user.name.ifBlank { "Рыбак" },
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
