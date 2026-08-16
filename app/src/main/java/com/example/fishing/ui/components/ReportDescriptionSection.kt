@@ -48,13 +48,12 @@ fun ReportDescriptionSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(vertical = 4.dp),
         ) {
             Text(
                 text = report.comment,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { 
@@ -64,13 +63,17 @@ fun ReportDescriptionSection(
                 }
             )
             if (isOverflowed) {
-                TextButton(
-                    onClick = { showSheet = true },
+                Text(
+                    text = stringResource(R.string.more_details),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF007AFF)
+                    ),
                     modifier = Modifier
                         .align(Alignment.End)
-                ) {
-                    Text(text = stringResource(R.string.more_details))
-                }
+                        .padding(top = 8.dp)
+                        .clickable { showSheet = true }
+                )
             }
         }
     }

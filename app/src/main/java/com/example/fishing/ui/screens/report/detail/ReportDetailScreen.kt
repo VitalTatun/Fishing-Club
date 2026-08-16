@@ -41,8 +41,20 @@ fun ReportDetailScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
+            val fishFallback = stringResource(R.string.fish_fallback)
+            val methodName = stringResource(report.fishingMethod.labelRes)
+            val fishName = report.fish.firstOrNull()?.name ?: fishFallback
+            val title = "$fishName • $methodName"
+
             TopAppBar(
-                title = { }, // Title is now in the content
+                title = {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -56,44 +68,43 @@ fun ReportDetailScreen(
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                             contentDescription = stringResource(R.string.favorites),
-                            tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isFavorite) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = stringResource(R.string.menu),
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.edit)) },
-                                onClick = { menuExpanded = false },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.BorderColor, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(if (report.isPublic) stringResource(R.string.make_private) else stringResource(R.string.make_public)) },
-                                onClick = { menuExpanded = false },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Lock, contentDescription = null)
-                                }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
-                                onClick = { menuExpanded = false },
-                                leadingIcon = {
-                                    Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                                }
-                            )
-                        }
-
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.menu),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.edit)) },
+                            onClick = { menuExpanded = false },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.BorderColor, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (report.isPublic) stringResource(R.string.make_private) else stringResource(R.string.make_public)) },
+                            onClick = { menuExpanded = false },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Lock, contentDescription = null)
+                            }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
+                            onClick = { menuExpanded = false },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            }
+                        )
+                    }
                 }
             )
         },
