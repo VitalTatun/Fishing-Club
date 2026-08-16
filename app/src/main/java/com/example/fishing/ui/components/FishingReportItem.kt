@@ -1,7 +1,6 @@
 package com.example.fishing.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -9,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -41,227 +40,9 @@ fun FishingReportItem(
     onClick: () -> Unit = {},
     onDeleteReport: (FishingReport) -> Unit = {},
     isFavorite: Boolean = false,
+    onFavoriteClick: () -> Unit = {},
     currentUserId: UUID? = null,
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-
-        shape = RectangleShape,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-
-            if (report.photo.isNotEmpty()) {
-                FishingReportPhotos(
-                    photos = report.photo,
-                    showTrophyBadge = report.type == FishingType.HAUL
-                )
-            }
-            FishingReportHeader(report = report, isFavorite = isFavorite)
-
-            if (report.comment.isNotBlank()) {
-                Text(
-                    text = report.comment,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            FishingReportFooter(
-                report = report,
-                onDeleteReport = { onDeleteReport(report) },
-                currentUserId = currentUserId
-            )
-        }
-    }
-}
-
-@Composable
-private fun FishingReportHeader(
-    report: FishingReport,
-    isFavorite: Boolean = false,
-) {
-    val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
-
-    val fishFallback = stringResource(R.string.fish_fallback)
-    val methodName = stringResource(report.fishingMethod.labelRes)
-
-    val fishAndMethod = remember(report.fish, report.fishingMethod) {
-        val fishName = report.fish.firstOrNull()?.name ?: fishFallback
-        "$fishName • $methodName"
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = fishAndMethod,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 20.sp
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (report.water.isPaid) {
-                    Icon(
-                        imageVector = Icons.Default.Paid,
-                        contentDescription = stringResource(R.string.paid_water),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                if (isFavorite) {
-                    Icon(
-                        imageVector = Icons.Default.Bookmark,
-                        contentDescription = stringResource(R.string.in_favorites),
-                        tint = FishingTheme.colors.bookmarkRed,
-                    )
-                }
-                if (!report.isPublic) {
-                    Icon(
-                        imageVector = Icons.Default.VisibilityOff,
-                        contentDescription = stringResource(R.string.draft),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = dateFormatter.format(report.fishingTime),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "  •  ",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = report.water.waterName,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun FishingReportPhotos(
-    photos: List<String>,
-    showTrophyBadge: Boolean = false,
-) {
-    val pagerState = rememberPagerState { photos.size }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(250.dp)
-    ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            pageSpacing = 8.dp
-        ) { index ->
-            AsyncImage(
-                model = photos[index],
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Crop
-            )
-        }
-        
-        if (showTrophyBadge) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 8.dp, start = 24.dp),
-                color = Color(0xFFFFD71D),
-                shape = RoundedCornerShape(30.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.EmojiEvents,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF50250A)
-                    )
-                    Text(
-                        text = stringResource(R.string.trophy),
-                        color = Color(0xFF50250A),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                        )
-                    )
-                }
-            }
-        }
-
-        if (photos.size > 1) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 8.dp, end = 24.dp),
-                color = Color.Black.copy(alpha = 0.6f),
-                shape = RoundedCornerShape(30.dp)
-            ) {
-                Text(
-                    text = "${pagerState.currentPage + 1}/${photos.size}",
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                    )
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FishingReportFooter(
-    report: FishingReport,
-    onDeleteReport: () -> Unit = {},
-    currentUserId: UUID? = null,
-) {
-    var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -272,7 +53,7 @@ private fun FishingReportFooter(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
-                    onDeleteReport()
+                    onDeleteReport(report)
                 }) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
@@ -285,56 +66,74 @@ private fun FishingReportFooter(
         )
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        ReportAuthor(user = report.user, isCurrentUser = report.userId == currentUserId)
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Box {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable { showMenu = true }
+        Column(
+            modifier = Modifier.padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            FishingReportHeader(
+                user = report.user,
+                date = report.publishedAt ?: report.fishingTime,
+                isFavorite = isFavorite,
+                onFavoriteClick = onFavoriteClick,
+                onDeleteClick = { showDeleteDialog = true },
+                showDeleteOption = report.userId == currentUserId
             )
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.delete_report)) },
-                    onClick = {
-                        showMenu = false
-                        showDeleteDialog = true
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                    }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FishingReportTitle(report = report)
+                FishingReportDetails(report = report)
+            }
+
+            if (report.comment.isNotBlank()) {
+                Text(
+                    text = report.comment,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            if (report.photo.isNotEmpty()) {
+                FishingReportPhotos(photos = report.photo)
             }
         }
     }
 }
 
 @Composable
-private fun ReportAuthor(
+private fun FishingReportHeader(
     user: User,
-    isCurrentUser: Boolean = false,
+    date: Date,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    showDeleteOption: Boolean,
+    modifier: Modifier = Modifier
 ) {
+    val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
+    var showMenu by remember { mutableStateOf(false) }
+
     Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(24.dp)
+                .size(38.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
@@ -351,19 +150,191 @@ private fun ReportAuthor(
                     contentDescription = null,
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .size(16.dp),
+                        .size(24.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = user.name.ifBlank { stringResource(R.string.fisherman) },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = dateFormatter.format(date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (showDeleteOption) {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete)) },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null)
+                            }
+                        )
+                    }
+                }
+            }
+
+            FilledTonalIconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier.size(38.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = if (isFavorite) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FishingReportTitle(
+    report: FishingReport,
+    modifier: Modifier = Modifier
+) {
+    val fishFallback = stringResource(R.string.fish_fallback)
+    val methodName = stringResource(report.fishingMethod.labelRes)
+    val fishName = report.fish.firstOrNull()?.name ?: fishFallback
+    val title = "$methodName • $fishName"
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         Text(
-            text = if (isCurrentUser) "${user.name.ifBlank { stringResource(R.string.fisherman) }} ${stringResource(R.string.you_suffix)}" else user.name.ifBlank { stringResource(R.string.fisherman) },
-            style = MaterialTheme.typography.bodyMedium,
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+
+        if (report.type == FishingType.HAUL) {
+            Surface(
+                color = FishingTheme.colors.trophyYellow,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.trophy),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = FishingTheme.colors.textOnTrophy
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FishingReportDetails(
+    report: FishingReport,
+    modifier: Modifier = Modifier
+) {
+    val details = buildString {
+        append(report.water.waterName)
+        if (report.water.isPaid) {
+            append(" • ")
+            append(stringResource(R.string.paid_water))
+        }
+        append(" • ")
+        append(stringResource(if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat))
+    }
+
+    Text(
+        text = details,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun FishingReportPhotos(
+    photos: List<String>,
+) {
+    val pagerState = rememberPagerState { photos.size }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(230.dp)
+            .padding(horizontal = 16.dp)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            pageSpacing = 8.dp
+        ) { index ->
+            AsyncImage(
+                model = photos[index],
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        if (photos.size > 1) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 8.dp),
+                color = Color.Black.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(30.dp)
+            ) {
+                Text(
+                    text = "${pagerState.currentPage + 1}/${photos.size}",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                )
+            }
+        }
     }
 }
 
@@ -389,14 +360,16 @@ fun FishingReportItemPreview() {
         fish = listOf(Fish(name = "Окунь", count = 5)),
         fishingMethod = FishingMethod.SPINNING,
         bait = listOf(Bait.WOBBLER),
-        comment = "Прекрасное утро.",
+        comment = "Прекрасное утро. В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб!",
         user = sampleUser,
         fishingFromTheShore = true,
         isPublic = false
     )
-    Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+    Box(modifier = Modifier
+        .background(MaterialTheme.colorScheme.background)
+        .padding(16.dp)) {
         FishingTheme {
-            FishingReportItem(report = sampleReport)
+            FishingReportItem(report = sampleReport, isFavorite = true)
         }
     }
 }

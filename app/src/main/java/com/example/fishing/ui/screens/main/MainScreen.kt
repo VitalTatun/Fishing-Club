@@ -72,7 +72,6 @@ fun MainScreen(
                             1 -> stringResource(R.string.tab_map)
                             else -> stringResource(R.string.fishing_journal)
                         },
-                        fontWeight = FontWeight.Medium
                     )
                 },
                 actions = {
@@ -134,8 +133,8 @@ fun MainScreen(
                     ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(0.dp),
-                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             if (mergedReports.isEmpty() && !isLoading) {
                                 item {
@@ -159,14 +158,7 @@ fun MainScreen(
                                     isFavorite = favoriteReports.any { it.id == report.id },
                                     currentUserId = currentUserId
                                 )
-                                if (index < mergedReports.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(vertical = 0.dp),
-                                        thickness = 1.dp,
-                                        color = Color.LightGray.copy(alpha = 0.5f)
-                                    )
-                                }
-                            }
+                                                            }
                         }
                     }
                 }
