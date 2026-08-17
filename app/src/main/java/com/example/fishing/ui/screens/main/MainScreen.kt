@@ -133,7 +133,7 @@ fun MainScreen(
                     ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             if (mergedReports.isEmpty() && !isLoading) {
