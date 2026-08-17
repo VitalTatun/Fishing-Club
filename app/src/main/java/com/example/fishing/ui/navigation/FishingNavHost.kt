@@ -121,6 +121,18 @@ fun FishingNavHost(
             ReportSearchScreen(
                 reports = reports,
                 favoriteReports = favoriteReports,
+                query = viewModel.searchQuery,
+                onQueryChange = { viewModel.searchQuery = it },
+                selectedDate = viewModel.searchSelectedDate,
+                onDateChange = { viewModel.searchSelectedDate = it },
+                isFavoritesSelected = viewModel.searchIsFavoritesSelected,
+                onFavoritesChange = { viewModel.searchIsFavoritesSelected = it },
+                isTrophySelected = viewModel.searchIsTrophySelected,
+                onTrophyChange = { viewModel.searchIsTrophySelected = it },
+                isPaidSelected = viewModel.searchIsPaidSelected,
+                onPaidChange = { viewModel.searchIsPaidSelected = it },
+                selectedCatch = viewModel.searchSelectedCatch,
+                onCatchChange = { viewModel.searchSelectedCatch = it },
                 onReportClick = { report ->
                     navController.navigate("detail/${report.id}")
                 },

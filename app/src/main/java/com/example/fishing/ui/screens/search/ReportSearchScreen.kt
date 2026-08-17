@@ -39,22 +39,27 @@ import java.util.UUID
 fun ReportSearchScreen(
     reports: List<FishingReport>,
     favoriteReports: List<FishingReport> = emptyList(),
+    query: String,
+    onQueryChange: (String) -> Unit,
+    selectedDate: Long?,
+    onDateChange: (Long?) -> Unit,
+    isFavoritesSelected: Boolean,
+    onFavoritesChange: (Boolean) -> Unit,
+    isTrophySelected: Boolean,
+    onTrophyChange: (Boolean) -> Unit,
+    isPaidSelected: Boolean,
+    onPaidChange: (Boolean) -> Unit,
+    selectedCatch: String?,
+    onCatchChange: (String?) -> Unit,
     onReportClick: (FishingReport) -> Unit,
     onBack: () -> Unit,
     currentUserId: UUID? = null,
 ) {
-    var query by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
-    var selectedDate by remember { mutableStateOf<Long?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
 
-    var isFavoritesSelected by remember { mutableStateOf(false) }
-    var isTrophySelected by remember { mutableStateOf(false) }
-    var isPaidSelected by remember { mutableStateOf(false) }
-
-    var selectedCatch by remember { mutableStateOf<String?>(null) }
     var showCatchMenu by remember { mutableStateOf(false) }
 
     val uniqueFish = remember(reports) {
@@ -66,7 +71,7 @@ fun ReportSearchScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    selectedDate = datePickerState.selectedDateMillis
+                    onDateChange(datePickerState.selectedDateMillis)
                     showDatePicker = false
                 }) {
                     Text(stringResource(R.string.ok))
@@ -110,7 +115,7 @@ fun ReportSearchScreen(
                 val reportDay = calendar.get(Calendar.DAY_OF_YEAR)
                 val reportYear = calendar.get(Calendar.YEAR)
 
-                val filterCalendar = Calendar.getInstance().apply { timeInMillis = selectedDate!! }
+                val filterCalendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
                 val filterDay = filterCalendar.get(Calendar.DAY_OF_YEAR)
                 val filterYear = filterCalendar.get(Calendar.YEAR)
 
@@ -150,32 +155,32 @@ fun ReportSearchScreen(
             Column(modifier = Modifier.statusBarsPadding()) {
                 ReportSearchHeader(
                     query = query,
-                    onQueryChange = { query = it },
+                    onQueryChange = onQueryChange,
                     onBack = onBack,
                     focusRequester = focusRequester,
                 )
                 ReportSearchFilters(
                     selectedDate = selectedDate,
                     onDateClick = { showDatePicker = true },
-                    onClearDate = { selectedDate = null },
+                    onClearDate = { onDateChange(null) },
                     isFavoritesSelected = isFavoritesSelected,
-                    onFavoritesClick = { isFavoritesSelected = !isFavoritesSelected },
+                    onFavoritesClick = { onFavoritesChange(!isFavoritesSelected) },
                     isTrophySelected = isTrophySelected,
-                    onTrophyClick = { isTrophySelected = !isTrophySelected },
+                    onTrophyClick = { onTrophyChange(!isTrophySelected) },
                     isPaidSelected = isPaidSelected,
-                    onPaidClick = { isPaidSelected = !isPaidSelected },
+                    onPaidClick = { onPaidChange(!isPaidSelected) },
                     selectedCatch = selectedCatch,
                     onCatchClick = { showCatchMenu = true },
-                    onClearCatch = { selectedCatch = null },
+                    onClearCatch = { onCatchChange(null) },
                     uniqueFish = uniqueFish,
                     showCatchMenu = showCatchMenu,
                     onDismissCatchMenu = { showCatchMenu = false },
                     onCatchSelected = { fish ->
-                        selectedCatch = fish
+                        onCatchChange(fish)
                         showCatchMenu = false
                     }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+//                Spacer(modifier = Modifier.height(8.dp))
             }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -201,7 +206,7 @@ fun ReportSearchScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().imePadding(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 30.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(filteredReports, key = { it.id }) { report ->
@@ -475,6 +480,18 @@ fun ReportSearchScreenPreview() {
         ReportSearchScreen(
             reports = sampleReports,
             favoriteReports = listOf(sampleReports.first()),
+            query = "",
+            onQueryChange = {},
+            selectedDate = null,
+            onDateChange = {},
+            isFavoritesSelected = false,
+            onFavoritesChange = {},
+            isTrophySelected = false,
+            onTrophyChange = {},
+            isPaidSelected = false,
+            onPaidChange = {},
+            selectedCatch = null,
+            onCatchChange = {},
             onReportClick = {},
             onBack = {}
         )

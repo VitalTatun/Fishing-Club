@@ -78,6 +78,14 @@ class MainViewModel @Inject constructor(
     var formComment by mutableStateOf("")
     var formLocation by mutableStateOf<GeoPoint?>(null)
 
+    // Search state (persists across navigation)
+    var searchQuery by mutableStateOf("")
+    var searchSelectedDate by mutableStateOf<Long?>(null)
+    var searchIsFavoritesSelected by mutableStateOf(false)
+    var searchIsTrophySelected by mutableStateOf(false)
+    var searchIsPaidSelected by mutableStateOf(false)
+    var searchSelectedCatch by mutableStateOf<String?>(null)
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
