@@ -9,6 +9,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -29,10 +32,14 @@ import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.screens.profile.ProfileScreen
 import java.util.*
 
-sealed class BottomNavItem(val titleRes: Int, val icon: ImageVector) {
-    object Home : BottomNavItem(R.string.tab_home, Icons.Default.Home)
-    object Map : BottomNavItem(R.string.tab_map, Icons.Default.Map)
-    object Profile : BottomNavItem(R.string.tab_profile, Icons.Default.Person)
+sealed class BottomNavItem(
+    val titleRes: Int,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector
+) {
+    object Home : BottomNavItem(R.string.tab_home, Icons.Filled.Home, Icons.Outlined.Home)
+    object Map : BottomNavItem(R.string.tab_map, Icons.Filled.Map, Icons.Outlined.Map)
+    object Profile : BottomNavItem(R.string.tab_profile, Icons.Filled.Person, Icons.Outlined.Person)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +102,13 @@ fun MainScreen(
             NavigationBar {
                 items.forEachIndexed { index, item ->
                     NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = stringResource(item.titleRes)) },
+                        icon = {
+                            val isSelected = selectedTab == index
+                            Icon(
+                                imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                                contentDescription = stringResource(item.titleRes)
+                            )
+                        },
                         label = { Text(stringResource(item.titleRes)) },
                         selected = selectedTab == index,
                         onClick = {

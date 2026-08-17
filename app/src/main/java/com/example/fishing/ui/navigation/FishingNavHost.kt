@@ -118,8 +118,11 @@ fun FishingNavHost(
         }
 
         composable("report_list_search") {
+            val combinedReports = remember(reports, favoriteReports) {
+                (reports + favoriteReports).distinctBy { it.id }
+            }
             ReportSearchScreen(
-                reports = reports,
+                reports = combinedReports,
                 favoriteReports = favoriteReports,
                 query = viewModel.searchQuery,
                 onQueryChange = { viewModel.searchQuery = it },
@@ -133,6 +136,8 @@ fun FishingNavHost(
                 onPaidChange = { viewModel.searchIsPaidSelected = it },
                 selectedCatch = viewModel.searchSelectedCatch,
                 onCatchChange = { viewModel.searchSelectedCatch = it },
+                selectedMethod = viewModel.searchSelectedMethod,
+                onMethodChange = { viewModel.searchSelectedMethod = it },
                 onReportClick = { report ->
                     navController.navigate("detail/${report.id}")
                 },

@@ -51,6 +51,8 @@ fun ReportSearchScreen(
     onPaidChange: (Boolean) -> Unit,
     selectedCatch: String?,
     onCatchChange: (String?) -> Unit,
+    selectedMethod: FishingMethod?,
+    onMethodChange: (FishingMethod?) -> Unit,
     onReportClick: (FishingReport) -> Unit,
     onBack: () -> Unit,
     currentUserId: UUID? = null,
@@ -61,6 +63,7 @@ fun ReportSearchScreen(
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
 
     var showCatchMenu by remember { mutableStateOf(false) }
+    var showMethodMenu by remember { mutableStateOf(false) }
 
     val uniqueFish = remember(reports) {
         reports.flatMap { it.fish }.map { it.name }.distinct().sorted()
@@ -94,7 +97,8 @@ fun ReportSearchScreen(
         isFavoritesSelected,
         isTrophySelected,
         isPaidSelected,
-        selectedCatch
+        selectedCatch,
+        selectedMethod
     ) {
         reports.filter { report ->
             // Text query filter
@@ -139,12 +143,19 @@ fun ReportSearchScreen(
                 report.fish.any { it.name == selectedCatch }
             }
 
-            matchesQuery && matchesDate && matchesFavorites && matchesTrophy && matchesPaid && matchesCatch
+            // Fishing method filter
+            val matchesMethod = if (selectedMethod == null) {
+                true
+            } else {
+                report.fishingMethod == selectedMethod
+            }
+
+            matchesQuery && matchesDate && matchesFavorites && matchesTrophy && matchesPaid && matchesCatch && matchesMethod
         }
     }
 
-    val showEmptyPlaceholder = remember(query, selectedDate, isFavoritesSelected, isTrophySelected, isPaidSelected, selectedCatch) {
-        query.isBlank() && selectedDate == null && !isFavoritesSelected && !isTrophySelected && !isPaidSelected && selectedCatch == null
+    val showEmptyPlaceholder = remember(query, selectedDate, isFavoritesSelected, isTrophySelected, isPaidSelected, selectedCatch, selectedMethod) {
+        query.isBlank() && selectedDate == null && !isFavoritesSelected && !isTrophySelected && !isPaidSelected && selectedCatch == null && selectedMethod == null
     }
 
 
@@ -172,12 +183,21 @@ fun ReportSearchScreen(
                     selectedCatch = selectedCatch,
                     onCatchClick = { showCatchMenu = true },
                     onClearCatch = { onCatchChange(null) },
+                    selectedMethod = selectedMethod,
+                    onMethodClick = { showMethodMenu = true },
+                    onClearMethod = { onMethodChange(null) },
                     uniqueFish = uniqueFish,
                     showCatchMenu = showCatchMenu,
                     onDismissCatchMenu = { showCatchMenu = false },
                     onCatchSelected = { fish ->
                         onCatchChange(fish)
                         showCatchMenu = false
+                    },
+                    showMethodMenu = showMethodMenu,
+                    onDismissMethodMenu = { showMethodMenu = false },
+                    onMethodSelected = { method ->
+                        onMethodChange(method)
+                        showMethodMenu = false
                     }
                 )
 //                Spacer(modifier = Modifier.height(8.dp))
@@ -207,7 +227,7 @@ fun ReportSearchScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().imePadding(),
                         contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 30.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(filteredReports, key = { it.id }) { report ->
                             FishingReportItem(
@@ -323,10 +343,16 @@ private fun ReportSearchFilters(
     selectedCatch: String?,
     onCatchClick: () -> Unit,
     onClearCatch: () -> Unit,
+    selectedMethod: FishingMethod?,
+    onMethodClick: () -> Unit,
+    onClearMethod: () -> Unit,
     uniqueFish: List<String>,
     showCatchMenu: Boolean,
     onDismissCatchMenu: () -> Unit,
     onCatchSelected: (String) -> Unit,
+    showMethodMenu: Boolean,
+    onDismissMethodMenu: () -> Unit,
+    onMethodSelected: (FishingMethod) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dateText = remember(selectedDate) {
@@ -368,7 +394,6 @@ private fun ReportSearchFilters(
                 selected = selectedCatch != null,
                 onClick = onCatchClick,
                 label = { Text(selectedCatch ?: stringResource(R.string.catch_label)) },
-                leadingIcon = { Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
                     if (selectedCatch != null) {
                         Icon(
@@ -405,6 +430,43 @@ private fun ReportSearchFilters(
                             onClick = { onCatchSelected(fish) }
                         )
                     }
+                }
+            }
+        }
+
+        Box {
+            FilterChip(
+                selected = selectedMethod != null,
+                onClick = onMethodClick,
+                label = { Text(selectedMethod?.let { stringResource(it.labelRes) } ?: stringResource(R.string.fishing_method)) },
+                trailingIcon = {
+                    if (selectedMethod != null) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { onClearMethod() }
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            )
+
+            DropdownMenu(
+                expanded = showMethodMenu,
+                onDismissRequest = onDismissMethodMenu
+            ) {
+                FishingMethod.entries.filter { it != FishingMethod.NONE }.forEach { method ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(method.labelRes)) },
+                        onClick = { onMethodSelected(method) }
+                    )
                 }
             }
         }
@@ -492,6 +554,8 @@ fun ReportSearchScreenPreview() {
             onPaidChange = {},
             selectedCatch = null,
             onCatchChange = {},
+            selectedMethod = null,
+            onMethodChange = {},
             onReportClick = {},
             onBack = {}
         )
@@ -516,10 +580,16 @@ fun ReportSearchFiltersPreview() {
                 selectedCatch = null,
                 onCatchClick = {},
                 onClearCatch = {},
+                selectedMethod = null,
+                onMethodClick = {},
+                onClearMethod = {},
                 uniqueFish = emptyList(),
                 showCatchMenu = false,
                 onDismissCatchMenu = {},
-                onCatchSelected = {}
+                onCatchSelected = {},
+                showMethodMenu = false,
+                onDismissMethodMenu = {},
+                onMethodSelected = {}
             )
             Spacer(modifier = Modifier.height(16.dp))
             ReportSearchFilters(
@@ -535,10 +605,16 @@ fun ReportSearchFiltersPreview() {
                 selectedCatch = "Окунь",
                 onCatchClick = {},
                 onClearCatch = {},
+                selectedMethod = FishingMethod.SPINNING,
+                onMethodClick = {},
+                onClearMethod = {},
                 uniqueFish = listOf("Окунь", "Щука"),
                 showCatchMenu = false,
                 onDismissCatchMenu = {},
-                onCatchSelected = {}
+                onCatchSelected = {},
+                showMethodMenu = false,
+                onDismissMethodMenu = {},
+                onMethodSelected = {}
             )
         }
     }

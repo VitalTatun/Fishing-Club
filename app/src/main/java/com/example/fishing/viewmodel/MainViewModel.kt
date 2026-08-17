@@ -85,6 +85,7 @@ class MainViewModel @Inject constructor(
     var searchIsTrophySelected by mutableStateOf(false)
     var searchIsPaidSelected by mutableStateOf(false)
     var searchSelectedCatch by mutableStateOf<String?>(null)
+    var searchSelectedMethod by mutableStateOf<FishingMethod?>(null)
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
