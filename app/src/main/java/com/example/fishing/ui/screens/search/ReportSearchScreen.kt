@@ -38,6 +38,7 @@ import java.util.UUID
 @Composable
 fun ReportSearchScreen(
     reports: List<FishingReport>,
+    favoriteReports: List<FishingReport> = emptyList(),
     onReportClick: (FishingReport) -> Unit,
     onBack: () -> Unit,
     currentUserId: UUID? = null,
@@ -81,17 +82,64 @@ fun ReportSearchScreen(
         }
     }
 
-    val filteredReports = remember(query, reports) {
-        if (query.isBlank()) {
-            emptyList()
-        } else {
-            reports.filter { report ->
+    val filteredReports = remember(
+        query,
+        reports,
+        selectedDate,
+        isFavoritesSelected,
+        isTrophySelected,
+        isPaidSelected,
+        selectedCatch
+    ) {
+        reports.filter { report ->
+            // Text query filter
+            val matchesQuery = if (query.isBlank()) {
+                true
+            } else {
                 report.name.contains(query, ignoreCase = true) ||
                         report.water.waterName.contains(query, ignoreCase = true) ||
                         report.comment.contains(query, ignoreCase = true) ||
                         report.fish.any { it.name.contains(query, ignoreCase = true) }
             }
+
+            // Date filter
+            val matchesDate = if (selectedDate == null) {
+                true
+            } else {
+                val calendar = Calendar.getInstance().apply { time = report.fishingTime }
+                val reportDay = calendar.get(Calendar.DAY_OF_YEAR)
+                val reportYear = calendar.get(Calendar.YEAR)
+
+                val filterCalendar = Calendar.getInstance().apply { timeInMillis = selectedDate!! }
+                val filterDay = filterCalendar.get(Calendar.DAY_OF_YEAR)
+                val filterYear = filterCalendar.get(Calendar.YEAR)
+
+                reportDay == filterDay && reportYear == filterYear
+            }
+
+            // Favorites filter
+            val isFavorite = favoriteReports.any { it.id == report.id }
+            val matchesFavorites = if (!isFavoritesSelected) true else isFavorite
+
+            // Trophy filter
+            val matchesTrophy = if (!isTrophySelected) true else report.type == FishingType.HAUL
+
+            // Paid water filter
+            val matchesPaid = if (!isPaidSelected) true else report.water.isPaid
+
+            // Catch (fish species) filter
+            val matchesCatch = if (selectedCatch == null) {
+                true
+            } else {
+                report.fish.any { it.name == selectedCatch }
+            }
+
+            matchesQuery && matchesDate && matchesFavorites && matchesTrophy && matchesPaid && matchesCatch
         }
+    }
+
+    val showEmptyPlaceholder = remember(query, selectedDate, isFavoritesSelected, isTrophySelected, isPaidSelected, selectedCatch) {
+        query.isBlank() && selectedDate == null && !isFavoritesSelected && !isTrophySelected && !isPaidSelected && selectedCatch == null
     }
 
 
@@ -138,7 +186,7 @@ fun ReportSearchScreen(
                 .padding(top = innerPadding.calculateTopPadding())
         ) {
             when {
-                query.isBlank() -> EmptyReportSearchPlaceholder()
+                showEmptyPlaceholder -> EmptyReportSearchPlaceholder()
                 filteredReports.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.TopCenter
@@ -160,6 +208,7 @@ fun ReportSearchScreen(
                             FishingReportItem(
                                 report = report,
                                 onClick = { onReportClick(report) },
+                                isFavorite = favoriteReports.any { it.id == report.id },
                                 currentUserId = currentUserId
                             )
                         }
@@ -425,6 +474,7 @@ fun ReportSearchScreenPreview() {
     FishingTheme {
         ReportSearchScreen(
             reports = sampleReports,
+            favoriteReports = listOf(sampleReports.first()),
             onReportClick = {},
             onBack = {}
         )

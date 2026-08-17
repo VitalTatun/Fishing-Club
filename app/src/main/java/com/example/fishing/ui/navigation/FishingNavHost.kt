@@ -120,6 +120,7 @@ fun FishingNavHost(
         composable("report_list_search") {
             ReportSearchScreen(
                 reports = reports,
+                favoriteReports = favoriteReports,
                 onReportClick = { report ->
                     navController.navigate("detail/${report.id}")
                 },
