@@ -79,7 +79,12 @@ fun FishingReportItem(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
+            FishingReportHeader(
+                user = report.user,
+                date = report.publishedAt ?: report.fishingTime,
+                onDeleteClick = { showDeleteDialog = true },
+                showDeleteOption = report.userId == currentUserId
+            )
 
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 FishingReportTitle(
@@ -103,12 +108,7 @@ fun FishingReportItem(
                 FishingReportPhotos(photos = report.photo)
             }
 
-            FishingReportHeader(
-                user = report.user,
-                date = report.publishedAt ?: report.fishingTime,
-                onDeleteClick = { showDeleteDialog = true },
-                showDeleteOption = report.userId == currentUserId
-            )
+
         }
     }
 }

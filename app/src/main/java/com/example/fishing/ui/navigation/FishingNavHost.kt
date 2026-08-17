@@ -17,6 +17,7 @@ import com.example.fishing.ui.screens.report.detail.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
 import com.example.fishing.ui.screens.search.LocationSearchScreen
+import com.example.fishing.ui.screens.search.ReportSearchScreen
 import com.example.fishing.ui.screens.login.LoginScreen
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.theme.FishingTransitions
@@ -95,7 +96,11 @@ fun FishingNavHost(
                     viewModel.deleteReport(report.id)
                 },
                 onSearchClick = {
-                    navController.navigate("report_search")
+                    if (selectedTab == 0) {
+                        navController.navigate("report_list_search")
+                    } else {
+                        navController.navigate("report_search")
+                    }
                 },
                 userEmail = authRepository.currentUser()?.email,
                 currentUserId = authRepository.currentUser()?.id,
@@ -109,6 +114,17 @@ fun FishingNavHost(
                 },
                 errorText = viewModel.error.collectAsState().value,
                 onErrorDismiss = { viewModel.refresh() }
+            )
+        }
+
+        composable("report_list_search") {
+            ReportSearchScreen(
+                reports = reports,
+                onReportClick = { report ->
+                    navController.navigate("detail/${report.id}")
+                },
+                onBack = { navController.popBackStack() },
+                currentUserId = authRepository.currentUser()?.id
             )
         }
 

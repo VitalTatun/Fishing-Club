@@ -39,6 +39,8 @@
     <string name="search_places">Поиск мест</string>
     <string name="enter_place_name">Введите название места</string>
     <string name="nothing_found">Ничего не найдено</string>
+    <string name="search_reports">Поиск отчетов</string>
+    <string name="enter_report_query">Введите название отчета, водоема или рыбы</string>
 
     <!-- Отчет -->
     <string name="trophy">Трофей</string>

@@ -76,7 +76,7 @@ fun MainScreen(
                 },
                 actions = {
                     if (selectedTab == 0) {
-                        IconButton(onClick = { /* TODO */ }) {
+                        IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
                         IconButton(onClick = onCreateReportClick) {
