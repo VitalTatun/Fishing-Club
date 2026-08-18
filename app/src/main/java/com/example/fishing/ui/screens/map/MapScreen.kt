@@ -2,13 +2,13 @@ package com.example.fishing.ui.screens.map
 
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.R
 import com.example.fishing.data.FishingRepository
+import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.ui.components.MarkerDrawableUtils
@@ -189,18 +190,42 @@ fun MapScreen(
             initialZoom = lastZoom
         )
 
-        if (onBackClick != null) {
-            FilledIconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 48.dp, start = 16.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (onBackClick != null) Modifier.statusBarsPadding() else Modifier)
+        ) {
+            if (onBackClick != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.back)
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.tab_map),
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                MapFilters()
             }
         }
 
@@ -218,8 +243,163 @@ fun MapScreen(
                 .padding(16.dp)
                 .size(56.dp)
         ) {
-            Icon(imageVector = Icons.Default.MyLocation, contentDescription = stringResource(R.string.my_location))
+            Icon(
+                imageVector = Icons.Default.MyLocation,
+                contentDescription = stringResource(R.string.my_location)
+            )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MapFilters(
+    modifier: Modifier = Modifier
+) {
+    var isFavoritesSelected by remember { mutableStateOf(false) }
+    var isTrophySelected by remember { mutableStateOf(false) }
+    var isPaidSelected by remember { mutableStateOf(false) }
+    var selectedCatch by remember { mutableStateOf<String?>(null) }
+    var selectedMethod by remember { mutableStateOf<FishingMethod?>(null) }
+
+    var showCatchMenu by remember { mutableStateOf(false) }
+    var showMethodMenu by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box {
+            FilterChip(
+                selected = selectedCatch != null,
+                onClick = { showCatchMenu = true },
+                label = { Text(selectedCatch ?: stringResource(R.string.catch_label)) },
+                trailingIcon = {
+                    if (selectedCatch != null) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { selectedCatch = null }
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            )
+
+            DropdownMenu(
+                expanded = showCatchMenu,
+                onDismissRequest = { showCatchMenu = false }
+            ) {
+                listOf("Окунь", "Щука", "Судак").forEach { fish ->
+                    DropdownMenuItem(
+                        text = { Text(fish) },
+                        onClick = {
+                            selectedCatch = fish
+                            showCatchMenu = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Box {
+            FilterChip(
+                selected = selectedMethod != null,
+                onClick = { showMethodMenu = true },
+                label = {
+                    Text(
+                        selectedMethod?.let { stringResource(it.labelRes) }
+                            ?: stringResource(R.string.fishing_method)
+                    )
+                },
+                trailingIcon = {
+                    if (selectedMethod != null) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { selectedMethod = null }
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            )
+
+            DropdownMenu(
+                expanded = showMethodMenu,
+                onDismissRequest = { showMethodMenu = false }
+            ) {
+                FishingMethod.entries.filter { it != FishingMethod.NONE }.forEach { method ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(method.labelRes)) },
+                        onClick = {
+                            selectedMethod = method
+                            showMethodMenu = false
+                        }
+                    )
+                }
+            }
+        }
+
+        FilterChip(
+            selected = isFavoritesSelected,
+            onClick = { isFavoritesSelected = !isFavoritesSelected },
+            label = { Text(stringResource(R.string.favorites)) },
+            leadingIcon = if (isFavoritesSelected) {
+                {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else null
+        )
+        FilterChip(
+            selected = isTrophySelected,
+            onClick = { isTrophySelected = !isTrophySelected },
+            label = { Text(stringResource(R.string.trophy)) },
+            leadingIcon = if (isTrophySelected) {
+                {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else null
+        )
+        FilterChip(
+            selected = isPaidSelected,
+            onClick = { isPaidSelected = !isPaidSelected },
+            label = { Text(stringResource(R.string.paid)) },
+            leadingIcon = if (isPaidSelected) {
+                {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else null
+        )
     }
 }
 
