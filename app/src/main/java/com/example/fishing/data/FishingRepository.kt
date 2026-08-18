@@ -89,7 +89,9 @@ class MockFishingRepository : FishingRepository {
             type = type,
             fishingMethod = fishingMethod,
             fishingTime = fishingTime,
-            isPublic = isPublic
+            isPublic = isPublic,
+            isPaidWater = water.isPaid,
+            fishNames = fish.map { it.name }
         )
     }
 }

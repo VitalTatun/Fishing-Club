@@ -178,6 +178,7 @@ fun MainScreen(
                 1 -> {
                     MapScreen(
                         markers = mapMarkers,
+                        favoriteReports = favoriteReports,
                         onMarkerClick = { marker ->
                             onReportClick(FishingReport(
                                 id = marker.id,

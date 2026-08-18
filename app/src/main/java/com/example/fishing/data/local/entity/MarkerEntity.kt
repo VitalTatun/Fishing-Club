@@ -15,5 +15,7 @@ data class MarkerEntity(
     val type: String,
     val fishingMethod: String,
     val fishingTime: String,
-    val isPublic: Boolean
+    val isPublic: Boolean,
+    val isPaidWater: Boolean = false,
+    val fishNames: List<String> = emptyList()
 )

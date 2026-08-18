@@ -35,7 +35,8 @@ data class FishingDto(
     val shore: Boolean = true,
     @SerialName("is_public") val isPublic: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("fishing_fish") val fish: List<FishDto> = emptyList()
 )
 
 @Serializable

@@ -12,5 +12,7 @@ data class MarkerDomain(
     val type: FishingType,
     val fishingMethod: FishingMethod,
     val fishingTime: Date,
-    val isPublic: Boolean
+    val isPublic: Boolean,
+    val isPaidWater: Boolean = false,
+    val fishNames: List<String> = emptyList()
 )

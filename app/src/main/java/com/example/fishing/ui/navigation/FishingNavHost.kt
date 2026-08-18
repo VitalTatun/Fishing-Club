@@ -373,7 +373,8 @@ fun FishingNavHost(
                 },
                 markersInteractive = false,
                 initialReportId = reportId,
-                repository = fishingRepository
+                repository = fishingRepository,
+                favoriteReports = favoriteReports
             )
         }
 

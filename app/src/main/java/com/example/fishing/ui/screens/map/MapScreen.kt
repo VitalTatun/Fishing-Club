@@ -21,6 +21,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.R
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.ui.components.MarkerDrawableUtils
@@ -47,7 +48,8 @@ fun MapScreen(
     isLocationEnabled: Boolean = true,
     markersInteractive: Boolean = true,
     initialReportId: UUID? = null,
-    repository: FishingRepository
+    repository: FishingRepository,
+    favoriteReports: List<FishingReport> = emptyList()
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -68,6 +70,45 @@ fun MapScreen(
             GeoPoint(validMarkers.map { it.waterLat }.average(), validMarkers.map { it.waterLng }.average())
         } else {
             GeoPoint(53.9, 27.5667)
+        }
+    }
+
+    var localIsFavoritesSelected by remember { mutableStateOf(false) }
+    var localIsTrophySelected by remember { mutableStateOf(false) }
+    var localIsPaidSelected by remember { mutableStateOf(false) }
+    var localSelectedCatch by remember { mutableStateOf<String?>(null) }
+    var localSelectedMethod by remember { mutableStateOf<FishingMethod?>(null) }
+
+    val isFavoritesSelected = viewModel?.mapIsFavoritesSelected ?: localIsFavoritesSelected
+    val isTrophySelected = viewModel?.mapIsTrophySelected ?: localIsTrophySelected
+    val isPaidSelected = viewModel?.mapIsPaidSelected ?: localIsPaidSelected
+    val selectedCatch = viewModel?.mapSelectedCatch ?: localSelectedCatch
+    val selectedMethod = viewModel?.mapSelectedMethod ?: localSelectedMethod
+
+    val uniqueFish = remember(markers) {
+        markers.flatMap { it.fishNames }.distinct().sorted()
+    }
+
+    val filteredMarkers = remember(
+        markers,
+        isFavoritesSelected,
+        isTrophySelected,
+        isPaidSelected,
+        selectedCatch,
+        selectedMethod,
+        favoriteReports
+    ) {
+        markers.filter { marker ->
+            val matchesFavorites = if (!isFavoritesSelected) true else {
+                favoriteReports.any { it.id == marker.id }
+            }
+            
+            val matchesTrophy = if (!isTrophySelected) true else marker.type == FishingType.HAUL
+            val matchesPaid = if (!isPaidSelected) true else marker.isPaidWater
+            val matchesCatch = if (selectedCatch == null) true else marker.fishNames.contains(selectedCatch)
+            val matchesMethod = if (selectedMethod == null) true else marker.fishingMethod == selectedMethod
+
+            matchesFavorites && matchesTrophy && matchesPaid && matchesCatch && matchesMethod
         }
     }
 
@@ -177,7 +218,7 @@ fun MapScreen(
             mapView = mapView,
             myLocationOverlay = myLocationOverlay,
             modifier = Modifier.fillMaxSize(),
-            markers = markers,
+            markers = filteredMarkers,
             onMarkerClick = { marker ->
                 onMarkerClick(marker)
             },
@@ -212,7 +253,42 @@ fun MapScreen(
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                MapFilters()
+                MapFilters(
+                    isFavoritesSelected = isFavoritesSelected,
+                    onFavoritesClick = {
+                        if (viewModel != null) viewModel.mapIsFavoritesSelected = !viewModel.mapIsFavoritesSelected
+                        else localIsFavoritesSelected = !localIsFavoritesSelected
+                    },
+                    isTrophySelected = isTrophySelected,
+                    onTrophyClick = {
+                        if (viewModel != null) viewModel.mapIsTrophySelected = !viewModel.mapIsTrophySelected
+                        else localIsTrophySelected = !localIsTrophySelected
+                    },
+                    isPaidSelected = isPaidSelected,
+                    onPaidClick = {
+                        if (viewModel != null) viewModel.mapIsPaidSelected = !viewModel.mapIsPaidSelected
+                        else localIsPaidSelected = !localIsPaidSelected
+                    },
+                    selectedCatch = selectedCatch,
+                    onCatchSelected = {
+                        if (viewModel != null) viewModel.mapSelectedCatch = it
+                        else localSelectedCatch = it
+                    },
+                    onClearCatch = {
+                        if (viewModel != null) viewModel.mapSelectedCatch = null
+                        else localSelectedCatch = null
+                    },
+                    selectedMethod = selectedMethod,
+                    onMethodSelected = {
+                        if (viewModel != null) viewModel.mapSelectedMethod = it
+                        else localSelectedMethod = it
+                    },
+                    onClearMethod = {
+                        if (viewModel != null) viewModel.mapSelectedMethod = null
+                        else localSelectedMethod = null
+                    },
+                    uniqueFish = uniqueFish
+                )
             }
         }
 
@@ -241,14 +317,21 @@ fun MapScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MapFilters(
+    isFavoritesSelected: Boolean,
+    onFavoritesClick: () -> Unit,
+    isTrophySelected: Boolean,
+    onTrophyClick: () -> Unit,
+    isPaidSelected: Boolean,
+    onPaidClick: () -> Unit,
+    selectedCatch: String?,
+    onCatchSelected: (String) -> Unit,
+    onClearCatch: () -> Unit,
+    selectedMethod: FishingMethod?,
+    onMethodSelected: (FishingMethod) -> Unit,
+    onClearMethod: () -> Unit,
+    uniqueFish: List<String>,
     modifier: Modifier = Modifier
 ) {
-    var isFavoritesSelected by remember { mutableStateOf(false) }
-    var isTrophySelected by remember { mutableStateOf(false) }
-    var isPaidSelected by remember { mutableStateOf(false) }
-    var selectedCatch by remember { mutableStateOf<String?>(null) }
-    var selectedMethod by remember { mutableStateOf<FishingMethod?>(null) }
-
     var showCatchMenu by remember { mutableStateOf(false) }
     var showMethodMenu by remember { mutableStateOf(false) }
 
@@ -272,7 +355,7 @@ private fun MapFilters(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(18.dp)
-                                .clickable { selectedCatch = null }
+                                .clickable { onClearCatch() }
                         )
                     } else {
                         Icon(
@@ -288,14 +371,22 @@ private fun MapFilters(
                 expanded = showCatchMenu,
                 onDismissRequest = { showCatchMenu = false }
             ) {
-                listOf("Окунь", "Щука", "Судак").forEach { fish ->
+                if (uniqueFish.isEmpty()) {
                     DropdownMenuItem(
-                        text = { Text(fish) },
-                        onClick = {
-                            selectedCatch = fish
-                            showCatchMenu = false
-                        }
+                        text = { Text(stringResource(R.string.no_reports)) },
+                        onClick = { showCatchMenu = false },
+                        enabled = false
                     )
+                } else {
+                    uniqueFish.forEach { fish ->
+                        DropdownMenuItem(
+                            text = { Text(fish) },
+                            onClick = {
+                                onCatchSelected(fish)
+                                showCatchMenu = false
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -317,7 +408,7 @@ private fun MapFilters(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(18.dp)
-                                .clickable { selectedMethod = null }
+                                .clickable { onClearMethod() }
                         )
                     } else {
                         Icon(
@@ -337,7 +428,7 @@ private fun MapFilters(
                     DropdownMenuItem(
                         text = { Text(stringResource(method.labelRes)) },
                         onClick = {
-                            selectedMethod = method
+                            onMethodSelected(method)
                             showMethodMenu = false
                         }
                     )
@@ -347,7 +438,7 @@ private fun MapFilters(
 
         FilterChip(
             selected = isFavoritesSelected,
-            onClick = { isFavoritesSelected = !isFavoritesSelected },
+            onClick = onFavoritesClick,
             label = { Text(stringResource(R.string.favorites)) },
             leadingIcon = if (isFavoritesSelected) {
                 {
@@ -361,7 +452,7 @@ private fun MapFilters(
         )
         FilterChip(
             selected = isTrophySelected,
-            onClick = { isTrophySelected = !isTrophySelected },
+            onClick = onTrophyClick,
             label = { Text(stringResource(R.string.trophy)) },
             leadingIcon = if (isTrophySelected) {
                 {
@@ -375,7 +466,7 @@ private fun MapFilters(
         )
         FilterChip(
             selected = isPaidSelected,
-            onClick = { isPaidSelected = !isPaidSelected },
+            onClick = onPaidClick,
             label = { Text(stringResource(R.string.paid)) },
             leadingIcon = if (isPaidSelected) {
                 {

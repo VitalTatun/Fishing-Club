@@ -103,11 +103,23 @@ class SupabaseFishingRepository @Inject constructor(
     suspend fun refreshMapMarkers() {
         if (!authRepository.isLoggedIn()) return
         try {
-            val fishings = supabase.postgrest["fishing"].select {
+            val fishings = supabase.postgrest["fishing"].select(
+                columns = io.github.jan.supabase.postgrest.query.Columns.raw("*, fishing_fish(*)")
+            ) {
+                filter {
+                    or {
+                        eq("is_public", true)
+                        eq("user_id", authRepository.currentUser()?.id ?: UUID.randomUUID())
+                    }
+                }
                 order("fishing_time", Order.DESCENDING)
             }.decodeList<FishingDto>()
 
-            val entities = fishings.map { it.toMarkerEntity() }
+            val entities = fishings.map { dto ->
+                dto.toMarkerEntity(
+                    fishNames = dto.fish.map { it.name }
+                )
+            }
             markerDao.deleteAll()
             markerDao.insertAll(entities)
         } catch (e: Exception) {
@@ -336,7 +348,7 @@ class SupabaseFishingRepository @Inject constructor(
         )
     }
 
-    private fun FishingDto.toMarkerEntity(): MarkerEntity {
+    private fun FishingDto.toMarkerEntity(fishNames: List<String>): MarkerEntity {
         return MarkerEntity(
             id = id,
             name = name,
@@ -346,7 +358,9 @@ class SupabaseFishingRepository @Inject constructor(
             type = type,
             fishingMethod = fishingMethod ?: "",
             fishingTime = fishingTime,
-            isPublic = isPublic
+            isPublic = isPublic,
+            isPaidWater = waterPaid,
+            fishNames = fishNames
         )
     }
 
@@ -482,7 +496,9 @@ class SupabaseFishingRepository @Inject constructor(
             type = (enumValueOf(type, FishingType.entries.toTypedArray()) as? FishingType) ?: FishingType.FISHING_LOG,
             fishingMethod = (enumValueOf(fishingMethod, FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
             fishingTime = parseDate(fishingTime) ?: Date(),
-            isPublic = isPublic
+            isPublic = isPublic,
+            isPaidWater = isPaidWater,
+            fishNames = fishNames
         )
     }
 
