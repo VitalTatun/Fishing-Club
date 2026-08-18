@@ -3,8 +3,6 @@ package com.example.fishing.ui.screens.search
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,12 +24,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.*
+import com.example.fishing.ui.components.FishingFilterChips
 import com.example.fishing.ui.components.FishingReportItem
 import com.example.fishing.ui.theme.FishingTheme
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,9 +57,6 @@ fun ReportSearchScreen(
 
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
-
-    var showCatchMenu by remember { mutableStateOf(false) }
-    var showMethodMenu by remember { mutableStateOf(false) }
 
     val uniqueFish = remember(reports) {
         reports.flatMap { it.fish }.map { it.name }.distinct().sorted()
@@ -158,8 +151,6 @@ fun ReportSearchScreen(
         query.isBlank() && selectedDate == null && !isFavoritesSelected && !isTrophySelected && !isPaidSelected && selectedCatch == null && selectedMethod == null
     }
 
-
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -170,10 +161,7 @@ fun ReportSearchScreen(
                     onBack = onBack,
                     focusRequester = focusRequester,
                 )
-                ReportSearchFilters(
-                    selectedDate = selectedDate,
-                    onDateClick = { showDatePicker = true },
-                    onClearDate = { onDateChange(null) },
+                FishingFilterChips(
                     isFavoritesSelected = isFavoritesSelected,
                     onFavoritesClick = { onFavoritesChange(!isFavoritesSelected) },
                     isTrophySelected = isTrophySelected,
@@ -181,26 +169,16 @@ fun ReportSearchScreen(
                     isPaidSelected = isPaidSelected,
                     onPaidClick = { onPaidChange(!isPaidSelected) },
                     selectedCatch = selectedCatch,
-                    onCatchClick = { showCatchMenu = true },
+                    onCatchSelected = { onCatchChange(it) },
                     onClearCatch = { onCatchChange(null) },
                     selectedMethod = selectedMethod,
-                    onMethodClick = { showMethodMenu = true },
+                    onMethodSelected = { onMethodChange(it) },
                     onClearMethod = { onMethodChange(null) },
                     uniqueFish = uniqueFish,
-                    showCatchMenu = showCatchMenu,
-                    onDismissCatchMenu = { showCatchMenu = false },
-                    onCatchSelected = { fish ->
-                        onCatchChange(fish)
-                        showCatchMenu = false
-                    },
-                    showMethodMenu = showMethodMenu,
-                    onDismissMethodMenu = { showMethodMenu = false },
-                    onMethodSelected = { method ->
-                        onMethodChange(method)
-                        showMethodMenu = false
-                    }
+                    selectedDate = selectedDate,
+                    onDateClick = { showDatePicker = true },
+                    onClearDate = { onDateChange(null) }
                 )
-//                Spacer(modifier = Modifier.height(8.dp))
             }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -328,176 +306,6 @@ private fun ReportSearchHeader(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReportSearchFilters(
-    selectedDate: Long?,
-    onDateClick: () -> Unit,
-    onClearDate: () -> Unit,
-    isFavoritesSelected: Boolean,
-    onFavoritesClick: () -> Unit,
-    isTrophySelected: Boolean,
-    onTrophyClick: () -> Unit,
-    isPaidSelected: Boolean,
-    onPaidClick: () -> Unit,
-    selectedCatch: String?,
-    onCatchClick: () -> Unit,
-    onClearCatch: () -> Unit,
-    selectedMethod: FishingMethod?,
-    onMethodClick: () -> Unit,
-    onClearMethod: () -> Unit,
-    uniqueFish: List<String>,
-    showCatchMenu: Boolean,
-    onDismissCatchMenu: () -> Unit,
-    onCatchSelected: (String) -> Unit,
-    showMethodMenu: Boolean,
-    onDismissMethodMenu: () -> Unit,
-    onMethodSelected: (FishingMethod) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val dateText = remember(selectedDate) {
-        if (selectedDate != null) {
-            SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(selectedDate))
-        } else {
-            null
-        }
-    }
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        FilterChip(
-            selected = selectedDate != null,
-            onClick = onDateClick,
-            label = { Text(dateText ?: stringResource(R.string.date)) },
-            leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp)) },
-            trailingIcon = if (selectedDate != null) {
-                {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clickable { onClearDate() }
-                    )
-                }
-            } else null
-        )
-
-        Box {
-            FilterChip(
-                selected = selectedCatch != null,
-                onClick = onCatchClick,
-                label = { Text(selectedCatch ?: stringResource(R.string.catch_label)) },
-                trailingIcon = {
-                    if (selectedCatch != null) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clickable { onClearCatch() }
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            )
-
-            DropdownMenu(
-                expanded = showCatchMenu,
-                onDismissRequest = onDismissCatchMenu
-            ) {
-                if (uniqueFish.isEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.no_reports)) },
-                        onClick = onDismissCatchMenu,
-                        enabled = false
-                    )
-                } else {
-                    uniqueFish.forEach { fish ->
-                        DropdownMenuItem(
-                            text = { Text(fish) },
-                            onClick = { onCatchSelected(fish) }
-                        )
-                    }
-                }
-            }
-        }
-
-        Box {
-            FilterChip(
-                selected = selectedMethod != null,
-                onClick = onMethodClick,
-                label = { Text(selectedMethod?.let { stringResource(it.labelRes) } ?: stringResource(R.string.fishing_method)) },
-                trailingIcon = {
-                    if (selectedMethod != null) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clickable { onClearMethod() }
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            )
-
-            DropdownMenu(
-                expanded = showMethodMenu,
-                onDismissRequest = onDismissMethodMenu
-            ) {
-                FishingMethod.entries.filter { it != FishingMethod.NONE }.forEach { method ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(method.labelRes)) },
-                        onClick = { onMethodSelected(method) }
-                    )
-                }
-            }
-        }
-
-        FilterChip(
-            selected = isFavoritesSelected,
-            onClick = onFavoritesClick,
-            label = { Text(stringResource(R.string.favorites)) },
-            leadingIcon = if (isFavoritesSelected) {
-                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-            } else null
-        )
-        FilterChip(
-            selected = isTrophySelected,
-            onClick = onTrophyClick,
-            label = { Text(stringResource(R.string.trophy)) },
-            leadingIcon = if (isTrophySelected) {
-                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-            } else null
-        )
-        FilterChip(
-            selected = isPaidSelected,
-            onClick = onPaidClick,
-            label = { Text(stringResource(R.string.paid)) },
-            leadingIcon = if (isPaidSelected) {
-                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-            } else null
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun ReportSearchScreenPreview() {
@@ -559,63 +367,5 @@ fun ReportSearchScreenPreview() {
             onReportClick = {},
             onBack = {}
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ReportSearchFiltersPreview() {
-    FishingTheme {
-        Column(modifier = Modifier.padding(16.dp)) {
-            ReportSearchFilters(
-                selectedDate = null,
-                onDateClick = {},
-                onClearDate = {},
-                isFavoritesSelected = false,
-                onFavoritesClick = {},
-                isTrophySelected = false,
-                onTrophyClick = {},
-                isPaidSelected = false,
-                onPaidClick = {},
-                selectedCatch = null,
-                onCatchClick = {},
-                onClearCatch = {},
-                selectedMethod = null,
-                onMethodClick = {},
-                onClearMethod = {},
-                uniqueFish = emptyList(),
-                showCatchMenu = false,
-                onDismissCatchMenu = {},
-                onCatchSelected = {},
-                showMethodMenu = false,
-                onDismissMethodMenu = {},
-                onMethodSelected = {}
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            ReportSearchFilters(
-                selectedDate = System.currentTimeMillis(),
-                onDateClick = {},
-                onClearDate = {},
-                isFavoritesSelected = true,
-                onFavoritesClick = {},
-                isTrophySelected = true,
-                onTrophyClick = {},
-                isPaidSelected = true,
-                onPaidClick = {},
-                selectedCatch = "Окунь",
-                onCatchClick = {},
-                onClearCatch = {},
-                selectedMethod = FishingMethod.SPINNING,
-                onMethodClick = {},
-                onClearMethod = {},
-                uniqueFish = listOf("Окунь", "Щука"),
-                showCatchMenu = false,
-                onDismissCatchMenu = {},
-                onCatchSelected = {},
-                showMethodMenu = false,
-                onDismissMethodMenu = {},
-                onMethodSelected = {}
-            )
-        }
     }
 }
