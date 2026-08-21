@@ -56,6 +56,9 @@ class MainViewModel @Inject constructor(
     private val _mapRequestedLocation = MutableStateFlow<GeoPoint?>(null)
     val mapRequestedLocation: StateFlow<GeoPoint?> = _mapRequestedLocation.asStateFlow()
 
+    private val _highlightedPolygon = MutableStateFlow<List<GeoPoint>?>(null)
+    val highlightedPolygon: StateFlow<List<GeoPoint>?> = _highlightedPolygon.asStateFlow()
+
     var mapLastCenterLat: Double? = null
     var mapLastCenterLon: Double? = null
     var mapLastZoom: Double = 6.0
@@ -116,6 +119,10 @@ class MainViewModel @Inject constructor(
 
     fun requestMapLocation(point: GeoPoint?) {
         _mapRequestedLocation.value = point
+    }
+
+    fun setHighlightedPolygon(points: List<GeoPoint>?) {
+        _highlightedPolygon.value = points
     }
 
     fun loadReportsIfNeeded() {

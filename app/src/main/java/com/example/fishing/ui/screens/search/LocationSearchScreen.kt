@@ -1,7 +1,5 @@
 package com.example.fishing.ui.screens.search
 
-import android.location.Address
-import android.location.Geocoder
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,24 +19,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
+import com.example.fishing.data.network.NominatimResponse
+import com.example.fishing.data.network.NominatimService
+import com.example.fishing.data.network.getPolygonPoints
 import org.osmdroid.util.GeoPoint
 import java.util.Locale
+
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationSearchScreen(
-    onLocationSelected: (GeoPoint, String) -> Unit,
+    onLocationSelected: (GeoPoint, String, List<GeoPoint>?) -> Unit,
     onBack: () -> Unit,
+    nominatimService: NominatimService = remember { NominatimService() }
 ) {
-    val context = LocalContext.current
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<Address>>(emptyList()) }
+    var results by remember { mutableStateOf<List<NominatimResponse>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
@@ -51,14 +53,12 @@ fun LocationSearchScreen(
             results = emptyList()
             return@LaunchedEffect
         }
+        
+        // Debounce: wait for 1 second before searching
+        delay(1000L)
+        
         isSearching = true
-        val geocoder = Geocoder(context, Locale("ru"))
-        val addresses = try {
-            geocoder.getFromLocationName(query, 10) ?: emptyList()
-        } catch (_: Exception) {
-            emptyList()
-        }
-        results = addresses
+        results = nominatimService.search(query)
         isSearching = false
     }
 
@@ -80,13 +80,8 @@ fun LocationSearchScreen(
                 .padding(top = innerPadding.calculateTopPadding())
         ) {
             when {
-                query.isBlank() -> EmptySearchPlaceholder()
-                isSearching -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                isSearching -> EmptySearchPlaceholder(isLoading = true)
+                query.isBlank() -> EmptySearchPlaceholder(isLoading = false)
                 results.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.TopCenter
@@ -109,19 +104,16 @@ fun LocationSearchScreen(
                             contentPadding = PaddingValues(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(results, key = { "${it.latitude}-${it.longitude}-${it.getAddressLine(0)}" }) { address ->
+                            items(results, key = { it.placeId }) { result ->
                                 LocationResultItem(
-                                    address = address,
+                                    result = result,
                                     onClick = {
-                                        address.latitude?.let { lat ->
-                                            address.longitude?.let { lon ->
-                                                val name = buildString {
-                                                    append(address.locality ?: address.featureName ?: "")
-                                                    if (address.adminArea != null) append(", ${address.adminArea}")
-                                                }.ifBlank { address.getAddressLine(0) ?: "" }
-                                                onLocationSelected(GeoPoint(lat, lon), name)
-                                            }
+                                        val lat = result.lat.toDoubleOrNull() ?: 0.0
+                                        val lon = result.lon.toDoubleOrNull() ?: 0.0
+                                        val polygon = result.getPolygonPoints()?.map { 
+                                            GeoPoint(it[1], it[0]) 
                                         }
+                                        onLocationSelected(GeoPoint(lat, lon), result.displayName, polygon)
                                     }
                                 )
                             }
@@ -135,7 +127,7 @@ fun LocationSearchScreen(
 
 @Composable
 private fun LocationResultItem(
-    address: Address,
+    result: NominatimResponse,
     onClick: () -> Unit,
 ) {
     Card(
@@ -161,19 +153,13 @@ private fun LocationResultItem(
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = address.locality ?: address.featureName ?: "—",
+                    text = result.displayName.split(",").firstOrNull() ?: "—",
                     style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = address.getAddressLine(0) ?: buildString {
-                        append(address.adminArea ?: "")
-                        if (address.countryName != null) {
-                            if (isNotEmpty()) append(", ")
-                            append(address.countryName)
-                        }
-                    } ?: "",
+                    text = result.displayName,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -185,7 +171,7 @@ private fun LocationResultItem(
 }
 
 @Composable
-private fun EmptySearchPlaceholder() {
+private fun EmptySearchPlaceholder(isLoading: Boolean = false) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -196,11 +182,18 @@ private fun EmptySearchPlaceholder() {
             modifier = Modifier.padding(top = 120.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = stringResource(R.string.search_places),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.search_places),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.enter_place_name),

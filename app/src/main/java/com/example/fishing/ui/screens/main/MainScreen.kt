@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
@@ -70,6 +71,8 @@ fun MainScreen(
         BottomNavItem.Profile
     )
 
+    val highlightedPolygon by viewModel?.highlightedPolygon?.collectAsState() ?: remember { mutableStateOf(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,6 +94,17 @@ fun MainScreen(
                         }
                     }
                     if (selectedTab == 1) {
+                        if (highlightedPolygon != null) {
+                            FilledTonalIconButton(
+                                onClick = { viewModel?.setHighlightedPolygon(null) },
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
+                            }
+                        }
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }

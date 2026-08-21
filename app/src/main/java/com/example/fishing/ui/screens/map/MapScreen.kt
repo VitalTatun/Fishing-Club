@@ -34,6 +34,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polygon
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
@@ -51,6 +52,8 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
+
+    val highlightedPolygon by viewModel?.highlightedPolygon?.collectAsState() ?: remember { mutableStateOf(null) }
 
     BackHandler(enabled = onBackClick != null) {
         onBackClick?.invoke()
@@ -217,7 +220,9 @@ fun MapScreen(
             myLocationOverlay = myLocationOverlay,
             modifier = Modifier.fillMaxSize(),
             markers = filteredMarkers,
+            highlightedPolygon = highlightedPolygon,
             onMarkerClick = { marker ->
+                viewModel?.setHighlightedPolygon(null)
                 onMarkerClick(marker)
             },
             onMarkerSelected = { selectedMarkerId = it },
@@ -318,6 +323,7 @@ fun OsmMapView(
     myLocationOverlay: MyLocationNewOverlay,
     modifier: Modifier = Modifier,
     markers: List<MarkerDomain>,
+    highlightedPolygon: List<GeoPoint>? = null,
     onMarkerClick: (MarkerDomain) -> Unit,
     onMarkerSelected: (UUID?) -> Unit = {},
     selectedMarkerId: UUID? = null,
@@ -351,8 +357,20 @@ fun OsmMapView(
         update = { mv ->
             val currentOverlays = mv.overlays
 
-            val markersToRemove = currentOverlays.filterIsInstance<Marker>()
-            currentOverlays.removeAll(markersToRemove)
+            // Remove old markers and polygons
+            val overlaysToRemove = currentOverlays.filter { it is Marker || it is Polygon }
+            currentOverlays.removeAll(overlaysToRemove)
+
+            // Add highlighted polygon if exists
+            highlightedPolygon?.let { points ->
+                val polygon = Polygon(mv).apply {
+                    points.forEach { addPoint(it) }
+                    fillPaint.color = android.graphics.Color.argb(75, 0, 0, 255) // Semi-transparent blue
+                    outlinePaint.color = android.graphics.Color.BLUE
+                    outlinePaint.strokeWidth = 2f
+                }
+                currentOverlays.add(polygon)
+            }
 
             markers.forEach { marker ->
                 try {

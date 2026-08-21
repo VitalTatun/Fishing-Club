@@ -151,7 +151,7 @@ fun FishingNavHost(
                 ?.destination?.route == "water_edit"
 
             LocationSearchScreen(
-                onLocationSelected = { point, _ ->
+                onLocationSelected = { point, _, polygon ->
                     if (isFromWaterEdit) {
                         navController.previousBackStackEntry
                             ?.savedStateHandle
@@ -159,6 +159,7 @@ fun FishingNavHost(
                     } else {
                         viewModel.selectTab(1)
                         viewModel.requestMapLocation(point)
+                        viewModel.setHighlightedPolygon(polygon)
                     }
                     navController.popBackStack()
                 },
