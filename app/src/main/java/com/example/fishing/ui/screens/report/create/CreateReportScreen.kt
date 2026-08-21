@@ -319,7 +319,7 @@ private fun CreateReportScreenPreview() {
                 repository = com.example.fishing.data.MockFishingRepository(),
                 authRepository = object : com.example.fishing.data.AuthRepository {
                     override suspend fun login(email: String, password: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
-                    override suspend fun register(email: String, password: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
+                    override suspend fun register(email: String, password: String, name: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
                     override suspend fun logout() {}
                     override fun currentUser(): com.example.fishing.model.User? = null
                     override fun isLoggedIn() = false

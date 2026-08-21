@@ -14,10 +14,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class LoginViewModel @Inject constructor(
+class RegistrationViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
+    var name by mutableStateOf("")
     var email by mutableStateOf("")
     var password by mutableStateOf("")
 
@@ -27,21 +28,21 @@ class LoginViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _isAuthenticated = MutableStateFlow(false)
-    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+    private val _isRegistered = MutableStateFlow(false)
+    val isRegistered: StateFlow<Boolean> = _isRegistered.asStateFlow()
 
-    fun login() {
-        if (email.isBlank() || password.isBlank()) {
+    fun register() {
+        if (name.isBlank() || email.isBlank() || password.isBlank()) {
             _error.value = "Заполните все поля"
             return
         }
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            val result = authRepository.login(email.trim(), password)
+            val result = authRepository.register(email.trim(), password, name.trim())
             result.fold(
                 onSuccess = {
-                    _isAuthenticated.value = true
+                    _isRegistered.value = true
                 },
                 onFailure = { e ->
                     _error.value = userFriendlyError(e)
@@ -54,10 +55,6 @@ class LoginViewModel @Inject constructor(
     private fun userFriendlyError(e: Throwable): String {
         val msg = e.message ?: ""
         return when {
-            msg.contains("Invalid login credentials", ignoreCase = true) ||
-            msg.contains("Email not confirmed", ignoreCase = true) ||
-            msg.contains("Invalid email or password", ignoreCase = true) ->
-                "Неверный email или пароль"
             msg.contains("User already registered", ignoreCase = true) ->
                 "Этот email уже зарегистрирован"
             msg.contains("Password should be at least", ignoreCase = true) ->
@@ -69,8 +66,6 @@ class LoginViewModel @Inject constructor(
             msg.contains("Unable to resolve host", ignoreCase = true) ||
             msg.contains("Network is unreachable", ignoreCase = true) ->
                 "Нет соединения с интернетом"
-            msg.contains("Email link is invalid or expired", ignoreCase = true) ->
-                "Ссылка устарела"
             else -> e.message ?: "Неизвестная ошибка"
         }
     }

@@ -19,10 +19,12 @@ import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
 import com.example.fishing.ui.screens.search.LocationSearchScreen
 import com.example.fishing.ui.screens.search.ReportSearchScreen
 import com.example.fishing.ui.screens.login.LoginScreen
+import com.example.fishing.ui.screens.login.RegistrationScreen
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.theme.FishingTransitions
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.LoginViewModel
+import com.example.fishing.viewmodel.RegistrationViewModel
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.utils.PhotoUtils
@@ -63,6 +65,22 @@ fun FishingNavHost(
             LoginScreen(
                 viewModel = loginViewModel,
                 onAuthenticated = {
+                    navController.navigate("main") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onNavigateToRegistration = {
+                    navController.navigate("registration")
+                }
+            )
+        }
+
+        composable("registration") {
+            val registrationViewModel: RegistrationViewModel = hiltViewModel()
+            RegistrationScreen(
+                viewModel = registrationViewModel,
+                onBackClick = { navController.popBackStack() },
+                onRegistered = {
                     navController.navigate("main") {
                         popUpTo("login") { inclusive = true }
                     }

@@ -5,6 +5,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.user.UserInfo
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,11 +29,14 @@ class SupabaseAuthRepository @Inject constructor(
         }
     }
 
-    override suspend fun register(email: String, password: String): Result<User> {
+    override suspend fun register(email: String, password: String, name: String): Result<User> {
         return try {
             supabase.auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
+                data = buildJsonObject {
+                    put("full_name", name)
+                }
             }
             val user = currentUser() ?: throw Exception("Registration failed")
             Result.success(user)
