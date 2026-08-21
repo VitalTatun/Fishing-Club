@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.fishing.model.*
 import com.example.fishing.ui.screens.main.MainScreen
+import com.example.fishing.ui.screens.profile.EditProfileScreen
 import com.example.fishing.ui.screens.report.create.*
 import com.example.fishing.ui.screens.report.detail.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
@@ -121,6 +122,8 @@ fun FishingNavHost(
                     }
                 },
                 userEmail = authRepository.currentUser()?.email,
+                userName = authRepository.currentUser()?.name,
+                userImage = authRepository.currentUser()?.image,
                 currentUserId = authRepository.currentUser()?.id,
                 onLogout = {
                     coroutineScope.launch {
@@ -129,6 +132,9 @@ fun FishingNavHost(
                             popUpTo(0) { inclusive = true }
                         }
                     }
+                },
+                onEditProfileClick = {
+                    navController.navigate("edit_profile")
                 },
                 errorText = viewModel.error.collectAsState().value,
                 onErrorDismiss = { viewModel.refresh() }
@@ -427,6 +433,20 @@ fun FishingNavHost(
                     onBackClick = { navController.popBackStack() }
                 )
             }
+        }
+
+        composable("edit_profile") {
+            // In a real app, we would get this data from a ViewModel
+            EditProfileScreen(
+                initialName = "Никита Белозерцев",
+                initialHandle = "@Пескарь",
+                avatarUrl = null,
+                onBackClick = { navController.popBackStack() },
+                onSaveClick = { name, handle ->
+                    // TODO: Save changes
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

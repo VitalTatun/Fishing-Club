@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
@@ -60,8 +61,11 @@ fun MainScreen(
     onDeleteReport: (FishingReport) -> Unit = {},
     onSearchClick: () -> Unit = {},
     userEmail: String? = null,
+    userName: String? = null,
+    userImage: String? = null,
     currentUserId: UUID? = null,
     onLogout: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
     errorText: String? = null,
     onErrorDismiss: () -> Unit = {},
 ) {
@@ -80,6 +84,7 @@ fun MainScreen(
                     Text(
                         when (selectedTab) {
                             1 -> stringResource(R.string.tab_map)
+                            2 -> stringResource(R.string.tab_profile)
                             else -> stringResource(R.string.fishing_journal)
                         },
                     )
@@ -107,6 +112,14 @@ fun MainScreen(
                         }
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
+                        }
+                    }
+                    if (selectedTab == 2) {
+                        IconButton(onClick = onLogout) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = stringResource(R.string.logout)
+                            )
                         }
                     }
                 }
@@ -223,7 +236,9 @@ fun MainScreen(
                 2 -> {
                     ProfileScreen(
                         userEmail = userEmail,
-                        onLogout = onLogout
+                        userName = userName,
+                        avatarUrl = userImage,
+                        onEditClick = onEditProfileClick
                     )
                 }
             }
