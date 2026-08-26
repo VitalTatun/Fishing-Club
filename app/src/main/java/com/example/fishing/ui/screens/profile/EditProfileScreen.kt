@@ -1,5 +1,8 @@
 package com.example.fishing.ui.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -13,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -24,15 +28,30 @@ import com.example.fishing.ui.theme.FishingTheme
 @Composable
 fun EditProfileScreen(
     initialName: String,
-    initialHandle: String,
     avatarUrl: String?,
+    isLoading: Boolean = false,
+    error: String? = null,
     onBackClick: () -> Unit,
-    onSaveClick: (String, String) -> Unit
+    onSaveClick: (String, Uri?) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
-    var handle by remember { mutableStateOf(initialHandle) }
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedPhotoUri = uri
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Настройка профиля") },
@@ -42,28 +61,37 @@ fun EditProfileScreen(
                     }
                 },
                 actions = {
-                    Surface(
-                        onClick = { onSaveClick(name, handle) },
-                        enabled = name.isNotBlank() && handle.isNotBlank(),
-                        shape = CircleShape,
-                        color = if (name.isNotBlank() && handle.isNotBlank()) 
-                            MaterialTheme.colorScheme.secondaryContainer 
-                        else 
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = if (name.isNotBlank() && handle.isNotBlank())
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Surface(
+                            onClick = { onSaveClick(name, selectedPhotoUri) },
+                            enabled = name.isNotBlank(),
+                            shape = CircleShape,
+                            color = if (name.isNotBlank()) 
+                                MaterialTheme.colorScheme.secondaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = if (name.isNotBlank())
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                )
+                            }
                         }
                     }
                 }
@@ -83,7 +111,7 @@ fun EditProfileScreen(
                 contentAlignment = Alignment.BottomEnd
             ) {
                 AsyncImage(
-                    model = avatarUrl,
+                    model = selectedPhotoUri ?: avatarUrl,
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
@@ -94,7 +122,7 @@ fun EditProfileScreen(
                 )
                 
                 Surface(
-                    onClick = { /* TODO: Change photo */ },
+                    onClick = { photoPickerLauncher.launch("image/*") },
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer,
                     modifier = Modifier
@@ -121,16 +149,6 @@ fun EditProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = handle,
-                onValueChange = { handle = it },
-                label = { Text("Псевдоним") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
         }
     }
 }
@@ -141,7 +159,6 @@ fun EditProfileScreenPreview() {
     FishingTheme {
         EditProfileScreen(
             initialName = "Никита",
-            initialHandle = "Пескарь",
             avatarUrl = null,
             onBackClick = {},
             onSaveClick = { _, _ -> }

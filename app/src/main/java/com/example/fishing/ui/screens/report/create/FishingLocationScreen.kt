@@ -5,22 +5,43 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.location.LocationManager
 import android.view.ViewGroup
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Anchor
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -34,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
@@ -65,6 +87,10 @@ fun FishingLocationScreen(
     initialLocation: GeoPoint? = null,
     onSearchClick: () -> Unit = {},
     searchLocation: GeoPoint? = null,
+    onAddWaterNameClick: () -> Unit = {},
+    waterName: String = "",
+    isPaid: Boolean = false,
+    isFishingFromShore: Boolean = true,
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -135,7 +161,7 @@ fun FishingLocationScreen(
         myLocationOverlay.enableMyLocation()
         myLocationOverlay.runOnFirstFix {
             val location = myLocationOverlay.myLocation
-            if (location != null && !hasInitialLocationBeenSet) {
+            if ((location != null) && !hasInitialLocationBeenSet) {
                 mapView.post {
                     mapView.controller.animateTo(location, 15.0, 500L)
                     myLocationOverlay.disableFollowLocation()
@@ -185,26 +211,29 @@ fun FishingLocationScreen(
             )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+        Box(modifier = Modifier
+            .padding(top = paddingValues.calculateTopPadding())
+            .fillMaxSize()) {
             AndroidView(
                 factory = {
                     (mapView.parent as? ViewGroup)?.removeView(mapView)
                     mapView.apply {
                         setTileSource(TileSourceFactory.MAPNIK)
                         setMultiTouchControls(true)
+                        setBuiltInZoomControls(false)
                         controller.setZoom(lastZoom)
 
                         if (selectedLocation != null) {
                             controller.setCenter(selectedLocation)
                         } else if (!hasInitialLocationBeenSet) {
                             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-                            val lastKnown = try {
-                                locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                            try {
+                                val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                                     ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                            } catch (_: SecurityException) { null }
-                            if (lastKnown != null) {
-                                controller.setCenter(GeoPoint(lastKnown.latitude, lastKnown.longitude))
-                            }
+                                if (lastKnown != null) {
+                                    controller.setCenter(GeoPoint(lastKnown.latitude, lastKnown.longitude))
+                                }
+                            } catch (_: SecurityException) { }
                         }
 
                         selectedLocation?.let {
@@ -246,6 +275,81 @@ fun FishingLocationScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                ) {
+                    if (waterName.isEmpty()) {
+                        val isEnabled = selectedLocation != null
+                        TextButton(
+                            onClick = onAddWaterNameClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isEnabled
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = if (isEnabled) MaterialTheme.colorScheme.onSurfaceVariant 
+                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                            )
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text(
+                                text = stringResource(R.string.add_water_name_button),
+                                color = if (isEnabled) MaterialTheme.colorScheme.onSurfaceVariant 
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = waterName,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            IconButton (onClick = onAddWaterNameClick) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = stringResource(R.string.edit),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (isPaid) {
+                                WaterBadge(
+                                    text = stringResource(R.string.paid),
+                                    icon = Icons.Default.AttachMoney
+                                )
+                            }
+                            if (isFishingFromShore) {
+                                WaterBadge(
+                                    text = stringResource(R.string.fishing_from_shore),
+                                    icon = Icons.Default.Place
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             FloatingActionButton(
                 onClick = {
                     val location = myLocationOverlay.myLocation
@@ -257,7 +361,8 @@ fun FishingLocationScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .navigationBarsPadding()
+                    .padding(bottom = 130.dp, end = 16.dp),
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
@@ -266,6 +371,35 @@ fun FishingLocationScreen(
                     contentDescription = stringResource(R.string.my_location)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun WaterBadge(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

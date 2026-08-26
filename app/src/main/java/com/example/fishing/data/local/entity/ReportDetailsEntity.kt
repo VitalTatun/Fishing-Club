@@ -26,5 +26,7 @@ data class ReportDetailsEntity(
     val isPublic: Boolean,
     val imageUrls: List<String>,
     val fishJson: String,
-    val baitsJson: String
+    val baitsJson: String,
+    val authorName: String?,
+    val authorAvatar: String?
 )

@@ -68,16 +68,19 @@ class SupabaseFishingRepository @Inject constructor(
             val photos = supabase.postgrest["fishing_photos"].select {
                 order("sort_order", Order.ASCENDING)
             }.decodeList<PhotoDto>()
+            val profiles = supabase.postgrest["profiles"].select().decodeList<ProfileDto>()
 
             val fishByFishing = fish.groupBy { it.fishingId }
             val baitsByFishing = baits.groupBy { it.fishingId }
             val photosByFishing = photos.groupBy { it.fishingId }
+            val profilesById = profiles.associateBy { it.id }
 
             val entities = fishings.map { dto ->
                 dto.toReportDetailsEntity(
                     fish = fishByFishing[dto.id] ?: emptyList(),
                     baits = baitsByFishing[dto.id] ?: emptyList(),
-                    photos = photosByFishing[dto.id] ?: emptyList()
+                    photos = photosByFishing[dto.id] ?: emptyList(),
+                    author = profilesById[dto.userId]
                 )
             }
             reportDetailsDao.deleteAll()
@@ -146,8 +149,11 @@ class SupabaseFishingRepository @Inject constructor(
                 filter { eq("fishing_id", id) }
                 order("sort_order", Order.ASCENDING)
             }.decodeList<PhotoDto>()
+            val author = supabase.postgrest["profiles"].select {
+                filter { eq("id", fishing.userId) }
+            }.decodeList<ProfileDto>().firstOrNull()
 
-            val entity = fishing.toReportDetailsEntity(fish, baits, photos)
+            val entity = fishing.toReportDetailsEntity(fish, baits, photos, author)
             reportDetailsDao.insert(entity)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -367,7 +373,8 @@ class SupabaseFishingRepository @Inject constructor(
     private fun FishingDto.toReportDetailsEntity(
         fish: List<FishDto>,
         baits: List<BaitDto>,
-        photos: List<PhotoDto>
+        photos: List<PhotoDto>,
+        author: ProfileDto?
     ): ReportDetailsEntity {
         return ReportDetailsEntity(
             id = id,
@@ -389,7 +396,9 @@ class SupabaseFishingRepository @Inject constructor(
             isPublic = isPublic,
             imageUrls = photos.map { it.storagePath },
             fishJson = json.encodeToString(fish),
-            baitsJson = json.encodeToString(baits)
+            baitsJson = json.encodeToString(baits),
+            authorName = author?.name,
+            authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl)
         )
     }
 
@@ -527,7 +536,12 @@ class SupabaseFishingRepository @Inject constructor(
             fishingMethod = (enumValueOf(fishingMethod ?: "", FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
             bait = baits.map { (enumValueOf(it.baitCode, Bait.entries.toTypedArray()) as? Bait) ?: Bait.NONE },
             comment = comment ?: "",
-            user = authRepository.currentUser() ?: User(id = userId, name = "", email = "", image = ""),
+            user = User(
+                id = userId,
+                name = authorName.orEmpty(),
+                email = "",
+                image = authorAvatar.orEmpty()
+            ),
             fishingFromTheShore = shore,
             isPublic = isPublic
         )

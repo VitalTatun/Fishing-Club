@@ -20,7 +20,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -65,13 +64,14 @@ fun CreateReportScreen(
         shore: Boolean,
         isPublic: Boolean,
         isPaidWater: Boolean,
-        photos: List<String>
+        photos: List<String>,
     ) -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToCatchEdit: () -> Unit = {},
     onNavigateToMethodAndBaitEdit: () -> Unit = {},
     onNavigateToCommentEdit: () -> Unit = {},
     onNavigateToWaterEdit: () -> Unit = {},
+    onNavigateToWaterNameEdit: () -> Unit = {},
 ) {
     val calendar = remember { Calendar.getInstance() }
     val dateFormatter = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru")) }
@@ -90,12 +90,12 @@ fun CreateReportScreen(
 
     val isSaveEnabled by remember {
         derivedStateOf {
-            val baseValid = viewModel.formWaterName.isNotBlank() &&
+            val baseValid = (viewModel.formWaterName.isNotBlank() &&
                     viewModel.formLocation != null &&
                     viewModel.formSelectedMethod != FishingMethod.NONE &&
                     viewModel.formSelectedBaits.isNotEmpty() &&
                     viewModel.formSelectedFish.isNotEmpty() &&
-                    viewModel.formFishingDate.isNotBlank()
+                    viewModel.formFishingDate.isNotBlank())
 
             if (isTrophy) {
                 baseValid &&
@@ -251,6 +251,7 @@ fun CreateReportScreen(
                     waterName = viewModel.formWaterName,
                     onWaterNameChange = { viewModel.formWaterName = it },
                     onArrowClick = onNavigateToWaterEdit,
+                    onEditClick = onNavigateToWaterNameEdit,
                     location = viewModel.formLocation,
                     fishingFromShore = viewModel.formFishingFromShore,
                     onFishingFromShoreChange = { viewModel.formFishingFromShore = it },
@@ -304,8 +305,8 @@ private fun combineDateAndTime(
     calendar.time = dateFormatter.parse(dateString) ?: Date()
     val timeParts = timeString.split(":")
     if (timeParts.size == 2) {
-        calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
-        calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+        calendar[Calendar.HOUR_OF_DAY] = timeParts[0].toInt()
+        calendar[Calendar.MINUTE] = timeParts[1].toInt()
     }
     return calendar.time
 }
@@ -314,8 +315,8 @@ private fun combineDateAndTime(
 @Composable
 private fun CreateReportScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
-        CreateReportScreen(
-            viewModel = MainViewModel(
+        val viewModel = remember {
+            MainViewModel(
                 repository = com.example.fishing.data.MockFishingRepository(),
                 authRepository = object : com.example.fishing.data.AuthRepository {
                     override suspend fun login(email: String, password: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
@@ -324,8 +325,14 @@ private fun CreateReportScreenPreview() {
                     override fun currentUser(): com.example.fishing.model.User? = null
                     override fun isLoggedIn() = false
                     override suspend fun loadSession() {}
+                    override suspend fun updateProfile(name: String, imageUri: String?): Result<com.example.fishing.model.User> = Result.failure(Exception("mock"))
+                    override val userStatus: kotlinx.coroutines.flow.Flow<com.example.fishing.model.User?> = kotlinx.coroutines.flow.flowOf(null)
+                    override fun resolveImageUrl(path: String): String = ""
                 }
-            ),
+            )
+        }
+        CreateReportScreen(
+            viewModel = viewModel,
             onBackClick = {},
             onSaveClick = { _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
         )

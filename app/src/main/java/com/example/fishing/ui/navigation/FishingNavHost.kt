@@ -1,10 +1,10 @@
 package com.example.fishing.ui.navigation
 
-import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.net.toUri
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -26,6 +26,7 @@ import com.example.fishing.ui.theme.FishingTransitions
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.LoginViewModel
 import com.example.fishing.viewmodel.RegistrationViewModel
+import com.example.fishing.viewmodel.EditProfileViewModel
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.utils.PhotoUtils
@@ -40,7 +41,7 @@ fun FishingNavHost(
     viewModel: MainViewModel,
     fishingRepository: FishingRepository,
     authRepository: AuthRepository,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -95,6 +96,8 @@ fun FishingNavHost(
                 viewModel.loadMapMarkers()
             }
 
+            val user by authRepository.userStatus.collectAsState(initial = authRepository.currentUser())
+
             MainScreen(
                 reports = reports,
                 isLoading = isLoading,
@@ -121,10 +124,10 @@ fun FishingNavHost(
                         navController.navigate("report_search")
                     }
                 },
-                userEmail = authRepository.currentUser()?.email,
-                userName = authRepository.currentUser()?.name,
-                userImage = authRepository.currentUser()?.image,
-                currentUserId = authRepository.currentUser()?.id,
+                userEmail = user?.email,
+                userName = user?.name,
+                userImage = user?.image,
+                currentUserId = user?.id,
                 onLogout = {
                     coroutineScope.launch {
                         authRepository.logout()
@@ -218,7 +221,7 @@ fun FishingNavHost(
                 onBackClick = { navController.popBackStack() },
                 onSaveClick = { title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, isPaidWater, photos ->
                     val internalPhotos = photos.mapNotNull { 
-                        PhotoUtils.copyPhotoToInternalStorage(context.contentResolver, context.filesDir, Uri.parse(it)) 
+                        PhotoUtils.copyPhotoToInternalStorage(context.contentResolver, context.filesDir, it.toUri()) 
                     }
                     viewModel.saveNewReport(title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, isPaidWater, internalPhotos)
                     viewModel.resetFormState()
@@ -241,6 +244,9 @@ fun FishingNavHost(
                 onNavigateToWaterEdit = {
                     currentEntry.savedStateHandle["location"] = viewModel.formLocation
                     navController.navigate("water_edit")
+                },
+                onNavigateToWaterNameEdit = {
+                    navController.navigate("water_name_edit")
                 }
             )
         }
@@ -269,7 +275,21 @@ fun FishingNavHost(
                 },
                 onSearchClick = {
                     navController.navigate("report_search")
-                }
+                },
+                onAddWaterNameClick = {
+                    navController.navigate("water_name_edit")
+                },
+                waterName = viewModel.formWaterName,
+                isPaid = viewModel.formIsPaidWater,
+                isFishingFromShore = viewModel.formFishingFromShore
+            )
+        }
+
+        composable("water_name_edit") {
+            WaterEditScreen(
+                viewModel = viewModel,
+                onBackClick = { navController.popBackStack() },
+                onSaveClick = { navController.popBackStack() }
             )
         }
 
@@ -393,7 +413,7 @@ fun FishingNavHost(
                 },
                 onMarkerClick = { marker ->
                     navController.navigate("detail/${marker.id}") {
-                        popUpTo("full_map/${reportId}") { inclusive = true }
+                        popUpTo("full_map/$reportId") { inclusive = true }
                     }
                 },
                 markersInteractive = false,
@@ -436,15 +456,33 @@ fun FishingNavHost(
         }
 
         composable("edit_profile") {
-            // In a real app, we would get this data from a ViewModel
-            EditProfileScreen(
-                initialName = "Никита Белозерцев",
-                initialHandle = "@Пескарь",
-                avatarUrl = null,
-                onBackClick = { navController.popBackStack() },
-                onSaveClick = { name, handle ->
-                    // TODO: Save changes
+            val editProfileViewModel: EditProfileViewModel = hiltViewModel()
+            val user by editProfileViewModel.user.collectAsState()
+            val isLoading by editProfileViewModel.isLoading.collectAsState()
+            val error by editProfileViewModel.error.collectAsState()
+            val saveSuccess by editProfileViewModel.saveSuccess.collectAsState()
+            val context = LocalContext.current
+            
+            LaunchedEffect(saveSuccess) {
+                if (saveSuccess) {
                     navController.popBackStack()
+                    editProfileViewModel.resetSuccess()
+                }
+            }
+
+            EditProfileScreen(
+                initialName = user?.name ?: "",
+                avatarUrl = user?.image,
+                isLoading = isLoading,
+                error = error,
+                onBackClick = { navController.popBackStack() },
+                onSaveClick = { name, imageUri ->
+                    editProfileViewModel.updateProfile(
+                        context.contentResolver,
+                        context.filesDir,
+                        name,
+                        imageUri
+                    )
                 }
             )
         }

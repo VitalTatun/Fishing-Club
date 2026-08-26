@@ -29,7 +29,7 @@ import java.util.UUID
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: FishingRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
@@ -107,6 +107,17 @@ class MainViewModel @Inject constructor(
     private var favoritesLoadJob: Job? = null
     private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
+    init {
+        viewModelScope.launch {
+            authRepository.userStatus.collect { user ->
+                if (user != null) {
+                    refresh()
+                    loadAllReports()
+                }
+            }
+        }
+    }
+
     fun refresh() {
         loadReports(force = true)
         loadFavorites(force = true)
@@ -131,7 +142,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun loadMapMarkers(force: Boolean = false) {
-        if (!force && (_mapMarkers.value.isNotEmpty() || mapMarkersLoadJob?.isActive == true)) {
+        if (!force && (_mapMarkers.value.isNotEmpty() || (mapMarkersLoadJob?.isActive == true))) {
             return
         }
 
@@ -294,10 +305,6 @@ class MainViewModel @Inject constructor(
                 _isLoading.value = false
             }
         }
-    }
-
-    fun refreshAll() {
-        loadAllReports(force = true)
     }
 
     private fun loadAllReports(force: Boolean = false) {

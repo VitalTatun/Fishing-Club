@@ -89,8 +89,7 @@ internal fun ReportTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp),
+            .fillMaxWidth(),
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
         supportingText = supportingText?.let { { Text(it) } },
@@ -100,7 +99,6 @@ internal fun ReportTextField(
         leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
         textStyle = MaterialTheme.typography.bodyLarge,
-        shape = RoundedCornerShape(4.dp),
     )
 }
 
