@@ -249,14 +249,11 @@ fun CreateReportScreen(
             item {
                 WaterSection(
                     waterName = viewModel.formWaterName,
-                    onWaterNameChange = { viewModel.formWaterName = it },
                     onArrowClick = onNavigateToWaterEdit,
                     onEditClick = onNavigateToWaterNameEdit,
                     location = viewModel.formLocation,
                     fishingFromShore = viewModel.formFishingFromShore,
-                    onFishingFromShoreChange = { viewModel.formFishingFromShore = it },
                     isPaidWater = viewModel.formIsPaidWater,
-                    onPaidWaterChange = { viewModel.formIsPaidWater = it },
                     isRequired = true
                 )
             }

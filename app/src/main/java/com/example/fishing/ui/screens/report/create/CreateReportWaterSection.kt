@@ -43,14 +43,11 @@ import org.osmdroid.views.MapView
 @Composable
 internal fun WaterSection(
     waterName: String,
-    onWaterNameChange: (String) -> Unit,
     onArrowClick: () -> Unit,
     onEditClick: () -> Unit = {},
     location: GeoPoint? = null,
     fishingFromShore: Boolean = true,
-    onFishingFromShoreChange: (Boolean) -> Unit = {},
     isPaidWater: Boolean = false,
-    onPaidWaterChange: (Boolean) -> Unit = {},
     isRequired: Boolean = false,
 ) {
     val hasData = (location != null) || waterName.isNotBlank()
@@ -207,7 +204,6 @@ private fun WaterSectionEmptyPreview() {
     FishingTheme {
         WaterSection(
             waterName = "",
-            onWaterNameChange = {},
             onArrowClick = {}
         )
     }
@@ -219,12 +215,9 @@ private fun WaterSectionWithDataPreview() {
     FishingTheme {
         WaterSection(
             waterName = "Озеро Байкал",
-            onWaterNameChange = {},
             onArrowClick = {},
             fishingFromShore = true,
-            onFishingFromShoreChange = {},
             isPaidWater = false,
-            onPaidWaterChange = {}
         )
     }
 }
