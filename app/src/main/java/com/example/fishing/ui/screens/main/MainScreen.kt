@@ -66,6 +66,7 @@ fun MainScreen(
     currentUserId: UUID? = null,
     onLogout: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
+    onChangeHistoryClick: () -> Unit = {},
     errorText: String? = null,
     onErrorDismiss: () -> Unit = {},
 ) {
@@ -231,7 +232,8 @@ fun MainScreen(
                         userName = userName,
                         avatarUrl = userImage,
                         onEditClick = onEditProfileClick,
-                        onLogoutClick = onLogout
+                        onLogoutClick = onLogout,
+                        onChangeHistoryClick = onChangeHistoryClick
                     )
                 }
             }

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -21,6 +22,7 @@ import coil.compose.AsyncImage
 import com.example.fishing.R
 import com.example.fishing.ui.components.ProfileListItem
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.utils.AppUtils
 
 @Composable
 fun ProfileScreen(
@@ -29,7 +31,8 @@ fun ProfileScreen(
     userName: String? = null,
     avatarUrl: String? = null,
     onEditClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {},
+    onChangeHistoryClick: () -> Unit = {}
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -71,10 +74,13 @@ fun ProfileScreen(
             )
         }
         
+        val context = LocalContext.current
+        val versionName = remember { AppUtils.getVersionName(context) }
+        
         ProfileListItem(
             label = "Версия приложения",
-            value = "1.0.0 Alpha",
-            trailingIcon = null
+            value = versionName,
+            onClick = onChangeHistoryClick
         )
 
         Column(

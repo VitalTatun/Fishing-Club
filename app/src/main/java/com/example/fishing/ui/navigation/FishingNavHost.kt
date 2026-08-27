@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.fishing.model.*
 import com.example.fishing.ui.screens.main.MainScreen
+import com.example.fishing.ui.screens.profile.ChangeHistoryScreen
 import com.example.fishing.ui.screens.profile.EditProfileScreen
 import com.example.fishing.ui.screens.report.create.*
 import com.example.fishing.ui.screens.report.detail.FullScreenPhotoScreen
@@ -138,6 +139,9 @@ fun FishingNavHost(
                 },
                 onEditProfileClick = {
                     navController.navigate("edit_profile")
+                },
+                onChangeHistoryClick = {
+                    navController.navigate("change_history")
                 },
                 errorText = viewModel.error.collectAsState().value,
                 onErrorDismiss = { viewModel.refresh() }
@@ -447,6 +451,12 @@ fun FishingNavHost(
                     onBackClick = { navController.popBackStack() }
                 )
             }
+        }
+
+        composable("change_history") {
+            ChangeHistoryScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
 
         composable("edit_profile") {
