@@ -114,14 +114,6 @@ fun MainScreen(
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
                     }
-                    if (selectedTab == 2) {
-                        IconButton(onClick = onLogout) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = stringResource(R.string.logout)
-                            )
-                        }
-                    }
                 }
             )
         },
@@ -238,7 +230,8 @@ fun MainScreen(
                         userEmail = userEmail,
                         userName = userName,
                         avatarUrl = userImage,
-                        onEditClick = onEditProfileClick
+                        onEditClick = onEditProfileClick,
+                        onLogoutClick = onLogout
                     )
                 }
             }

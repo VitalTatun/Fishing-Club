@@ -457,18 +457,13 @@ fun FishingNavHost(
             val saveSuccess by editProfileViewModel.saveSuccess.collectAsState()
             val context = LocalContext.current
             
-            LaunchedEffect(saveSuccess) {
-                if (saveSuccess) {
-                    navController.popBackStack()
-                    editProfileViewModel.resetSuccess()
-                }
-            }
-
             EditProfileScreen(
                 initialName = user?.name ?: "",
+                email = user?.email ?: "",
                 avatarUrl = user?.image,
                 isLoading = isLoading,
                 error = error,
+                saveSuccess = saveSuccess,
                 onBackClick = { navController.popBackStack() },
                 onSaveClick = { name, imageUri ->
                     editProfileViewModel.updateProfile(
@@ -477,7 +472,10 @@ fun FishingNavHost(
                         name,
                         imageUri
                     )
-                }
+                },
+                onResetSaveSuccess = { editProfileViewModel.resetSuccess() },
+                onChangePasswordClick = { /* TODO: Implement */ },
+                onDeleteAccountClick = { /* TODO: Implement */ }
             )
         }
     }
