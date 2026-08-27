@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.HorizontalDivider
@@ -20,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +52,9 @@ internal fun WaterSection(
     isPaidWater: Boolean = false,
     isRequired: Boolean = false,
 ) {
-    val hasData = (location != null) || waterName.isNotBlank()
+    val hasLocation = location != null
+    val hasName = waterName.isNotBlank()
+    val hasData = hasLocation || hasName
     
     SectionCard(contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 0.dp)) {
 
@@ -61,71 +65,88 @@ internal fun WaterSection(
             onArrowClick = onArrowClick,
         )
         
-        if (hasData) {
+        if (hasLocation) {
             MapPreview(location = location)
-            Spacer(Modifier.height(16.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Name and Coordinates Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+            
+            if (!hasName) {
+                // Button to add water name if location is set but name is empty
+                TextButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = waterName,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        if (location != null) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = stringResource(R.string.add_water_name_button),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            } else {
+                Spacer(Modifier.height(16.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Name and Coordinates Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = waterName,
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                             Text(
                                 text = "${"%.5f".format(location.latitude)} - ${"%.5f".format(location.longitude)}",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
 
-                    if (location != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = onEditClick) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = stringResource(R.string.edit),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                        IconButton(onClick = onEditClick) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.edit),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
-                }
 
-                // Badges
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (isPaidWater) {
+                    // Badges
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isPaidWater) {
+                            FishingBadge(
+                                text = stringResource(R.string.paid)
+                            )
+                        }
                         FishingBadge(
-                            text = stringResource(R.string.paid)
+                            text = stringResource(
+                                if (fishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat
+                            )
                         )
                     }
-                    FishingBadge(
-                        text = stringResource(
-                            if (fishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat
-                        )
-                    )
                 }
+                Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(16.dp))
         }
         HorizontalDivider(
             modifier = Modifier.fillMaxWidth(),
@@ -149,7 +170,7 @@ private fun MapPreview(
             .clip(RoundedCornerShape(16.dp))
             .background(Color(0xFFBFE3EA))
     ) {
-        if (location != null && !isPreview) {
+        if ((location != null) && !isPreview) {
             AndroidView(
                 factory = { context ->
                     MapView(context).apply {

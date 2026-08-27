@@ -275,13 +275,7 @@ fun FishingNavHost(
                 },
                 onSearchClick = {
                     navController.navigate("report_search")
-                },
-                onAddWaterNameClick = {
-                    navController.navigate("water_name_edit")
-                },
-                waterName = viewModel.formWaterName,
-                isPaid = viewModel.formIsPaidWater,
-                isFishingFromShore = viewModel.formFishingFromShore
+                }
             )
         }
 

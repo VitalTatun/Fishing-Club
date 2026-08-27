@@ -2,10 +2,10 @@ package com.example.fishing.ui.screens.report.create
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
 import android.location.LocationManager
 import android.view.ViewGroup
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -89,10 +89,6 @@ fun FishingLocationScreen(
     initialLocation: GeoPoint? = null,
     onSearchClick: () -> Unit = {},
     searchLocation: GeoPoint? = null,
-    onAddWaterNameClick: () -> Unit = {},
-    waterName: String = "",
-    isPaid: Boolean = false,
-    isFishingFromShore: Boolean = true,
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -111,7 +107,7 @@ fun FishingLocationScreen(
     val density = LocalDensity.current
     val customMarkerIcon = remember(iconPainter, iconColor, density) {
         val sizePx = with(density) { 48.dp.toPx() }.toInt()
-        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = androidx.compose.ui.graphics.Canvas(bitmap.asImageBitmap())
         val drawScope = CanvasDrawScope()
         
@@ -128,7 +124,7 @@ fun FishingLocationScreen(
                 )
             }
         }
-        BitmapDrawable(context.resources, bitmap)
+        bitmap.toDrawable(context.resources)
     }
 
     val marker = remember(mapView) {
@@ -199,7 +195,7 @@ fun FishingLocationScreen(
                     }
                     IconButton(
                         onClick = { selectedLocation?.let { onSaveClick(it) } },
-                        enabled = (selectedLocation != null) && waterName.isNotBlank()
+                        enabled = selectedLocation != null
                     ) {
                         Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
@@ -279,81 +275,6 @@ fun FishingLocationScreen(
 
             Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
-                ) {
-                    if (waterName.isEmpty()) {
-                        val isEnabled = selectedLocation != null
-                        TextButton(
-                            onClick = onAddWaterNameClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = isEnabled
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = if (isEnabled) MaterialTheme.colorScheme.onSurfaceVariant 
-                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
-                            Text(
-                                text = stringResource(R.string.add_water_name_button),
-                                color = if (isEnabled) MaterialTheme.colorScheme.onSurfaceVariant 
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = waterName,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f),
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            IconButton (onClick = onAddWaterNameClick) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = stringResource(R.string.edit),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (isPaid) {
-                                WaterBadge(
-                                    text = stringResource(R.string.paid),
-                                    icon = Icons.Default.AttachMoney
-                                )
-                            }
-                            if (isFishingFromShore) {
-                                WaterBadge(
-                                    text = stringResource(R.string.fishing_from_shore),
-                                    icon = Icons.Default.Place
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Surface(
-                modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -411,31 +332,3 @@ fun FishingLocationScreen(
     }
 }
 
-@Composable
-private fun WaterBadge(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(6.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
