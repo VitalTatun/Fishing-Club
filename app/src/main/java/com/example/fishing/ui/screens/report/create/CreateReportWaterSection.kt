@@ -16,12 +16,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,13 +64,13 @@ internal fun WaterSection(
             isRequired = isRequired,
             onArrowClick = onArrowClick,
         )
-        
+
         if (hasLocation) {
             MapPreview(location = location)
             
             if (!hasName) {
                 // Button to add water name if location is set but name is empty
-                TextButton(
+                FilledTonalButton(
                     onClick = onEditClick,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -79,12 +79,10 @@ internal fun WaterSection(
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
                         text = stringResource(R.string.add_water_name_button),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
