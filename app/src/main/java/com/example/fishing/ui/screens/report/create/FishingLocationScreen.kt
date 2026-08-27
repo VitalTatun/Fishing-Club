@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Edit
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -197,7 +199,7 @@ fun FishingLocationScreen(
                     }
                     IconButton(
                         onClick = { selectedLocation?.let { onSaveClick(it) } },
-                        enabled = selectedLocation != null
+                        enabled = (selectedLocation != null) && waterName.isNotBlank()
                     ) {
                         Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
@@ -350,26 +352,60 @@ fun FishingLocationScreen(
                 }
             }
 
-            FloatingActionButton(
-                onClick = {
-                    val location = myLocationOverlay.myLocation
-                    if (location != null) {
-                        mapView.controller.animateTo(location, 15.0, 500L)
-                    } else {
-                        myLocationOverlay.enableMyLocation()
-                    }
-                },
+            Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .padding(bottom = 130.dp, end = 16.dp),
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                    .align(Alignment.TopEnd)
+                    .padding(top = 16.dp, end = 16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(32.dp),
+                shadowElevation = 2.dp
             ) {
-                Icon(
-                    imageVector = Icons.Default.MyLocation,
-                    contentDescription = stringResource(R.string.my_location)
-                )
+                Column(
+                    modifier = Modifier
+                        .width(IntrinsicSize.Min)
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    val isMarkerSet = selectedLocation != null
+                    IconButton(
+                        onClick = {
+                            selectedLocation?.let {
+                                mapView.controller.animateTo(it, 15.0, 500L)
+                            }
+                        },
+                        enabled = isMarkerSet
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            tint = if (isMarkerSet) MaterialTheme.colorScheme.primary 
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.width(24.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+
+                    IconButton(
+                        onClick = {
+                            val location = myLocationOverlay.myLocation
+                            if (location != null) {
+                                mapView.controller.animateTo(location, 15.0, 500L)
+                            } else {
+                                myLocationOverlay.enableMyLocation()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MyLocation,
+                            contentDescription = stringResource(R.string.my_location),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
     }

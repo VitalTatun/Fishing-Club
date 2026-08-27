@@ -205,6 +205,10 @@ class SupabaseFishingRepository @Inject constructor(
             supabase.postgrest["fishing"].delete {
                 filter { eq("id", id) }
             }
+            // Удаляем локально сразу, чтобы UI обновился мгновенно через Flow
+            reportDetailsDao.deleteById(id)
+            markerDao.deleteById(id)
+            favoriteReportDao.deleteById(id)
         } catch (e: Exception) {
             e.printStackTrace()
         }

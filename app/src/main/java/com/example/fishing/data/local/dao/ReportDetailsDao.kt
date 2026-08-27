@@ -27,4 +27,7 @@ interface ReportDetailsDao {
 
     @Query("DELETE FROM report_details")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM report_details WHERE id = :id")
+    suspend fun deleteById(id: UUID)
 }

@@ -7,6 +7,8 @@ import androidx.room.Query
 import com.example.fishing.data.local.entity.MarkerEntity
 import kotlinx.coroutines.flow.Flow
 
+import java.util.UUID
+
 @Dao
 interface MarkerDao {
     @Query("SELECT * FROM markers")
@@ -14,6 +16,9 @@ interface MarkerDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(markers: List<MarkerEntity>)
+
+    @Query("DELETE FROM markers WHERE id = :id")
+    suspend fun deleteById(id: UUID)
 
     @Query("DELETE FROM markers")
     suspend fun deleteAll()

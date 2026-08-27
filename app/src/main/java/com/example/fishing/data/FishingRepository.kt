@@ -24,10 +24,11 @@ interface FishingRepository {
 
 class MockFishingRepository : FishingRepository {
     private val favoriteReports = mutableListOf<FishingReport>()
+    private val reports = MockData.sampleReports.toMutableList()
 
     override fun getAllReports(userId: UUID?): Flow<List<FishingReport>> = flow {
         delay(1000)
-        emit(MockData.sampleReports)
+        emit(reports.toList())
     }
 
     override fun getFavoriteReports(userId: UUID?): Flow<List<FishingReport>> = flow {
@@ -37,20 +38,20 @@ class MockFishingRepository : FishingRepository {
 
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = flow {
         delay(1000)
-        emit(MockData.sampleReports.map { it.toMarkerDomain() })
+        emit(reports.map { it.toMarkerDomain() })
     }
 
     override fun getReportDetails(id: UUID): Flow<FishingReport?> = flow {
         delay(1000)
-        emit(MockData.sampleReports.firstOrNull { it.id == id })
+        emit(reports.firstOrNull { it.id == id })
     }
 
     override suspend fun saveReport(report: FishingReport) {
-        // Mock save
+        reports.add(0, report)
     }
 
     override suspend fun deleteReport(id: UUID) {
-        // Mock delete
+        reports.removeAll { it.id == id }
     }
 
     override suspend fun refreshAllReports(userId: UUID?) {
