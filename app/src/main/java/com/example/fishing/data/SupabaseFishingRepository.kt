@@ -37,12 +37,16 @@ class SupabaseFishingRepository @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val dateFormats = listOf(
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US),
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US),
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US),
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+    private val datePatterns = listOf(
+        "yyyy-MM-dd'T'HH:mm:ssXXX",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+        "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
     )
+
+    private fun getDateFormat(pattern: String): SimpleDateFormat {
+        return SimpleDateFormat(pattern, Locale.US)
+    }
 
     override fun getAllReports(userId: UUID?): Flow<List<FishingReport>> {
         val flow = if (userId != null) {
@@ -307,16 +311,16 @@ class SupabaseFishingRepository @Inject constructor(
     }
 
     private fun parseDate(value: String): Date? {
-        for (format in dateFormats) {
+        for (pattern in datePatterns) {
             try {
-                return format.parse(value)
+                return getDateFormat(pattern).parse(value)
             } catch (_: Exception) {}
         }
         return null
     }
 
     private fun formatDate(date: Date): String {
-        return dateFormats[0].format(date)
+        return getDateFormat(datePatterns[0]).format(date)
     }
 
     private fun enumValueOf(name: String, values: Array<out Enum<*>>): Enum<*>? {
@@ -354,7 +358,8 @@ class SupabaseFishingRepository @Inject constructor(
             comment = comment ?: "",
             user = authRepository.currentUser() ?: User(id = userId, name = "", email = "", image = ""),
             fishingFromTheShore = shore,
-            isPublic = isPublic
+            isPublic = isPublic,
+            createdAt = createdAt?.let { parseDate(it) }
         )
     }
 
@@ -402,7 +407,8 @@ class SupabaseFishingRepository @Inject constructor(
             fishJson = json.encodeToString(fish),
             baitsJson = json.encodeToString(baits),
             authorName = author?.name,
-            authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl)
+            authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl),
+            createdAt = createdAt
         )
     }
 
@@ -434,7 +440,8 @@ class SupabaseFishingRepository @Inject constructor(
             fishJson = json.encodeToString(fish),
             baitsJson = json.encodeToString(baits),
             authorName = author?.name,
-            authorAvatar = author?.avatarUrl
+            authorAvatar = author?.avatarUrl,
+            createdAt = createdAt
         )
     }
 
@@ -464,7 +471,8 @@ class SupabaseFishingRepository @Inject constructor(
             fishJson = json.encodeToString(fish.map { it.toFishDto(id) }),
             baitsJson = json.encodeToString(bait.map { BaitDto(id, it.name) }),
             authorName = authorName,
-            authorAvatar = authorAvatar
+            authorAvatar = authorAvatar,
+            createdAt = createdAt?.let { formatDate(it) }
         )
     }
 
@@ -495,7 +503,8 @@ class SupabaseFishingRepository @Inject constructor(
             comment = comment ?: "",
             user = User(id = userId, name = authorName ?: "", image = authorAvatar ?: "", email = ""),
             fishingFromTheShore = shore,
-            isPublic = isPublic
+            isPublic = isPublic,
+            createdAt = createdAt?.let { parseDate(it) }
         )
     }
 
@@ -547,7 +556,8 @@ class SupabaseFishingRepository @Inject constructor(
                 image = authorAvatar.orEmpty()
             ),
             fishingFromTheShore = shore,
-            isPublic = isPublic
+            isPublic = isPublic,
+            createdAt = createdAt?.let { parseDate(it) }
         )
     }
 
@@ -570,7 +580,7 @@ class SupabaseFishingRepository @Inject constructor(
             comment = comment,
             shore = fishingFromTheShore,
             isPublic = isPublic,
-            createdAt = now,
+            createdAt = createdAt?.let { formatDate(it) } ?: now,
             updatedAt = now
         )
     }

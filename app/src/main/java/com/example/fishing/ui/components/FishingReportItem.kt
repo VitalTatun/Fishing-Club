@@ -73,7 +73,7 @@ fun FishingReportItem(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -103,12 +103,9 @@ fun FishingReportItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-
-            if (report.photo.isNotEmpty()) {
-                FishingReportPhotos(photos = report.photo)
-            }
-
-
+        }
+        if (report.photo.isNotEmpty()) {
+            FishingReportPhotos(photos = report.photo)
         }
     }
 }

@@ -47,7 +47,7 @@ fun FishingNavHost(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     
-    val reports by viewModel.reports.collectAsState()
+    val reports by viewModel.sortedReports.collectAsState()
     val allReports by viewModel.allReports.collectAsState()
     val favoriteReports by viewModel.favoriteReports.collectAsState()
     val mapMarkers by viewModel.mapMarkers.collectAsState()

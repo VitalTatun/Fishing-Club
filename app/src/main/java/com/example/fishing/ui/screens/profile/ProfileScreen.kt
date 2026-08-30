@@ -8,6 +8,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowRight
 import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +65,7 @@ fun ProfileScreen(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ) {
         if (userEmail != null) {
             ProfileHeader(
@@ -83,24 +85,16 @@ fun ProfileScreen(
             onClick = onChangeHistoryClick
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp)
-        ) {
-            TextButton(
-                onClick = {
-                    showLogoutDialog = true
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Выйти",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.error,
-                )
-            }
+       OutlinedButton(
+           onClick = {
+               showLogoutDialog = true
+           }
+       ) {
+            Text("Выйти")
         }
+            
+
+
         Spacer(modifier = Modifier.weight(1f))
     }
 }

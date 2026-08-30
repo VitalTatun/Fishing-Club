@@ -21,5 +21,11 @@ data class FishingReport(
     var comment: String,
     val user: User,
     var fishingFromTheShore: Boolean,
-    var isPublic: Boolean
+    var isPublic: Boolean,
+    var createdAt: Date? = null
 )
+
+enum class ReportSortOrder {
+    BY_PUBLISH_DATE,
+    BY_FISHING_TIME
+}

@@ -11,12 +11,17 @@ import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.SupabaseFishingRepository
+import com.example.fishing.data.UserPreferencesRepository
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -30,6 +35,7 @@ import java.util.UUID
 class MainViewModel @Inject constructor(
     private val repository: FishingRepository,
     private val authRepository: AuthRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
@@ -40,6 +46,23 @@ class MainViewModel @Inject constructor(
 
     private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
     val favoriteReports: StateFlow<List<FishingReport>> = _favoriteReports.asStateFlow()
+
+    private val _reportSortOrder = MutableStateFlow(userPreferencesRepository.getSortOrder())
+    val reportSortOrder: StateFlow<ReportSortOrder> = _reportSortOrder.asStateFlow()
+
+    val sortedReports: StateFlow<List<FishingReport>> = combine(
+        reports,
+        favoriteReports,
+        reportSortOrder
+    ) { reports, favorites, order ->
+        (reports + favorites).distinctBy { it.id }.let { merged ->
+            when (order) {
+                ReportSortOrder.BY_PUBLISH_DATE -> merged.sortedByDescending { it.createdAt ?: it.publishedAt ?: it.fishingTime }
+                ReportSortOrder.BY_FISHING_TIME -> merged.sortedByDescending { it.fishingTime }
+            }
+        }
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
     val mapMarkers: StateFlow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
@@ -126,6 +149,11 @@ class MainViewModel @Inject constructor(
     fun selectTab(index: Int) {
         _selectedTab.value = index
         if (index == 1) loadMapMarkers(force = true)
+    }
+
+    fun setSortOrder(order: ReportSortOrder) {
+        _reportSortOrder.value = order
+        userPreferencesRepository.setSortOrder(order)
     }
 
     fun requestMapLocation(point: GeoPoint?) {
@@ -387,6 +415,7 @@ class MainViewModel @Inject constructor(
                 spotLng = location?.longitude,
                 photo = photos,
                 fishingTime = fishingTime,
+                createdAt = Date(),
                 weight = weight,
                 fish = fish,
                 fishingMethod = method,

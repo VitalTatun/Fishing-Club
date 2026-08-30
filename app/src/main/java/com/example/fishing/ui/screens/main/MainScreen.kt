@@ -6,11 +6,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
@@ -77,6 +79,9 @@ fun MainScreen(
     )
 
     val highlightedPolygon by viewModel?.highlightedPolygon?.collectAsState() ?: remember { mutableStateOf(null) }
+    val currentSortOrder by viewModel?.reportSortOrder?.collectAsState() ?: remember { mutableStateOf(ReportSortOrder.BY_FISHING_TIME) }
+    
+    var showSortMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -92,6 +97,43 @@ fun MainScreen(
                 },
                 actions = {
                     if (selectedTab == 0) {
+                        Box {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(
+                                    Icons.Default.SwapVert,
+                                    contentDescription = stringResource(R.string.sort)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.sort_by_publish_date)) },
+                                    onClick = {
+                                        viewModel?.setSortOrder(ReportSortOrder.BY_PUBLISH_DATE)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (currentSortOrder == ReportSortOrder.BY_PUBLISH_DATE) {
+                                            Icon(Icons.Default.Check, contentDescription = null)
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.sort_by_fishing_time)) },
+                                    onClick = {
+                                        viewModel?.setSortOrder(ReportSortOrder.BY_FISHING_TIME)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (currentSortOrder == ReportSortOrder.BY_FISHING_TIME) {
+                                            Icon(Icons.Default.Check, contentDescription = null)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
@@ -156,9 +198,6 @@ fun MainScreen(
             }
             when (selectedTab) {
                 0 -> {
-                    val mergedReports = (reports + favoriteReports)
-                        .distinctBy { it.id }
-                        .sortedByDescending { it.fishingTime }
                     PullToRefreshBox(
                         isRefreshing = isLoading,
                         onRefresh = { viewModel?.refresh() },
@@ -167,9 +206,9 @@ fun MainScreen(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            if (mergedReports.isEmpty() && !isLoading) {
+                            if (reports.isEmpty() && !isLoading) {
                                 item {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -183,7 +222,10 @@ fun MainScreen(
                                     }
                                 }
                             }
-                            itemsIndexed(mergedReports) { index, report ->
+                            itemsIndexed(
+                                items = reports,
+                                key = { _, report -> report.id }
+                            ) { index, report ->
                                 FishingReportItem(
                                     report = report,
                                     onClick = { onReportClick(report) },
@@ -191,7 +233,7 @@ fun MainScreen(
                                     isFavorite = favoriteReports.any { it.id == report.id },
                                     currentUserId = currentUserId
                                 )
-                                                            }
+                            }
                         }
                     }
                 }

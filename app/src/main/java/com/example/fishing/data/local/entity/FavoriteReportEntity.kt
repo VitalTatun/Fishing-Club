@@ -28,5 +28,6 @@ data class FavoriteReportEntity(
     val fishJson: String,
     val baitsJson: String,
     val authorName: String?,
-    val authorAvatar: String?
+    val authorAvatar: String?,
+    val createdAt: String? = null
 )

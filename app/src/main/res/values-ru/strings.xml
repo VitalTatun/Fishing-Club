@@ -34,6 +34,9 @@
     <string name="tab_map">Карта</string>
     <string name="tab_profile">Профиль</string>
     <string name="new_report">Новый отчет</string>
+    <string name="sort">Сортировка</string>
+    <string name="sort_by_publish_date">По дате добавления</string>
+    <string name="sort_by_fishing_time">По дате рыбалки</string>
     <string name="no_reports">Нет отчетов</string>
     <string name="logout">Выйти</string>
 

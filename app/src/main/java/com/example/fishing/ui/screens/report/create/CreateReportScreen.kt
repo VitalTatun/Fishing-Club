@@ -37,7 +37,9 @@ import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.FishingType
+import com.example.fishing.data.UserPreferencesRepository
 import com.example.fishing.ui.theme.FishingTheme
+import androidx.compose.ui.platform.LocalContext
 import com.example.fishing.viewmodel.MainViewModel
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
@@ -311,6 +313,7 @@ private fun combineDateAndTime(
 @Preview(showBackground = true, widthDp = 412)
 @Composable
 private fun CreateReportScreenPreview() {
+    val context = LocalContext.current
     FishingTheme(darkTheme = false, dynamicColor = false) {
         val viewModel = remember {
             MainViewModel(
@@ -325,7 +328,8 @@ private fun CreateReportScreenPreview() {
                     override suspend fun updateProfile(name: String, imageUri: String?): Result<com.example.fishing.model.User> = Result.failure(Exception("mock"))
                     override val userStatus: kotlinx.coroutines.flow.Flow<com.example.fishing.model.User?> = kotlinx.coroutines.flow.flowOf(null)
                     override fun resolveImageUrl(path: String): String = ""
-                }
+                },
+                userPreferencesRepository = UserPreferencesRepository(context)
             )
         }
         CreateReportScreen(
