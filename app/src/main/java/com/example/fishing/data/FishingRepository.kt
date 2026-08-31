@@ -8,12 +8,11 @@ import kotlinx.coroutines.flow.flow
 import java.util.UUID
 
 interface FishingRepository {
-    fun getAllReports(userId: UUID? = null): Flow<List<FishingReport>>
-    fun getFavoriteReports(userId: UUID? = null): Flow<List<FishingReport>>
+    fun getHomeReports(userId: UUID): Flow<List<FishingReport>>
+    fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>>
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
-    suspend fun refreshAllReports(userId: UUID? = null)
-    suspend fun refreshFavorites(userId: UUID)
+    suspend fun refreshHomeReports(userId: UUID)
     suspend fun addFavorite(report: FishingReport)
     suspend fun removeFavorite(reportId: UUID)
     suspend fun saveReport(report: FishingReport)
@@ -26,12 +25,12 @@ class MockFishingRepository : FishingRepository {
     private val favoriteReports = mutableListOf<FishingReport>()
     private val reports = MockData.sampleReports.toMutableList()
 
-    override fun getAllReports(userId: UUID?): Flow<List<FishingReport>> = flow {
+    override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = flow {
         delay(1000)
-        emit(reports.toList())
+        emit((reports + favoriteReports).distinctBy { it.id })
     }
 
-    override fun getFavoriteReports(userId: UUID?): Flow<List<FishingReport>> = flow {
+    override fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>> = flow {
         delay(1000)
         emit(favoriteReports.toList())
     }
@@ -54,11 +53,7 @@ class MockFishingRepository : FishingRepository {
         reports.removeAll { it.id == id }
     }
 
-    override suspend fun refreshAllReports(userId: UUID?) {
-        // Mock — no-op
-    }
-
-    override suspend fun refreshFavorites(userId: UUID) {
+    override suspend fun refreshHomeReports(userId: UUID) {
         // Mock — no-op
     }
 

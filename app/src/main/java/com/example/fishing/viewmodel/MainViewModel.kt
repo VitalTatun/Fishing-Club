@@ -41,9 +41,6 @@ class MainViewModel @Inject constructor(
     private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
     val reports: StateFlow<List<FishingReport>> = _reports.asStateFlow()
 
-    private val _allReports = MutableStateFlow<List<FishingReport>>(emptyList())
-    val allReports: StateFlow<List<FishingReport>> = _allReports.asStateFlow()
-
     private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
     val favoriteReports: StateFlow<List<FishingReport>> = _favoriteReports.asStateFlow()
 
@@ -52,14 +49,11 @@ class MainViewModel @Inject constructor(
 
     val sortedReports: StateFlow<List<FishingReport>> = combine(
         reports,
-        favoriteReports,
         reportSortOrder
-    ) { reports, favorites, order ->
-        (reports + favorites).distinctBy { it.id }.let { merged ->
-            when (order) {
-                ReportSortOrder.BY_PUBLISH_DATE -> merged.sortedByDescending { it.createdAt ?: it.publishedAt ?: it.fishingTime }
-                ReportSortOrder.BY_FISHING_TIME -> merged.sortedByDescending { it.fishingTime }
-            }
+    ) { reports, order ->
+        when (order) {
+            ReportSortOrder.BY_PUBLISH_DATE -> reports.sortedByDescending { it.createdAt ?: it.publishedAt ?: it.fishingTime }
+            ReportSortOrder.BY_FISHING_TIME -> reports.sortedByDescending { it.fishingTime }
         }
     }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -124,10 +118,8 @@ class MainViewModel @Inject constructor(
     val error: StateFlow<String?> = _error.asStateFlow()
 
     private var reportsLoadJob: Job? = null
-    private var allReportsLoadJob: Job? = null
     private var mapMarkersLoadJob: Job? = null
     private var reportDetailsJob: Job? = null
-    private var favoritesLoadJob: Job? = null
     private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
     init {
@@ -135,7 +127,6 @@ class MainViewModel @Inject constructor(
             authRepository.userStatus.collect { user ->
                 if (user != null) {
                     refresh()
-                    loadAllReports()
                 }
             }
         }
@@ -143,7 +134,6 @@ class MainViewModel @Inject constructor(
 
     fun refresh() {
         loadReports(force = true)
-        loadFavorites(force = true)
     }
 
     fun selectTab(index: Int) {
@@ -166,7 +156,6 @@ class MainViewModel @Inject constructor(
 
     fun loadReportsIfNeeded() {
         loadReports(force = false)
-        loadFavorites(force = false)
     }
 
     fun loadMapMarkers(force: Boolean = false) {
@@ -204,46 +193,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun loadFavorites(force: Boolean = false) {
-        if (!force && (_favoriteReports.value.isNotEmpty() || favoritesLoadJob?.isActive == true)) {
-            return
-        }
-
-        favoritesLoadJob?.cancel()
-        favoritesLoadJob = viewModelScope.launch {
-            // Observe Room cache
-            launch {
-                try {
-                    repository.getFavoriteReports().collect { reports ->
-                        _favoriteReports.value = reports.map { report ->
-                            report.copy(
-                                photo = resolvePhotoUrls(report.photo)
-                            )
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            // Refresh from network
-            launch {
-                try {
-                    authRepository.currentUser()?.let { currentUser ->
-                        if (repository is SupabaseFishingRepository) {
-                            repository.refreshFavorites(currentUser.id)
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
-
     fun toggleFavorite(report: FishingReport) {
         val isFavorite = _favoriteReports.value.any { it.id == report.id }
         viewModelScope.launch {
@@ -254,7 +203,8 @@ class MainViewModel @Inject constructor(
                 repository.addFavorite(report)
                 _favoriteReports.value = (_favoriteReports.value + report).distinctBy { it.id }
             }
-            loadFavorites(force = true)
+            // Both main and favorite lists observe Room, so the local relation update above
+            // refreshes them immediately without starting another overlapping network sync.
         }
     }
 
@@ -302,13 +252,14 @@ class MainViewModel @Inject constructor(
         }
 
         val currentUserId = authRepository.currentUser()?.id
+        if (currentUserId == null) return
         reportsLoadJob?.cancel()
         reportsLoadJob = viewModelScope.launch {
             _isLoading.value = true
             // Observe Room cache (updates UI on every DB change)
             launch {
                 try {
-                    repository.getAllReports(userId = currentUserId).collect { reports ->
+                    repository.getHomeReports(userId = currentUserId).collect { reports ->
                         _reports.value = reports.map { report ->
                             report.copy(
                                 photo = resolvePhotoUrls(report.photo)
@@ -321,35 +272,11 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
             }
-            // Refresh from network → saves to Room → Flow auto-updates UI
-            try {
-                repository.refreshAllReports(userId = currentUserId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _error.value = "Ошибка загрузки: ${e.message ?: "неизвестная"}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    private fun loadAllReports(force: Boolean = false) {
-        if (!force && (_allReports.value.isNotEmpty() || allReportsLoadJob?.isActive == true)) {
-            return
-        }
-
-        allReportsLoadJob?.cancel()
-        allReportsLoadJob = viewModelScope.launch {
-            // Observe Room cache
             launch {
                 try {
-                    repository.getAllReports().collect { reports ->
-                        _allReports.value = reports.map { report ->
-                            report.copy(
-                                photo = resolvePhotoUrls(report.photo)
-                            )
+                    repository.getFavoriteReports(currentUserId).collect { reports ->
+                        _favoriteReports.value = reports.map { report ->
+                            report.copy(photo = resolvePhotoUrls(report.photo))
                         }
                     }
                 } catch (e: CancellationException) {
@@ -358,15 +285,16 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
             }
-            // Refresh from network
-            launch {
-                try {
-                    repository.refreshAllReports()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+            // Refresh from network → saves to Room → Flow auto-updates UI
+            try {
+                currentUserId?.let { repository.refreshHomeReports(it) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _error.value = "Ошибка загрузки: ${e.message ?: "неизвестная"}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }

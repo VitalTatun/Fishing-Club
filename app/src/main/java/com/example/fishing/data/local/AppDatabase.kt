@@ -13,7 +13,7 @@ import com.example.fishing.data.local.entity.ReportDetailsEntity
 
 @Database(
     entities = [MarkerEntity::class, ReportDetailsEntity::class, FavoriteReportEntity::class],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

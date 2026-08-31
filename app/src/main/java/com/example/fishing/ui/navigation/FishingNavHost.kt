@@ -48,7 +48,6 @@ fun FishingNavHost(
     val coroutineScope = rememberCoroutineScope()
     
     val reports by viewModel.sortedReports.collectAsState()
-    val allReports by viewModel.allReports.collectAsState()
     val favoriteReports by viewModel.favoriteReports.collectAsState()
     val mapMarkers by viewModel.mapMarkers.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -103,7 +102,6 @@ fun FishingNavHost(
                 reports = reports,
                 isLoading = isLoading,
                 selectedTab = selectedTab,
-                allReports = allReports,
                 favoriteReports = favoriteReports,
                 mapMarkers = mapMarkers,
                 viewModel = viewModel,

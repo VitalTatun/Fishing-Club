@@ -50,7 +50,6 @@ sealed class BottomNavItem(
 @Composable
 fun MainScreen(
     reports: List<FishingReport>,
-    allReports: List<FishingReport> = reports,
     favoriteReports: List<FishingReport> = emptyList(),
     mapMarkers: List<MarkerDomain> = emptyList(),
     isLoading: Boolean = false,
