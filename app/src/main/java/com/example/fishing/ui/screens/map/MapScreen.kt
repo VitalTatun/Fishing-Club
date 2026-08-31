@@ -357,53 +357,83 @@ fun OsmMapView(
         update = { mv ->
             val currentOverlays = mv.overlays
 
-            // Remove old markers and polygons
-            val overlaysToRemove = currentOverlays.filter { it is Marker || it is Polygon }
-            currentOverlays.removeAll(overlaysToRemove)
+            // --- Polygon: remove old, add new if needed ---
+            val polygonsToRemove = currentOverlays.filterIsInstance<Polygon>()
+            currentOverlays.removeAll(polygonsToRemove.toSet())
 
-            // Add highlighted polygon if exists
             highlightedPolygon?.let { points ->
                 val polygon = Polygon(mv).apply {
                     points.forEach { addPoint(it) }
-                    fillPaint.color = android.graphics.Color.argb(75, 0, 0, 255) // Semi-transparent blue
+                    fillPaint.color = android.graphics.Color.argb(75, 0, 0, 255)
                     outlinePaint.color = android.graphics.Color.BLUE
                     outlinePaint.strokeWidth = 2f
                 }
                 currentOverlays.add(polygon)
             }
 
+            // --- Markers: diff-based update ---
+            val existingMarkers = currentOverlays.filterIsInstance<Marker>()
+                .associateBy { it.title }
+
+            val newIds = markers.map { it.id.toString() }.toSet()
+            val existingIds = existingMarkers.keys
+
+            // Remove stale markers
+            val toRemove = existingIds - newIds
+            toRemove.forEach { id ->
+                existingMarkers[id]?.let { currentOverlays.remove(it) }
+            }
+
+            // Add or update markers
             markers.forEach { marker ->
-                try {
-                    val shape = if (marker.id == selectedMarkerId) MarkerShape.DROP else MarkerShape.CIRCLE
-                    val markerOverlay = Marker(mv).apply {
-                        position = GeoPoint(marker.waterLat, marker.waterLng)
-                        val anchorY = if (shape == MarkerShape.DROP) Marker.ANCHOR_BOTTOM else Marker.ANCHOR_CENTER
-                        setAnchor(Marker.ANCHOR_CENTER, anchorY)
+                val id = marker.id.toString()
+                val existing = existingMarkers[id]
 
-                        if (markersInteractive) {
-                            title = marker.name
-                            subDescription = marker.waterName
-                            setOnMarkerClickListener { _, _ ->
-                                onMarkerSelected(
-                                    if (selectedMarkerId == marker.id) null else marker.id
-                                )
-                                onMarkerClick(marker)
-                                true
+                if (existing != null) {
+                    // Update in place — only touch what changed
+                    existing.position = GeoPoint(marker.waterLat, marker.waterLng)
+
+                    val isSelected = marker.id == selectedMarkerId
+                    val shape = if (isSelected) MarkerShape.DROP else MarkerShape.CIRCLE
+                    val anchorY = if (shape == MarkerShape.DROP) Marker.ANCHOR_BOTTOM else Marker.ANCHOR_CENTER
+                    existing.setAnchor(Marker.ANCHOR_CENTER, anchorY)
+
+                    val color = if (marker.type == FishingType.HAUL) trophyColor else regularColor
+                    val iconColor = if (marker.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
+                    existing.icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, marker.fishingMethod, iconColor)
+                } else {
+                    // Create new marker
+                    try {
+                        val shape = if (marker.id == selectedMarkerId) MarkerShape.DROP else MarkerShape.CIRCLE
+                        val markerOverlay = Marker(mv).apply {
+                            title = marker.id.toString()
+                            position = GeoPoint(marker.waterLat, marker.waterLng)
+                            val anchorY = if (shape == MarkerShape.DROP) Marker.ANCHOR_BOTTOM else Marker.ANCHOR_CENTER
+                            setAnchor(Marker.ANCHOR_CENTER, anchorY)
+
+                            if (markersInteractive) {
+                                subDescription = marker.waterName
+                                setOnMarkerClickListener { _, _ ->
+                                    val currentSelected = selectedMarkerId
+                                    onMarkerSelected(
+                                        if (currentSelected == marker.id) null else marker.id
+                                    )
+                                    onMarkerClick(marker)
+                                    true
+                                }
+                            } else {
+                                setInfoWindow(null)
                             }
-                        } else {
-                            setInfoWindow(null)
-                        }
 
-                        val color = if (marker.type == FishingType.HAUL) trophyColor else regularColor
-                        val iconColor = if (marker.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
-                        icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, marker.fishingMethod, iconColor)
+                            val color = if (marker.type == FishingType.HAUL) trophyColor else regularColor
+                            val iconColor = if (marker.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
+                            icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, marker.fishingMethod, iconColor)
+                        }
+                        currentOverlays.add(markerOverlay)
+                    } catch (_: Exception) {
                     }
-                    currentOverlays.add(markerOverlay)
-                } catch (e: Exception) {
-                    // Игнорируем ошибки инициализации маркеров в переходных состояниях
                 }
             }
-            mv.invalidate()
         }
     )
 }
