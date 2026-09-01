@@ -35,10 +35,12 @@ fun FishingListItem(
     trailingText: String? = null,
     supportingText: String? = null,
     leadingIcon: ImageVector? = null,
+    isRequired: Boolean = false,
     onRowClick: (() -> Unit)? = null,
     onTitleClick: (() -> Unit)? = null,
     onTrailingTextClick: (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
+
 ) {
     Row(
         modifier = modifier
@@ -76,15 +78,16 @@ fun FishingListItem(
                 .weight(1f)
                 .fillMaxHeight()
                 .padding(vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
         ) {
+            val hasData = supportingText != null || trailingText != null || trailingContent != null
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = title,
+                    text = if (isRequired && !hasData) "$title *" else title,
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.then(
                         if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier

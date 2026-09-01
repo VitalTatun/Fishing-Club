@@ -14,8 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PublishedWithChanges
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
@@ -141,6 +146,7 @@ fun CreateReportScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var isDetailsExpanded by remember { mutableStateOf(false) }
 
     val currentTime = Calendar.getInstance()
     val timePickerState = rememberTimePickerState(
@@ -306,9 +312,13 @@ fun CreateReportScreen(
                         supportingText = stringResource(R.string.publish_supporting),
                         leadingIcon = Icons.Default.PublishedWithChanges,
                         trailingContent = {
-                            Switch(checked = viewModel.formIsPublic, onCheckedChange = { viewModel.formIsPublic = it })
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-
+                            Switch(
+                                checked = viewModel.formIsPublic,
+                                onCheckedChange = {
+                                    viewModel.formIsPublic = it
+                                    haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                }
+                            )
                         }
                     )
                 }
@@ -341,15 +351,49 @@ fun CreateReportScreen(
                 }
             }
             item {
-                WaterSection(
-                    waterName = viewModel.formWaterName,
-                    onArrowClick = onNavigateToWaterEdit,
-                    onEditClick = onNavigateToWaterNameEdit,
-                    location = viewModel.formLocation,
-                    fishingFromShore = viewModel.formFishingFromShore,
-                    isPaidWater = viewModel.formIsPaidWater,
-                    isRequired = true
-                )
+
+                SectionGroup {
+                    FishingListItem(
+                        title = stringResource(R.string.water_body),
+                        leadingIcon = Icons.Default.LocationOn,
+                        onRowClick = onNavigateToWaterEdit,
+                        isRequired = true
+                    )
+                    if (viewModel.formLocation != null) {
+                        MapPreview(
+                            location = viewModel.formLocation,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        if (viewModel.formWaterName.isEmpty()) {
+                            FishingListItem(
+                                title = stringResource(R.string.add_water_name_button),
+                                leadingIcon = Icons.Default.Add,
+                                onRowClick = onNavigateToWaterNameEdit
+                            )
+                        } else {
+                            FishingListItem(
+                                title = viewModel.formWaterName,
+                                supportingText = viewModel.formLocation?.let {
+                                    "Координаты: ${"%.5f".format(it.latitude)}, ${"%.5f".format(it.longitude)}"
+                                },
+                                onRowClick = onNavigateToWaterNameEdit
+                            )
+                        }
+                    }
+                    if (viewModel.formWaterName.isNotEmpty()) {
+                        val shoreText = stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat)
+                        val paidText = if (viewModel.formIsPaidWater) " • ${stringResource(R.string.paid)}" else ""
+                        FishingListItem(
+                            title = "Детали",
+                            supportingText = if (!isDetailsExpanded) "$shoreText$paidText" else null,
+                            onRowClick = { isDetailsExpanded = !isDetailsExpanded }
+                        )
+
+                        if (isDetailsExpanded) {
+                            WaterDetailsItems(viewModel, haptic)
+                        }
+                    }
+                }
             }
             item {
                 MethodAndBaitSection(
@@ -400,6 +444,37 @@ private fun combineDateAndTime(
         calendar[Calendar.MINUTE] = timeParts[1].toInt()
     }
     return calendar.time
+}
+
+@Composable
+private fun WaterDetailsItems(
+    viewModel: MainViewModel,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback
+) {
+    FishingListItem(
+        title = stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat),
+        trailingContent = {
+            Switch(
+                checked = viewModel.formFishingFromShore,
+                onCheckedChange = {
+                    viewModel.formFishingFromShore = it
+                    haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                }
+            )
+        }
+    )
+    FishingListItem(
+        title = stringResource(R.string.paid_water),
+        trailingContent = {
+            Switch(
+                checked = viewModel.formIsPaidWater,
+                onCheckedChange = {
+                    viewModel.formIsPaidWater = it
+                    haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                }
+            )
+        }
+    )
 }
 
 @Preview(showBackground = true, widthDp = 412)

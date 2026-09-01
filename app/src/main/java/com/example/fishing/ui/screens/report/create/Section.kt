@@ -43,7 +43,7 @@ internal fun Section(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (isRequired) "$title*" else title,
+                text = if (isRequired && !hasData) "$title *" else title,
                 color = CreateReportColors.OnSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium
