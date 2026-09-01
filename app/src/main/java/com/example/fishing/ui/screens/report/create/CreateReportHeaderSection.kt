@@ -121,7 +121,7 @@ internal fun ReportTypeSelector(
         Text(
             text = supportingText,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
         )
     }
 }
@@ -273,7 +273,7 @@ private fun ReportDateTimeRowPreview() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FishingDatePickerDialog(
+internal fun FishingDatePickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (Long?) -> Unit
 ) {
@@ -297,7 +297,7 @@ private fun FishingDatePickerDialog(
 }
 
 @Composable
-private fun TimePickerDialog(
+internal fun TimePickerDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     content: @Composable () -> Unit

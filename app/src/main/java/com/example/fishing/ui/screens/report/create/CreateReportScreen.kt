@@ -1,6 +1,10 @@
 package com.example.fishing.ui.screens.report.create
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,7 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PublishedWithChanges
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -39,13 +46,21 @@ import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.FishingType
 import com.example.fishing.data.UserPreferencesRepository
 import com.example.fishing.ui.theme.FishingTheme
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.fishing.ui.components.FishingListItem
+import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.viewmodel.MainViewModel
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +91,7 @@ fun CreateReportScreen(
     onNavigateToWaterNameEdit: () -> Unit = {},
 ) {
     val calendar = remember { Calendar.getInstance() }
+    val haptic = LocalHapticFeedback.current
     val dateFormatter = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru")) }
     val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
@@ -123,6 +139,24 @@ fun CreateReportScreen(
     }
 
     var showDiscardDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+
+    val currentTime = Calendar.getInstance()
+    val timePickerState = rememberTimePickerState(
+        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
+        initialMinute = currentTime.get(Calendar.MINUTE),
+        is24Hour = true,
+    )
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
+    ) { uris ->
+        val currentUris = viewModel.formSelectedPhotoUris
+        val availableSlots = MaxPhotos - currentUris.size
+        val newUris = uris.take(availableSlots).filter { it !in currentUris }
+        viewModel.formSelectedPhotoUris = currentUris + newUris
+    }
 
     val handleBack = {
         if (formHasData) {
@@ -154,6 +188,37 @@ fun CreateReportScreen(
                 }
             }
         )
+    }
+
+    if (showDatePicker) {
+        FishingDatePickerDialog(
+            onDismiss = { showDatePicker = false },
+            onConfirm = { millis ->
+                millis?.let {
+                    val d = Date(it)
+                    viewModel.formFishingDate = dateFormatter.format(d)
+                }
+                showDatePicker = false
+            }
+        )
+    }
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            onDismiss = { showTimePicker = false },
+            onConfirm = {
+                val formattedTime = String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    timePickerState.hour,
+                    timePickerState.minute
+                )
+                viewModel.formFishingStartTime = formattedTime
+                showTimePicker = false
+            }
+        ) {
+            TimePicker(state = timePickerState)
+        }
     }
 
     Scaffold(
@@ -209,7 +274,7 @@ fun CreateReportScreen(
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             item {
-                SectionCard {
+                SectionGroup {
                     ReportTypeSelector(
                         reportType = viewModel.formReportType,
                         onReportTypeChange = { newType ->
@@ -217,36 +282,63 @@ fun CreateReportScreen(
                             if (newType == FishingType.HAUL && viewModel.formSelectedFish.size > 1) {
                                 viewModel.formSelectedFish = listOf(viewModel.formSelectedFish.first().copy(count = 1))
                             }
+                        },
+                        modifier = Modifier.padding(start = 64.dp, end = 16.dp, bottom = 8.dp)
+                    )
+                }
+
+            }
+            item {
+                SectionGroup {
+                    FishingListItem(
+                        title = viewModel.formFishingDate,
+                        onTitleClick = { showDatePicker = true },
+                        leadingIcon = Icons.Default.Schedule,
+                        trailingText = viewModel.formFishingStartTime,
+                        onTrailingTextClick = { showTimePicker = true }
+                    )
+                    FishingListItem(
+                        title = "Вс, 2 августа 2026",
+                        trailingText = "4:00",
+                    )
+                    FishingListItem (
+                        title = "Опубликовать",
+                        supportingText = stringResource(R.string.publish_supporting),
+                        leadingIcon = Icons.Default.PublishedWithChanges,
+                        trailingContent = {
+                            Switch(checked = viewModel.formIsPublic, onCheckedChange = { viewModel.formIsPublic = it })
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
                         }
                     )
                 }
             }
+
             item {
-                SectionCard {
-                    ReportDateTimeRow(
-                        date = viewModel.formFishingDate,
-                        onDateChange = { viewModel.formFishingDate = it },
-                        time = viewModel.formFishingStartTime,
-                        onTimeChange = { viewModel.formFishingStartTime = it }
+                SectionGroup {
+                    FishingListItem(
+                        title = stringResource(R.string.photos),
+                        supportingText = stringResource(R.string.photos_subtitle),
+                        leadingIcon = Icons.Default.AddPhotoAlternate,
+                        onRowClick = {
+                            if (viewModel.formSelectedPhotoUris.size < MaxPhotos) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                photoPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        }
                     )
+
+                    if (viewModel.formSelectedPhotoUris.isNotEmpty()) {
+                        ReportPhotosList(
+                            selectedPhotoUris = viewModel.formSelectedPhotoUris,
+                            onRemoveClick = { uri ->
+                                viewModel.formSelectedPhotoUris = viewModel.formSelectedPhotoUris - uri
+                            }
+                        )
+                    }
                 }
-            }
-            item {
-                SectionCard {
-                    SwitchRow(
-                        title = stringResource(R.string.publish),
-                        checked = viewModel.formIsPublic,
-                        onCheckedChange = { viewModel.formIsPublic = it },
-                        supportingText = stringResource(R.string.publish_supporting)
-                    )
-                }
-            }
-            item {
-                PhotosSection(
-                    selectedPhotoUris = viewModel.formSelectedPhotoUris,
-                    onPhotosChange = { viewModel.formSelectedPhotoUris = it },
-                    isRequired = isTrophy
-                )
             }
             item {
                 WaterSection(

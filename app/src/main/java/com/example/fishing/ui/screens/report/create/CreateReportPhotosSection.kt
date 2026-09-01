@@ -1,9 +1,6 @@
 package com.example.fishing.ui.screens.report.create
 
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,107 +13,51 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
 import com.example.fishing.R
-import com.example.fishing.ui.theme.FishingTheme
 
-private const val MaxPhotos = 6
-
-@Composable
-internal fun PhotosSection(
-    selectedPhotoUris: List<Uri> = emptyList(),
-    onPhotosChange: (List<Uri>) -> Unit = {},
-    isRequired: Boolean = false
-) {
-    val haptic = LocalHapticFeedback.current
-    val photoPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
-    ) { uris ->
-        val availableSlots = MaxPhotos - selectedPhotoUris.size
-        val newUris = uris.take(availableSlots).filter { it !in selectedPhotoUris }
-        onPhotosChange(selectedPhotoUris + newUris)
-    }
-
-    PhotosSectionContent(
-        selectedPhotoUris = selectedPhotoUris,
-        onAddClick = {
-            if (selectedPhotoUris.size < MaxPhotos) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                photoPicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            }
-        },
-        onRemoveClick = { uri ->
-            onPhotosChange(selectedPhotoUris - uri)
-        },
-        isRequired = isRequired
-    )
-}
+internal const val MaxPhotos = 6
 
 @Composable
-internal fun PhotosSectionContent(
+internal fun ReportPhotosList(
     selectedPhotoUris: List<Uri>,
-    onAddClick: () -> Unit,
     onRemoveClick: (Uri) -> Unit,
-    isRequired: Boolean = false
+    modifier: Modifier = Modifier
 ) {
-    SectionCard(contentPadding = PaddingValues(0.dp)) {
-        Section(
-            title = stringResource(R.string.photos),
-            subtitle = stringResource(R.string.photos_subtitle),
-            hasData = selectedPhotoUris.isNotEmpty(),
-            isRequired = isRequired,
-            onArrowClick = onAddClick)
-
-        if (selectedPhotoUris.isNotEmpty()) {
-            LazyRow(
+    LazyRow(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp, top = 8.dp),
+        contentPadding = PaddingValues(start = 64.dp, end = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        itemsIndexed(items = selectedPhotoUris, key = { index, _ -> index }) { _, photoUri ->
+            PhotoTile(
+                photoUri = photoUri,
+                onRemoveClick = { onRemoveClick(photoUri) },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 16.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                itemsIndexed(items = selectedPhotoUris, key = { index, _ -> index }) { _, photoUri ->
-                    PhotoTile(
-                        photoUri = photoUri,
-                        onRemoveClick = { onRemoveClick(photoUri) },
-                        modifier = Modifier
-                            .width(120.dp)
-                            .aspectRatio(1f)
-                    )
-                }
-            }
+                    .width(120.dp)
+                    .aspectRatio(1f)
+            )
         }
-        HorizontalDivider(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
     }
 }
 
 @Composable
-private fun PhotoTile(
+internal fun PhotoTile(
     photoUri: Uri,
     onRemoveClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -149,33 +90,5 @@ private fun PhotoTile(
                 modifier = Modifier.size(20.dp)
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PhotosSectionEmptyPreview() {
-    FishingTheme {
-        PhotosSectionContent(
-            selectedPhotoUris = emptyList(),
-            onAddClick = {},
-            onRemoveClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PhotosSectionWithPhotosPreview() {
-    FishingTheme {
-        PhotosSectionContent(
-            selectedPhotoUris = listOf(
-                Uri.parse("1"),
-                Uri.parse("2"),
-                Uri.parse("3")
-            ),
-            onAddClick = {},
-            onRemoveClick = {}
-        )
     }
 }
