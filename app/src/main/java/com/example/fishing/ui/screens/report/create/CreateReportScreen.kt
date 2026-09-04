@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,16 +15,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Phishing
+import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.material.icons.filled.PublishedWithChanges
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -53,7 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.fishing.ui.components.FishingListItem
 import com.example.fishing.ui.components.SectionGroup
-import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.CreateReportViewModel
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -62,29 +67,22 @@ import java.util.Locale
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.MockFishingRepository
+import com.example.fishing.model.User
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateReportScreen(
-    viewModel: MainViewModel,
+    viewModel: CreateReportViewModel,
     onBackClick: () -> Unit,
-    onSaveClick: (
-        title: String,
-        type: FishingType,
-        waterName: String,
-        location: GeoPoint?,
-        fishingTime: Date,
-        weight: Double,
-        fish: List<Fish>,
-        method: FishingMethod,
-        baits: List<Bait>,
-        comment: String,
-        shore: Boolean,
-        isPublic: Boolean,
-        isPaidWater: Boolean,
-        photos: List<String>,
-    ) -> Unit,
+    onSaveComplete: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToCatchEdit: () -> Unit = {},
     onNavigateToMethodAndBaitEdit: () -> Unit = {},
@@ -106,39 +104,9 @@ fun CreateReportScreen(
         }
     }
 
-    val isTrophy = viewModel.formReportType == FishingType.HAUL
-
-    val isSaveEnabled by remember {
-        derivedStateOf {
-            val baseValid = (viewModel.formWaterName.isNotBlank() &&
-                    viewModel.formLocation != null &&
-                    viewModel.formSelectedMethod != FishingMethod.NONE &&
-                    viewModel.formSelectedBaits.isNotEmpty() &&
-                    viewModel.formSelectedFish.isNotEmpty() &&
-                    viewModel.formFishingDate.isNotBlank())
-
-            if (isTrophy) {
-                baseValid &&
-                        viewModel.formSelectedPhotoUris.isNotEmpty() &&
-                        viewModel.formSelectedFish.size == 1
-            } else {
-                baseValid
-            }
-        }
-    }
-
-    val formHasData by remember {
-        derivedStateOf {
-            viewModel.formWaterName.isNotBlank() ||
-                    viewModel.formLocation != null ||
-                    viewModel.formSelectedMethod != FishingMethod.NONE ||
-                    viewModel.formSelectedFish.isNotEmpty() ||
-                    viewModel.formSelectedBaits.isNotEmpty() ||
-                    viewModel.formSelectedPhotoUris.isNotEmpty() ||
-                    viewModel.formComment.isNotBlank() ||
-                    viewModel.formWeight > 0f
-        }
-    }
+    val isTrophy = viewModel.isTrophy
+    val isSaveEnabled = viewModel.isSaveEnabled
+    val formHasData = viewModel.formHasData
 
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -244,21 +212,7 @@ fun CreateReportScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val combinedDateTime = combineDateAndTime(
-                                viewModel.formFishingDate,
-                                viewModel.formFishingStartTime,
-                                dateFormatter
-                            )
-
-                            onSaveClick(
-                                viewModel.formTitle, viewModel.formReportType, viewModel.formWaterName,
-                                viewModel.formLocation, combinedDateTime,
-                                viewModel.formWeight.toDouble(), viewModel.formSelectedFish,
-                                viewModel.formSelectedMethod, viewModel.formSelectedBaits,
-                                viewModel.formComment, viewModel.formFishingFromShore,
-                                viewModel.formIsPublic, viewModel.formIsPaidWater,
-                                viewModel.formSelectedPhotoUris.map { it.toString() }
-                            )
+                            viewModel.saveReport(onSuccess = onSaveComplete)
                         },
                         enabled = isSaveEnabled
                     ) {
@@ -393,26 +347,118 @@ fun CreateReportScreen(
                 }
             }
             item {
-                MethodAndBaitSection(
-                    selectedMethod = viewModel.formSelectedMethod,
-                    selectedBaits = viewModel.formSelectedBaits,
-                    onArrowClick = onNavigateToMethodAndBaitEdit,
-                    isRequired = true
-                )
+                SectionGroup {
+                    val hasMethod = viewModel.formSelectedMethod != FishingMethod.NONE
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                if (hasMethod) stringResource(viewModel.formSelectedMethod.labelRes)
+                                else stringResource(R.string.method_and_bait)
+                            )
+                        },
+                        supportingContent = if (hasMethod) {
+                            { Text(stringResource(R.string.fishing_method)) }
+                        } else null,
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Default.Phishing,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.clickable { onNavigateToMethodAndBaitEdit() }
+                    )
+                    if (viewModel.formSelectedBaits.isNotEmpty()) {
+                        val baitsText = viewModel.formSelectedBaits.map { stringResource(it.labelRes) }.joinToString(", ")
+                        ListItem(
+                            headlineContent = { Text(baitsText) },
+                            supportingContent = { Text(stringResource(R.string.bait)) },
+                            modifier = Modifier.padding(start = 40.dp)
+                        )
+                    }
+                }
             }
             item {
-                CatchSection(
-                    selectedFish = viewModel.formSelectedFish,
-                    onArrowClick = onNavigateToCatchEdit,
-                    weight = viewModel.formWeight,
-                    isRequired = true
-                )
+                SectionGroup {
+                    val hasCatch = viewModel.formSelectedFish.isNotEmpty()
+                    val firstFish = viewModel.formSelectedFish.firstOrNull()
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                if (hasCatch && firstFish != null) firstFish.name
+                                else stringResource(R.string.catch_label)
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Default.SetMeal,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        trailingContent = if (hasCatch && firstFish != null) {
+                            {
+                                Text(
+                                    text = stringResource(R.string.fish_count_short, firstFish.count),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+
+                                )
+                            }
+                        } else null,
+                        modifier = Modifier.clickable { onNavigateToCatchEdit() }
+                    )
+
+                    if (viewModel.formSelectedFish.size > 1) {
+                        viewModel.formSelectedFish.drop(1).forEach { fish ->
+                            ListItem(
+                                headlineContent = { Text(fish.name) },
+                                trailingContent = {
+                                    Text(
+                                        text = stringResource(R.string.fish_count_short, fish.count),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+
+                                    )
+                                },
+                                modifier = Modifier.padding(start = 40.dp)
+                            )
+                        }
+                    }
+
+                    if (viewModel.formWeight > 0f) {
+                        ListItem(
+                            headlineContent = { Text("${viewModel.formWeight} ${stringResource(R.string.kg)}") },
+                            supportingContent = { Text(stringResource(R.string.total_weight)) },
+                            modifier = Modifier.padding(start = 40.dp)
+                        )
+                    }
+                }
             }
             item {
-                CommentSection(
-                    comment = viewModel.formComment,
-                    onArrowClick = onNavigateToCommentEdit
-                )
+                SectionGroup {
+                    val hasComment = viewModel.formComment.isNotBlank()
+                    ListItem(
+
+                        headlineContent = {
+                            Text(
+                                text = if (hasComment) viewModel.formComment else stringResource(R.string.comment),
+                                maxLines = if (hasComment) 5 else 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Notes,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.clickable { onNavigateToCommentEdit() }
+                    )
+                }
             }
             item {
                 Text(
@@ -428,25 +474,10 @@ fun CreateReportScreen(
     }
 }
 
-private fun combineDateAndTime(
-    dateString: String,
-    timeString: String,
-    dateFormatter: SimpleDateFormat
-): Date {
-    val calendar = Calendar.getInstance()
-    calendar.time = dateFormatter.parse(dateString) ?: Date()
-    val timeParts = timeString.split(":")
-    if (timeParts.size == 2) {
-        calendar[Calendar.HOUR_OF_DAY] = timeParts[0].toInt()
-        calendar[Calendar.MINUTE] = timeParts[1].toInt()
-    }
-    return calendar.time
-}
-
 @Composable
 private fun WaterDetailsItems(
-    viewModel: MainViewModel,
-    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback
+    viewModel: CreateReportViewModel,
+    haptic: HapticFeedback
 ) {
     FishingListItem(
         title = stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat),
@@ -480,26 +511,26 @@ private fun CreateReportScreenPreview() {
     val context = LocalContext.current
     FishingTheme(darkTheme = false, dynamicColor = false) {
         val viewModel = remember {
-            MainViewModel(
-                repository = com.example.fishing.data.MockFishingRepository(),
-                authRepository = object : com.example.fishing.data.AuthRepository {
-                    override suspend fun login(email: String, password: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
-                    override suspend fun register(email: String, password: String, name: String) = Result.failure<com.example.fishing.model.User>(Exception("mock"))
+            CreateReportViewModel(
+                repository = MockFishingRepository(),
+                authRepository = object : AuthRepository {
+                    override suspend fun login(email: String, password: String) = Result.failure<User>(Exception("mock"))
+                    override suspend fun register(email: String, password: String, name: String) = Result.failure<User>(Exception("mock"))
                     override suspend fun logout() {}
-                    override fun currentUser(): com.example.fishing.model.User? = null
+                    override fun currentUser(): User? = null
                     override fun isLoggedIn() = false
                     override suspend fun loadSession() {}
-                    override suspend fun updateProfile(name: String, imageUri: String?): Result<com.example.fishing.model.User> = Result.failure(Exception("mock"))
-                    override val userStatus: kotlinx.coroutines.flow.Flow<com.example.fishing.model.User?> = kotlinx.coroutines.flow.flowOf(null)
+                    override suspend fun updateProfile(name: String, imageUri: String?): Result<User> = Result.failure(Exception("mock"))
+                    override val userStatus: Flow<User?> = flowOf(null)
                     override fun resolveImageUrl(path: String): String = ""
                 },
-                userPreferencesRepository = UserPreferencesRepository(context)
+                context = context
             )
         }
         CreateReportScreen(
             viewModel = viewModel,
             onBackClick = {},
-            onSaveClick = { _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> }
+            onSaveComplete = {}
         )
     }
 }

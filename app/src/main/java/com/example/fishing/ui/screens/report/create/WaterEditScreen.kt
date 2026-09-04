@@ -45,12 +45,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.collectAsState
+import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WaterEditScreen(
-    viewModel: MainViewModel,
+    viewModel: CreateReportViewModel,
+    reportsViewModel: MainViewModel,
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -59,7 +61,7 @@ fun WaterEditScreen(
     var isPaidWater by remember { mutableStateOf(viewModel.formIsPaidWater) }
     var isFishingFromShore by remember { mutableStateOf(viewModel.formFishingFromShore) }
     
-    val reports by viewModel.reports.collectAsState()
+    val reports by reportsViewModel.reports.collectAsState()
     val previousPlaces = remember(reports) {
         reports.asSequence()
             .map { it.water.waterName }
@@ -71,7 +73,7 @@ fun WaterEditScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.loadReportsIfNeeded()
+        reportsViewModel.loadReportsIfNeeded()
     }
 
     var showDiscardDialog by remember { mutableStateOf(value = false) }

@@ -1,9 +1,6 @@
 package com.example.fishing.viewmodel
 
-import android.net.Uri
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -80,24 +77,6 @@ class MainViewModel @Inject constructor(
     var mapLastCenterLon: Double? = null
     var mapLastZoom: Double = 6.0
 
-    // Create report form state (survives navigation — ViewModel scoped to Activity)
-    var formTitle by mutableStateOf("")
-    var formReportType by mutableStateOf(FishingType.FISHING_LOG)
-    var formWaterName by mutableStateOf("")
-    var formSelectedPhotoUris by mutableStateOf<List<Uri>>(emptyList())
-    var formFishingDate by mutableStateOf("")
-    var formFishingStartTime by mutableStateOf("")
-    var formFishingFromShore by mutableStateOf(true)
-    var formIsPublic by mutableStateOf(true)
-    var formIsPaidWater by mutableStateOf(false)
-    var formWeight by mutableFloatStateOf(0f)
-    var formSelectedMethod by mutableStateOf(FishingMethod.NONE)
-    var formSelectedBaits by mutableStateOf<List<Bait>>(emptyList())
-    var formSelectedFish by mutableStateOf<List<Fish>>(emptyList())
-    var formMood by mutableIntStateOf(3)
-    var formComment by mutableStateOf("")
-    var formLocation by mutableStateOf<GeoPoint?>(null)
-
     // Search state (persists across navigation)
     var searchQuery by mutableStateOf("")
     var searchSelectedDate by mutableStateOf<Long?>(null)
@@ -134,6 +113,7 @@ class MainViewModel @Inject constructor(
 
     fun refresh() {
         loadReports(force = true)
+        loadMapMarkers(force = true)
     }
 
     fun selectTab(index: Int) {
@@ -311,78 +291,11 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun saveNewReport(
-        title: String,
-        type: FishingType,
-        waterName: String,
-        location: GeoPoint?,
-        fishingTime: Date,
-        weight: Double,
-        fish: List<Fish>,
-        method: FishingMethod,
-        baits: List<Bait>,
-        comment: String,
-        shore: Boolean,
-        isPublic: Boolean,
-        isPaidWater: Boolean,
-        photos: List<String>
-    ) {
-        viewModelScope.launch {
-            val currentUser = authRepository.currentUser()
-            val report = FishingReport(
-                userId = currentUser?.id ?: UUID.randomUUID(),
-                type = type,
-                name = title,
-                water = Water(
-                    waterName = waterName,
-                    latitude = location?.latitude ?: 0.0,
-                    longitude = location?.longitude ?: 0.0,
-                    isPaid = isPaidWater
-                ),
-                spotLat = location?.latitude,
-                spotLng = location?.longitude,
-                photo = photos,
-                fishingTime = fishingTime,
-                createdAt = Date(),
-                weight = weight,
-                fish = fish,
-                fishingMethod = method,
-                bait = baits,
-                comment = comment,
-                user = currentUser ?: User(name = "", email = "", image = ""),
-                fishingFromTheShore = shore,
-                isPublic = isPublic
-            )
-            repository.saveReport(report)
-            loadReports(force = true)
-            loadMapMarkers(force = true)
-        }
-    }
-
     fun deleteReport(id: UUID) {
         viewModelScope.launch {
             repository.deleteReport(id)
             loadReports(force = true)
             loadMapMarkers(force = true)
         }
-    }
-
-    fun resetFormState() {
-        formTitle = ""
-        formReportType = FishingType.FISHING_LOG
-        formWaterName = ""
-        formSelectedPhotoUris = emptyList()
-        formFishingDate = ""
-        formFishingStartTime = ""
-        formFishingFromShore = true
-        formIsPublic = true
-        formIsPaidWater = false
-        formWeight = 0f
-        formSelectedMethod = FishingMethod.NONE
-        formSelectedBaits = emptyList()
-        formSelectedFish = emptyList()
-        formMood = 3
-        formComment = ""
-        formLocation = null
     }
 }

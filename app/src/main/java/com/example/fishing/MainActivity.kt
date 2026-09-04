@@ -22,6 +22,7 @@ import androidx.navigation.navArgument
 import com.example.fishing.ui.navigation.FishingNavHost
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.FishingRepository
 import android.Manifest
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             FishingTheme(darkTheme = false, dynamicColor = false) {
                 val viewModel: MainViewModel = hiltViewModel()
+                val createReportViewModel: CreateReportViewModel = hiltViewModel()
 
                 val navController = rememberNavController()
                 var startDestination by remember { mutableStateOf<String?>(null) }
@@ -71,6 +73,7 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             startDestination = startDestination!!,
                             viewModel = viewModel,
+                            createReportViewModel = createReportViewModel,
                             fishingRepository = fishingRepository,
                             authRepository = authRepository,
                             modifier = Modifier.fillMaxSize()

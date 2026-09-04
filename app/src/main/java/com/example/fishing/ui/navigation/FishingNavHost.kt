@@ -4,7 +4,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.core.net.toUri
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -25,12 +24,12 @@ import com.example.fishing.ui.screens.login.RegistrationScreen
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.theme.FishingTransitions
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.LoginViewModel
 import com.example.fishing.viewmodel.RegistrationViewModel
 import com.example.fishing.viewmodel.EditProfileViewModel
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.AuthRepository
-import com.example.fishing.utils.PhotoUtils
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import java.util.*
@@ -40,6 +39,7 @@ fun FishingNavHost(
     navController: NavHostController,
     startDestination: String,
     viewModel: MainViewModel,
+    createReportViewModel: CreateReportViewModel,
     fishingRepository: FishingRepository,
     authRepository: AuthRepository,
     modifier: Modifier = Modifier,
@@ -200,51 +200,47 @@ fun FishingNavHost(
             val currentEntry = navController.currentBackStackEntry!!
 
             currentEntry.savedStateHandle.get<FishingMethod>("method")?.let {
-                viewModel.formSelectedMethod = it
+                createReportViewModel.formSelectedMethod = it
             }
             currentEntry.savedStateHandle.get<List<Bait>>("baits")?.let {
-                viewModel.formSelectedBaits = it
+                createReportViewModel.formSelectedBaits = it
             }
             currentEntry.savedStateHandle.get<List<Fish>>("fish")?.let {
-                viewModel.formSelectedFish = it
+                createReportViewModel.formSelectedFish = it
             }
             currentEntry.savedStateHandle.get<Float>("weight")?.let {
-                viewModel.formWeight = it
+                createReportViewModel.formWeight = it
             }
             currentEntry.savedStateHandle.get<String>("comment")?.let {
-                viewModel.formComment = it
+                createReportViewModel.formComment = it
             }
             currentEntry.savedStateHandle.get<GeoPoint>("location")?.let {
-                viewModel.formLocation = it
+                createReportViewModel.formLocation = it
             }
 
             CreateReportScreen(
-                viewModel = viewModel,
+                viewModel = createReportViewModel,
                 onBackClick = { navController.popBackStack() },
-                onSaveClick = { title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, isPaidWater, photos ->
-                    val internalPhotos = photos.mapNotNull { 
-                        PhotoUtils.copyPhotoToInternalStorage(context.contentResolver, context.filesDir, it.toUri()) 
-                    }
-                    viewModel.saveNewReport(title, type, waterName, location, fishingTime, weight, fish, method, baits, comment, shore, isPublic, isPaidWater, internalPhotos)
-                    viewModel.resetFormState()
+                onSaveComplete = {
+                    viewModel.refresh()
                     navController.popBackStack()
                 },
                 onNavigateToCatchEdit = {
-                    currentEntry.savedStateHandle["fish"] = ArrayList(viewModel.formSelectedFish)
-                    currentEntry.savedStateHandle["weight"] = viewModel.formWeight
+                    currentEntry.savedStateHandle["fish"] = ArrayList(createReportViewModel.formSelectedFish)
+                    currentEntry.savedStateHandle["weight"] = createReportViewModel.formWeight
                     navController.navigate("catch_edit")
                 },
                 onNavigateToMethodAndBaitEdit = {
-                    currentEntry.savedStateHandle["method"] = viewModel.formSelectedMethod
-                    currentEntry.savedStateHandle["baits"] = ArrayList(viewModel.formSelectedBaits)
+                    currentEntry.savedStateHandle["method"] = createReportViewModel.formSelectedMethod
+                    currentEntry.savedStateHandle["baits"] = ArrayList(createReportViewModel.formSelectedBaits)
                     navController.navigate("method_bait_edit")
                 },
                 onNavigateToCommentEdit = {
-                    currentEntry.savedStateHandle["comment"] = viewModel.formComment
+                    currentEntry.savedStateHandle["comment"] = createReportViewModel.formComment
                     navController.navigate("comment_edit")
                 },
                 onNavigateToWaterEdit = {
-                    currentEntry.savedStateHandle["location"] = viewModel.formLocation
+                    currentEntry.savedStateHandle["location"] = createReportViewModel.formLocation
                     navController.navigate("water_edit")
                 },
                 onNavigateToWaterNameEdit = {
@@ -283,7 +279,8 @@ fun FishingNavHost(
 
         composable("water_name_edit") {
             WaterEditScreen(
-                viewModel = viewModel,
+                viewModel = createReportViewModel,
+                reportsViewModel = viewModel,
                 onBackClick = { navController.popBackStack() },
                 onSaveClick = { navController.popBackStack() }
             )
@@ -337,7 +334,7 @@ fun FishingNavHost(
             val currentWeight = navController.previousBackStackEntry
                 ?.savedStateHandle
                 ?.get<Float>("weight") ?: 0f
-            val isTrophy = viewModel.formReportType == FishingType.HAUL
+            val isTrophy = createReportViewModel.formReportType == FishingType.HAUL
 
             CatchEditScreen(
                 fishList = currentFish,
