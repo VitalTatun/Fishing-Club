@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -27,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.ui.theme.FishingTheme
+
 
 @Composable
 fun FishingListItem(
@@ -42,6 +45,9 @@ fun FishingListItem(
     trailingContent: @Composable (() -> Unit)? = null,
 
 ) {
+
+
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -55,6 +61,7 @@ fun FishingListItem(
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Иконка слева
+
         Box(
             modifier = Modifier
                 .width(24.dp)
