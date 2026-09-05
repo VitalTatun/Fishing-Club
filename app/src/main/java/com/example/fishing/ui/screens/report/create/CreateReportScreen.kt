@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -247,21 +248,52 @@ fun CreateReportScreen(
             }
             item {
                 SectionGroup {
-                    FishingListItem(
-                        title = viewModel.formFishingDate,
-                        onTitleClick = { showDatePicker = true },
-                        leadingIcon = Icons.Default.Schedule,
-                        trailingText = viewModel.formFishingStartTime,
-                        onTrailingTextClick = { showTimePicker = true }
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = viewModel.formFishingDate,
+                                modifier = Modifier.clickable { showDatePicker = true }
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        trailingContent = {
+                            Text(
+                                text = viewModel.formFishingStartTime,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.clickable { showTimePicker = true }
+                            )
+                        }
                     )
-                    FishingListItem(
-                        title = "Вс, 2 августа 2026",
-                        trailingText = "4:00",
+                    ListItem(
+                        headlineContent = { Text("Вс, 2 августа 2026") },
+                        trailingContent = {
+                            Text(
+                                text = "4:00",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        },
+                        modifier = Modifier.padding(start = 40.dp)
                     )
-                    FishingListItem (
-                        title = "Опубликовать",
-                        supportingText = stringResource(R.string.publish_supporting),
-                        leadingIcon = Icons.Default.PublishedWithChanges,
+                    ListItem(
+                        headlineContent = { Text("Опубликовать") },
+                        supportingContent = { Text(stringResource(R.string.publish_supporting)) },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Default.PublishedWithChanges,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         trailingContent = {
                             Switch(
                                 checked = viewModel.formIsPublic,
@@ -277,11 +309,17 @@ fun CreateReportScreen(
 
             item {
                 SectionGroup {
-                    FishingListItem(
-                        title = stringResource(R.string.photos),
-                        supportingText = stringResource(R.string.photos_subtitle),
-                        leadingIcon = Icons.Default.AddPhotoAlternate,
-                        onRowClick = {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.photos)) },
+                        supportingContent = { Text(stringResource(R.string.photos_subtitle)) },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Default.AddPhotoAlternate,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.clickable {
                             if (viewModel.formSelectedPhotoUris.size < MaxPhotos) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 photoPicker.launch(
@@ -302,46 +340,74 @@ fun CreateReportScreen(
                 }
             }
             item {
-
                 SectionGroup {
-                    FishingListItem(
-                        title = stringResource(R.string.water_body),
-                        leadingIcon = Icons.Default.LocationOn,
-                        onRowClick = onNavigateToWaterEdit,
-                        isRequired = true
+                    val hasLocation = viewModel.formLocation != null
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = stringResource(R.string.water_body) + if (!hasLocation) " *" else ""
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.clickable { onNavigateToWaterEdit() }
                     )
-                    if (viewModel.formLocation != null) {
+
+                    if (hasLocation) {
                         MapPreview(
                             location = viewModel.formLocation,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                         if (viewModel.formWaterName.isEmpty()) {
-                            FishingListItem(
-                                title = stringResource(R.string.add_water_name_button),
-                                leadingIcon = Icons.Default.Add,
-                                onRowClick = onNavigateToWaterNameEdit
+                            ListItem(
+                                headlineContent = { Text(stringResource(R.string.add_water_name_button)) },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                modifier = Modifier.clickable { onNavigateToWaterNameEdit() }
                             )
                         } else {
-                            FishingListItem(
-                                title = viewModel.formWaterName,
-                                supportingText = viewModel.formLocation?.let {
-                                    "Координаты: ${"%.5f".format(it.latitude)}, ${"%.5f".format(it.longitude)}"
+                            ListItem(
+                                headlineContent = { Text(viewModel.formWaterName) },
+                                supportingContent = {
+                                    Text(
+                                        text = "Координаты: ${"%.5f".format(viewModel.formLocation?.latitude)}, ${"%.5f".format(viewModel.formLocation?.longitude)}"
+                                    )
                                 },
-                                onRowClick = onNavigateToWaterNameEdit
+                                modifier = Modifier
+                                    .padding(start = 40.dp)
+                                    .clickable { onNavigateToWaterNameEdit() }
                             )
                         }
-                    }
-                    if (viewModel.formWaterName.isNotEmpty()) {
-                        val shoreText = stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat)
-                        val paidText = if (viewModel.formIsPaidWater) " • ${stringResource(R.string.paid)}" else ""
-                        FishingListItem(
-                            title = "Детали",
-                            supportingText = if (!isDetailsExpanded) "$shoreText$paidText" else null,
-                            onRowClick = { isDetailsExpanded = !isDetailsExpanded }
-                        )
 
-                        if (isDetailsExpanded) {
-                            WaterDetailsItems(viewModel, haptic)
+                        if (viewModel.formWaterName.isNotEmpty()) {
+                            val shoreText = stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat)
+                            val paidText = if (viewModel.formIsPaidWater) " • ${stringResource(R.string.paid)}" else ""
+                            ListItem(
+                                headlineContent = { Text("Детали") },
+                                supportingContent = if (!isDetailsExpanded) {
+                                    { Text("$shoreText$paidText") }
+                                } else null,
+                                modifier = Modifier
+                                    .padding(start = 40.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { isDetailsExpanded = !isDetailsExpanded }
+                            )
+
+                            if (isDetailsExpanded) {
+                                WaterDetailsItems(viewModel, haptic)
+                            }
                         }
                     }
                 }
@@ -479,8 +545,10 @@ private fun WaterDetailsItems(
     viewModel: CreateReportViewModel,
     haptic: HapticFeedback
 ) {
-    FishingListItem(
-        title = stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat),
+    ListItem(
+        headlineContent = {
+            Text(stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat))
+        },
         trailingContent = {
             Switch(
                 checked = viewModel.formFishingFromShore,
@@ -489,10 +557,11 @@ private fun WaterDetailsItems(
                     haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                 }
             )
-        }
+        },
+        modifier = Modifier.padding(start = 40.dp)
     )
-    FishingListItem(
-        title = stringResource(R.string.paid_water),
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.paid_water)) },
         trailingContent = {
             Switch(
                 checked = viewModel.formIsPaidWater,
@@ -501,7 +570,8 @@ private fun WaterDetailsItems(
                     haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
                 }
             )
-        }
+        },
+        modifier = Modifier.padding(start = 40.dp)
     )
 }
 
