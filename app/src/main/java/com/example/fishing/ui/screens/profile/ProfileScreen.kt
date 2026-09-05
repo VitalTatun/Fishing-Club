@@ -4,17 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ArrowRight
 import androidx.compose.material3.*
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -107,43 +103,42 @@ fun ProfileHeader(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
-    Row(
+    ListItem(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = avatarUrl,
-            contentDescription = null,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop,
-            error = painterResource(R.drawable.ic_launcher_foreground),
-            placeholder = painterResource(R.drawable.ic_launcher_foreground)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
+            .clickable(onClick = onClick),
+        headlineContent = {
             Text(
                 text = userName,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.titleMedium
             )
+        },
+        supportingContent = {
             Text(
                 text = userEmail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        leadingContent = {
+            AsyncImage(
+                model = avatarUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+                error = painterResource(R.drawable.ic_launcher_foreground),
+                placeholder = painterResource(R.drawable.ic_launcher_foreground)
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    )
 }
 
 @Preview(showBackground = true)
