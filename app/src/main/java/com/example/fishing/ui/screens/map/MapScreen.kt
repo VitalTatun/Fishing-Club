@@ -434,6 +434,7 @@ fun OsmMapView(
                     }
                 }
             }
+            mv.invalidate()
         }
     )
 }
