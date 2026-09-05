@@ -416,15 +416,18 @@ fun CreateReportScreen(
                 SectionGroup {
                     val hasMethod = viewModel.formSelectedMethod != FishingMethod.NONE
                     ListItem(
+                        overlineContent = if (hasMethod) {
+                            {
+                                Text(stringResource(R.string.fishing_method),
+                                style = MaterialTheme.typography.bodyMedium)
+                            }
+                        } else null,
                         headlineContent = {
                             Text(
                                 if (hasMethod) stringResource(viewModel.formSelectedMethod.labelRes)
                                 else stringResource(R.string.method_and_bait)
                             )
                         },
-                        supportingContent = if (hasMethod) {
-                            { Text(stringResource(R.string.fishing_method)) }
-                        } else null,
                         leadingContent = {
                             Icon(
                                 imageVector = Icons.Default.Phishing,
@@ -437,8 +440,11 @@ fun CreateReportScreen(
                     if (viewModel.formSelectedBaits.isNotEmpty()) {
                         val baitsText = viewModel.formSelectedBaits.map { stringResource(it.labelRes) }.joinToString(", ")
                         ListItem(
+                            overlineContent = {
+                                Text(stringResource(R.string.bait),
+                                style = MaterialTheme.typography.bodyMedium)
+                                              },
                             headlineContent = { Text(baitsText) },
-                            supportingContent = { Text(stringResource(R.string.bait)) },
                             modifier = Modifier.padding(start = 40.dp)
                         )
                     }
@@ -496,8 +502,10 @@ fun CreateReportScreen(
 
                     if (viewModel.formWeight > 0f) {
                         ListItem(
+                            overlineContent = { Text(stringResource(R.string.total_weight),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )  },
                             headlineContent = { Text("${viewModel.formWeight} ${stringResource(R.string.kg)}") },
-                            supportingContent = { Text(stringResource(R.string.total_weight)) },
                             modifier = Modifier.padding(start = 40.dp)
                         )
                     }
