@@ -2,6 +2,14 @@ package com.example.fishing.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Phishing
+import androidx.compose.material.icons.filled.PublishedWithChanges
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -9,15 +17,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fishing.R
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.FishingRepository
-import com.example.fishing.model.Bait
-import com.example.fishing.model.Fish
-import com.example.fishing.model.FishingMethod
-import com.example.fishing.model.FishingReport
-import com.example.fishing.model.FishingType
-import com.example.fishing.model.User
-import com.example.fishing.model.Water
+import com.example.fishing.model.*
 import com.example.fishing.utils.PhotoUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,7 +37,7 @@ import javax.inject.Inject
 class CreateReportViewModel @Inject constructor(
     private val repository: FishingRepository,
     private val authRepository: AuthRepository,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     // Form state
@@ -44,7 +47,7 @@ class CreateReportViewModel @Inject constructor(
     var formSelectedPhotoUris by mutableStateOf<List<Uri>>(emptyList())
     var formFishingDate by mutableStateOf("")
     var formFishingStartTime by mutableStateOf("")
-    var formFishingFromShore by mutableStateOf(true)
+    var formFishingFromShore by mutableStateOf(value = true)
     var formIsPublic by mutableStateOf(true)
     var formIsPaidWater by mutableStateOf(false)
     var formWeight by mutableFloatStateOf(0f)
@@ -55,20 +58,165 @@ class CreateReportViewModel @Inject constructor(
     var formComment by mutableStateOf("")
     var formLocation by mutableStateOf<GeoPoint?>(null)
 
+    val formConfig by derivedStateOf {
+        val sections = mutableListOf<ReportFormSection>()
+
+        // Type Section
+        sections.add(
+            ReportFormSection(
+                id = "type",
+                items = listOf(ReportField.CustomField("report_type"))
+            )
+        )
+
+        // Date/Time Section
+        sections.add(
+            ReportFormSection(
+                id = "date_time",
+                items = listOf(
+                    ReportField.ListItemField(
+                        fieldId = "date_time",
+                        title = formFishingDate,
+                        leadingIcon = Icons.Default.Schedule,
+                        trailingText = formFishingStartTime
+                    ),
+                    ReportField.ListItemField(
+                        fieldId = "placeholder_date",
+                        title = "Вс, 2 августа 2026",
+                        trailingText = "4:00"
+                    ),
+                    ReportField.ToggleField(
+                        fieldId = "is_public",
+                        title = "Опубликовать",
+                        supportingText = context.getString(R.string.publish_supporting),
+                        leadingIcon = Icons.Default.PublishedWithChanges,
+                        checked = formIsPublic,
+                        onCheckedChange = { formIsPublic = it }
+                    )
+                )
+            )
+        )
+
+        // Photos Section
+        sections.add(
+            ReportFormSection(
+                id = "photos",
+                items = listOf(ReportField.PhotoPicker(isRequired = isTrophy && formSelectedPhotoUris.isEmpty()))
+            )
+        )
+
+        // Water Section
+        val waterItems = mutableListOf<ReportField>()
+        val hasLocation = formLocation != null
+        waterItems.add(
+            ReportField.ListItemField(
+                fieldId = "water_body",
+                title = context.getString(R.string.water_body),
+                leadingIcon = Icons.Default.LocationOn,
+                isRequired = !hasLocation
+            )
+        )
+        if (hasLocation) {
+            waterItems.add(ReportField.MapPreview)
+            if (formWaterName.isEmpty()) {
+                waterItems.add(
+                    ReportField.ListItemField(
+                        fieldId = "add_water_name",
+                        title = context.getString(R.string.add_water_name_button),
+                        leadingIcon = Icons.Default.Add
+                    )
+                )
+            } else {
+                waterItems.add(
+                    ReportField.ListItemField(
+                        fieldId = "water_name",
+                        title = formWaterName,
+                        supportingText = "Координаты: ${"%.5f".format(formLocation?.latitude)}, ${"%.5f".format(formLocation?.longitude)}"
+                    )
+                )
+            }
+
+            if (formWaterName.isNotEmpty()) {
+                waterItems.add(ReportField.CustomField("water_details_header"))
+                // WaterDetailsItems are handled separately or we can add them here
+                // For simplicity, let's add them as custom or more fields
+                waterItems.add(ReportField.CustomField("water_details"))
+            }
+        }
+        sections.add(ReportFormSection(id = "water", items = waterItems))
+
+        // Method Section
+        val methodItems = mutableListOf<ReportField>()
+        val hasMethod = formSelectedMethod != FishingMethod.NONE
+        methodItems.add(
+            ReportField.ListItemField(
+                fieldId = "method",
+                overline = if (hasMethod) context.getString(R.string.fishing_method) else null,
+                title = if (hasMethod) context.getString(formSelectedMethod.labelRes) else context.getString(R.string.method_and_bait),
+                leadingIcon = Icons.Default.Phishing,
+                isRequired = !hasMethod
+            )
+        )
+        if (formSelectedBaits.isNotEmpty()) {
+            val baitsText = formSelectedBaits.joinToString(", ") { context.getString(it.labelRes) }
+            methodItems.add(
+                ReportField.ListItemField(
+                    fieldId = "baits",
+                    overline = context.getString(R.string.bait),
+                    title = baitsText
+                )
+            )
+        }
+        sections.add(ReportFormSection(id = "method", items = methodItems))
+
+        // Catch Section
+        val catchItems = mutableListOf<ReportField>()
+        val hasCatch = formSelectedFish.isNotEmpty()
+        catchItems.add(ReportField.FishList(isRequired = !hasCatch))
+        if (formWeight > 0f) {
+            catchItems.add(
+                ReportField.ListItemField(
+                    fieldId = "weight",
+                    overline = context.getString(R.string.total_weight),
+                    title = "$formWeight ${context.getString(R.string.kg)}"
+                )
+            )
+        }
+        sections.add(ReportFormSection(id = "catch", items = catchItems))
+
+        // Comment Section
+        sections.add(
+            ReportFormSection(
+                id = "comment",
+                items = listOf(
+                    ReportField.ListItemField(
+                        fieldId = "comment",
+                        title = formComment.ifBlank { context.getString(R.string.comment) },
+                        leadingIcon = Icons.AutoMirrored.Filled.Notes
+                    )
+                )
+            )
+        )
+
+        sections
+    }
+
     val isTrophy: Boolean
         get() = formReportType == FishingType.HAUL
 
     val isSaveEnabled: Boolean
-        get() = (formWaterName.isNotBlank() &&
+        get() = (
+            formWaterName.isNotBlank() &&
                 formLocation != null &&
                 formSelectedMethod != FishingMethod.NONE &&
                 formSelectedBaits.isNotEmpty() &&
                 formSelectedFish.isNotEmpty() &&
-                formFishingDate.isNotBlank()).let { baseValid ->
+                formFishingDate.isNotBlank()
+            ).let { baseValid ->
             if (isTrophy) {
                 baseValid &&
-                        formSelectedPhotoUris.isNotEmpty() &&
-                        formSelectedFish.size == 1
+                    formSelectedPhotoUris.isNotEmpty() &&
+                    formSelectedFish.size == 1
             } else {
                 baseValid
             }
