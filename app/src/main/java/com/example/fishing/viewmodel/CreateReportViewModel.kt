@@ -27,6 +27,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -45,8 +46,10 @@ class CreateReportViewModel @Inject constructor(
     var formReportType by mutableStateOf(FishingType.FISHING_LOG)
     var formWaterName by mutableStateOf("")
     var formSelectedPhotoUris by mutableStateOf<List<Uri>>(emptyList())
-    var formFishingDate by mutableStateOf("")
-    var formFishingStartTime by mutableStateOf("")
+    var formStartDate by mutableStateOf("")
+    var formStartTime by mutableStateOf("")
+    var formEndDate by mutableStateOf("")
+    var formEndTime by mutableStateOf("")
     var formFishingFromShore by mutableStateOf(value = true)
     var formIsPublic by mutableStateOf(true)
     var formIsPaidWater by mutableStateOf(false)
@@ -76,14 +79,17 @@ class CreateReportViewModel @Inject constructor(
                 items = listOf(
                     ReportField.ListItemField(
                         fieldId = "date_time",
-                        title = formFishingDate,
+                        overline = context.getString(R.string.start),
+                        title = formStartDate.ifEmpty { context.getString(R.string.select_date) },
                         leadingIcon = Icons.Default.Schedule,
-                        trailingText = formFishingStartTime
+                        trailingText = formStartTime.ifEmpty { context.getString(R.string.select_time) }
                     ),
                     ReportField.ListItemField(
-                        fieldId = "placeholder_date",
-                        title = "Вс, 2 августа 2026",
-                        trailingText = "4:00"
+                        fieldId = "date_time_end",
+                        overline = context.getString(R.string.end),
+                        title = formEndDate.ifEmpty { context.getString(R.string.select_date) },
+                        leadingIcon = Icons.Default.Schedule,
+                        trailingText = formEndTime.ifEmpty { context.getString(R.string.select_time) }
                     ),
                     ReportField.ToggleField(
                         fieldId = "is_public",
@@ -211,7 +217,7 @@ class CreateReportViewModel @Inject constructor(
                 formSelectedMethod != FishingMethod.NONE &&
                 formSelectedBaits.isNotEmpty() &&
                 formSelectedFish.isNotEmpty() &&
-                formFishingDate.isNotBlank()
+                FishingDateTimeValidator.isValid(fishingStartAt(), fishingEndAt())
             ).let { baseValid ->
             if (isTrophy) {
                 baseValid &&
@@ -230,21 +236,35 @@ class CreateReportViewModel @Inject constructor(
                 formSelectedBaits.isNotEmpty() ||
                 formSelectedPhotoUris.isNotEmpty() ||
                 formComment.isNotBlank() ||
-                formWeight > 0f
+                formWeight > 0f ||
+                formStartDate.isNotBlank() ||
+                formStartTime.isNotBlank() ||
+                formEndDate.isNotBlank() ||
+                formEndTime.isNotBlank()
+
+    fun fishingStartAt(): Instant? {
+        return combineStart()
+    }
+
+    fun fishingEndAt(): Instant? {
+        return combineEnd()
+    }
+
+    fun dateTimeErrors(): List<FishingDateTimeError> {
+        return FishingDateTimeValidator.validate(fishingStartAt(), fishingEndAt(), Instant.now())
+    }
 
     fun saveReport(onSuccess: () -> Unit) {
         viewModelScope.launch {
             val currentUser = authRepository.currentUser()
-            
+
             // Photo processing
             val internalPhotos = formSelectedPhotoUris.mapNotNull { uri ->
                 PhotoUtils.copyPhotoToInternalStorage(context.contentResolver, context.filesDir, uri)
             }
 
-            val combinedDateTime = combineDateAndTime(
-                formFishingDate,
-                formFishingStartTime
-            )
+            val startAt = combineStart()
+            val endAt = combineEnd()
 
             val report = FishingReport(
                 userId = currentUser?.id ?: UUID.randomUUID(),
@@ -259,7 +279,8 @@ class CreateReportViewModel @Inject constructor(
                 spotLat = formLocation?.latitude,
                 spotLng = formLocation?.longitude,
                 photo = internalPhotos,
-                fishingTime = combinedDateTime,
+                fishingStartAt = startAt,
+                fishingEndAt = endAt,
                 createdAt = Date(),
                 weight = formWeight.toDouble(),
                 fish = formSelectedFish,
@@ -281,8 +302,10 @@ class CreateReportViewModel @Inject constructor(
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
         formSelectedPhotoUris = emptyList()
-        formFishingDate = ""
-        formFishingStartTime = ""
+        formStartDate = ""
+        formStartTime = ""
+        formEndDate = ""
+        formEndTime = ""
         formFishingFromShore = true
         formIsPublic = true
         formIsPaidWater = false
@@ -295,22 +318,33 @@ class CreateReportViewModel @Inject constructor(
         formLocation = null
     }
 
-    private fun combineDateAndTime(
-        dateString: String,
-        timeString: String
-    ): Date {
+    private fun combineStart(): Instant? {
+        return combineDateAndTime(formStartDate, formStartTime)
+    }
+
+    private fun combineEnd(): Instant? {
+        return combineDateAndTime(formEndDate, formEndTime)
+    }
+
+    private fun combineDateAndTime(dateString: String, timeString: String): Instant? {
+        if (dateString.isBlank() || timeString.isBlank()) return null
+
         val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
-        val calendar = Calendar.getInstance()
-        try {
-            calendar.time = dateFormatter.parse(dateString) ?: Date()
+        return try {
+            val datePart = dateFormatter.parse(dateString) ?: return null
+            val calendar = Calendar.getInstance().apply {
+                time = datePart
+            }
+            val timeParts = timeString.split(":")
+            if (timeParts.size == 2) {
+                calendar[Calendar.HOUR_OF_DAY] = timeParts[0].toInt()
+                calendar[Calendar.MINUTE] = timeParts[1].toInt()
+            }
+            calendar[Calendar.SECOND] = 0
+            calendar[Calendar.MILLISECOND] = 0
+            calendar.time.toInstant()
         } catch (_: Exception) {
-            // fallback
+            null
         }
-        val timeParts = timeString.split(":")
-        if (timeParts.size == 2) {
-            calendar[Calendar.HOUR_OF_DAY] = timeParts[0].toInt()
-            calendar[Calendar.MINUTE] = timeParts[1].toInt()
-        }
-        return calendar.time
     }
 }

@@ -49,8 +49,8 @@ class MainViewModel @Inject constructor(
         reportSortOrder
     ) { reports, order ->
         when (order) {
-            ReportSortOrder.BY_PUBLISH_DATE -> reports.sortedByDescending { it.createdAt ?: it.publishedAt ?: it.fishingTime }
-            ReportSortOrder.BY_FISHING_TIME -> reports.sortedByDescending { it.fishingTime }
+            ReportSortOrder.BY_PUBLISH_DATE -> reports.sortedByDescending { it.createdAt ?: it.publishedAt }
+            ReportSortOrder.BY_FISHING_TIME -> reports.sortedByDescending { it.fishingStartAt ?: it.createdAt?.toInstant() }
         }
     }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

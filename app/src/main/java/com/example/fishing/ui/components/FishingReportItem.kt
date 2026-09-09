@@ -81,7 +81,7 @@ fun FishingReportItem(
         ) {
             FishingReportHeader(
                 user = report.user,
-                date = report.publishedAt ?: report.fishingTime,
+                date = report.publishedAt ?: report.fishingStartAt?.let { java.util.Date.from(it) } ?: java.util.Date(),
                 onDeleteClick = { showDeleteDialog = true },
                 showDeleteOption = report.userId == currentUserId
             )
@@ -344,7 +344,8 @@ fun FishingReportItemPreview() {
             "https://picsum.photos/800/400?random=1",
             "https://picsum.photos/800/400?random=2"
         ),
-        fishingTime = calendar.time,
+        fishingStartAt = calendar.time.toInstant(),
+        fishingEndAt = calendar.time.toInstant().plusSeconds(3600 * 3),
         weight = 2.5,
         fish = listOf(Fish(name = "Окунь", count = 5)),
         fishingMethod = FishingMethod.SPINNING,

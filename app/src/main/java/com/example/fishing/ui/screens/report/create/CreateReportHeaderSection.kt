@@ -51,10 +51,14 @@ internal fun ReportHeaderSection(
     onReportTypeChange: (FishingType) -> Unit,
     isPublic: Boolean,
     onPublicChange: (Boolean) -> Unit,
-    fishingDate: String,
-    onFishingDateChange: (String) -> Unit,
-    fishingStartTime: String,
-    onFishingStartTimeChange: (String) -> Unit,
+    startDate: String,
+    onStartDateChange: (String) -> Unit,
+    startTime: String,
+    onStartTimeChange: (String) -> Unit,
+    endDate: String,
+    onEndDateChange: (String) -> Unit,
+    endTime: String,
+    onEndTimeChange: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -73,10 +77,14 @@ internal fun ReportHeaderSection(
             )
 
             ReportDateTimeRow(
-                date = fishingDate,
-                onDateChange = onFishingDateChange,
-                time = fishingStartTime,
-                onTimeChange = onFishingStartTimeChange
+                startDate = startDate,
+                onStartDateChange = onStartDateChange,
+                startTime = startTime,
+                onStartTimeChange = onStartTimeChange,
+                endDate = endDate,
+                onEndDateChange = onEndDateChange,
+                endTime = endTime,
+                onEndTimeChange = onEndTimeChange
             )
 
             SwitchRow(
@@ -129,55 +137,128 @@ internal fun ReportTypeSelector(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ReportDateTimeRow(
-    date: String,
-    onDateChange: (String) -> Unit,
-    time: String,
-    onTimeChange: (String) -> Unit,
+    startDate: String,
+    onStartDateChange: (String) -> Unit,
+    startTime: String,
+    onStartTimeChange: (String) -> Unit,
+    endDate: String,
+    onEndDateChange: (String) -> Unit,
+    endTime: String,
+    onEndTimeChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
 
     val currentTime = Calendar.getInstance()
-    val timePickerState = rememberTimePickerState(
-        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
-        initialMinute = currentTime.get(Calendar.MINUTE),
-        is24Hour = true,
-    )
 
-    if (showDatePicker) {
+    if (showStartDatePicker) {
         FishingDatePickerDialog(
-            onDismiss = { showDatePicker = false },
+            onDismiss = { showStartDatePicker = false },
             onConfirm = { millis ->
                 millis?.let {
                     val d = Date(it)
                     val formatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
-                    onDateChange(formatter.format(d))
+                    onStartDateChange(formatter.format(d))
                 }
-                showDatePicker = false
+                showStartDatePicker = false
             }
         )
     }
 
-    if (showTimePicker) {
+    if (showStartTimePicker) {
+        val startTimePickerState = rememberTimePickerState(
+            initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
+            initialMinute = currentTime.get(Calendar.MINUTE),
+            is24Hour = true,
+        )
         TimePickerDialog(
-            onDismiss = { showTimePicker = false },
+            onDismiss = { showStartTimePicker = false },
             onConfirm = {
                 val formattedTime = String.format(
                     Locale.getDefault(),
                     "%02d:%02d",
-                    timePickerState.hour,
-                    timePickerState.minute
+                    startTimePickerState.hour,
+                    startTimePickerState.minute
                 )
-                onTimeChange(formattedTime)
-                showTimePicker = false
+                onStartTimeChange(formattedTime)
+                showStartTimePicker = false
             }
         ) {
-            TimePicker(state = timePickerState)
+            TimePicker(state = startTimePickerState)
         }
     }
 
+    if (showEndDatePicker) {
+        FishingDatePickerDialog(
+            onDismiss = { showEndDatePicker = false },
+            onConfirm = { millis ->
+                millis?.let {
+                    val d = Date(it)
+                    val formatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
+                    onEndDateChange(formatter.format(d))
+                }
+                showEndDatePicker = false
+            }
+        )
+    }
+
+    if (showEndTimePicker) {
+        val endTimePickerState = rememberTimePickerState(
+            initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
+            initialMinute = currentTime.get(Calendar.MINUTE),
+            is24Hour = true,
+        )
+        TimePickerDialog(
+            onDismiss = { showEndTimePicker = false },
+            onConfirm = {
+                val formattedTime = String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d",
+                    endTimePickerState.hour,
+                    endTimePickerState.minute
+                )
+                onEndTimeChange(formattedTime)
+                showEndTimePicker = false
+            }
+        ) {
+            TimePicker(state = endTimePickerState)
+        }
+    }
+
+    DateTimeRow(
+        overline = stringResource(R.string.fishing_start),
+        date = startDate,
+        onDateClick = { showStartDatePicker = true },
+        time = startTime,
+        onTimeClick = { showStartTimePicker = true }
+    )
+    DateTimeRow(
+        overline = stringResource(R.string.fishing_end),
+        date = endDate,
+        onDateClick = { showEndDatePicker = true },
+        time = endTime,
+        onTimeClick = { showEndTimePicker = true }
+    )
+}
+
+@Composable
+private fun DateTimeRow(
+    overline: String,
+    date: String,
+    onDateClick: () -> Unit,
+    time: String,
+    onTimeClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = overline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -192,7 +273,7 @@ internal fun ReportDateTimeRow(
             )
 
             FilledTonalButton(
-                onClick = { showDatePicker = true },
+                onClick = onDateClick,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 modifier = Modifier.heightIn(min = 32.dp),
                 shape = RoundedCornerShape(8.dp)
@@ -216,7 +297,7 @@ internal fun ReportDateTimeRow(
                 style = MaterialTheme.typography.bodyLarge
             )
             FilledTonalButton(
-                onClick = { showTimePicker = true },
+                onClick = onTimeClick,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                 modifier = Modifier.heightIn(min = 32.dp),
                 shape = RoundedCornerShape(8.dp)
@@ -239,10 +320,14 @@ private fun ReportHeaderSectionPreview() {
             onReportTypeChange = {},
             isPublic = false,
             onPublicChange = {},
-            fishingDate = "29 июля 2026",
-            onFishingDateChange = {},
-            fishingStartTime = "16:30",
-            onFishingStartTimeChange = {}
+            startDate = "29 июля 2026",
+            onStartDateChange = {},
+            startTime = "16:30",
+            onStartTimeChange = {},
+            endDate = "29 июля 2026",
+            onEndDateChange = {},
+            endTime = "21:00",
+            onEndTimeChange = {}
         )
     }
 }
@@ -263,10 +348,14 @@ private fun ReportTypeSelectorPreview() {
 private fun ReportDateTimeRowPreview() {
     FishingTheme {
         ReportDateTimeRow(
-            date = "2 августа 2026",
-            onDateChange = {},
-            time = "19:30",
-            onTimeChange = {}
+            startDate = "2 августа 2026",
+            onStartDateChange = {},
+            startTime = "19:30",
+            onStartTimeChange = {},
+            endDate = "3 августа 2026",
+            onEndDateChange = {},
+            endTime = "03:00",
+            onEndTimeChange = {}
         )
     }
 }

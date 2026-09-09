@@ -23,7 +23,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "fishing_database"
-        ).fallbackToDestructiveMigration(dropAllTables = true)
+        ).addMigrations(AppDatabase.MIGRATION_9_10)
             .build()
     }
 

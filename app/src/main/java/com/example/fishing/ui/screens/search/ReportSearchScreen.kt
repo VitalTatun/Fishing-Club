@@ -108,15 +108,20 @@ fun ReportSearchScreen(
             val matchesDate = if (selectedDate == null) {
                 true
             } else {
-                val calendar = Calendar.getInstance().apply { time = report.fishingTime }
-                val reportDay = calendar.get(Calendar.DAY_OF_YEAR)
-                val reportYear = calendar.get(Calendar.YEAR)
+                val reportInstant = report.fishingStartAt
+                if (reportInstant == null) {
+                    false
+                } else {
+                    val calendar = Calendar.getInstance().apply { timeInMillis = reportInstant.toEpochMilli() }
+                    val reportDay = calendar.get(Calendar.DAY_OF_YEAR)
+                    val reportYear = calendar.get(Calendar.YEAR)
 
-                val filterCalendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                val filterDay = filterCalendar.get(Calendar.DAY_OF_YEAR)
-                val filterYear = filterCalendar.get(Calendar.YEAR)
+                    val filterCalendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                    val filterDay = filterCalendar.get(Calendar.DAY_OF_YEAR)
+                    val filterYear = filterCalendar.get(Calendar.YEAR)
 
-                reportDay == filterDay && reportYear == filterYear
+                    reportDay == filterDay && reportYear == filterYear
+                }
             }
 
             // Favorites filter
@@ -319,7 +324,8 @@ fun ReportSearchScreenPreview() {
             name = "Смеркалось...",
             water = Water(waterName = "Водохранилище Крылово", latitude = 0.0, longitude = 0.0),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time,
+            fishingStartAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant(),
+            fishingEndAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant().plusSeconds(3600 * 3),
             weight = 1.2,
             fish = listOf(Fish(name = "Окунь", count = 1)),
             fishingMethod = FishingMethod.SPINNING,
@@ -335,7 +341,8 @@ fun ReportSearchScreenPreview() {
             name = "Отчет без фото",
             water = Water(waterName = "Чистый пруд", latitude = 0.0, longitude = 0.0),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2024, Calendar.MAY, 1) }.time,
+            fishingStartAt = calendar.apply { set(2024, Calendar.MAY, 1) }.time.toInstant(),
+            fishingEndAt = calendar.apply { set(2024, Calendar.MAY, 1) }.time.toInstant().plusSeconds(3600 * 3),
             weight = 0.5,
             fish = listOf(Fish(name = "Карась", count = 2)),
             fishingMethod = FishingMethod.BOBBER,

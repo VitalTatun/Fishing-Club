@@ -1,12 +1,18 @@
 package com.example.fishing.data
 
 import com.example.fishing.model.*
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.*
 
 object MockData {
     val sampleUserId: UUID = UUID.fromString("00000000-0000-0000-0000-000000000000")
     val sampleUser = User(id = sampleUserId, name = "Виталий", image = "", email = "vital@example.com")
-    private val calendar = Calendar.getInstance()
+
+    private fun zoned(year: Int, month: Int, day: Int, hour: Int, minute: Int): Instant {
+        return ZonedDateTime.of(year, month, day, hour, minute, 0, 0, ZoneId.systemDefault()).toInstant()
+    }
 
     val sampleReports = listOf(
         FishingReport(
@@ -15,7 +21,8 @@ object MockData {
             name = "Смеркалось...",
             water = Water(waterName = "Водохранилище Крылово", latitude = 53.998, longitude = 27.285, isPaid = true),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time,
+            fishingStartAt = zoned(2023, 8, 22, 6, 30),
+            fishingEndAt = zoned(2023, 8, 22, 15, 45),
             weight = 3.2,
             fish = listOf(
                 Fish(name = "Карась", count = 2),
@@ -25,7 +32,7 @@ object MockData {
             ),
             fishingMethod = FishingMethod.BOBBER,
             bait = listOf(Bait.BLOODWORM, Bait.MAGGOT),
-            comment = "В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб! Замешав вечерком плотву с орехом от Feeder.by с утра поехал на мелководную часть вдх посмотреть как там обстоят дела с рыбкой. Мишаня с утра ловил подлещиков а у меня ни поклевки ни с ближней, ни с дальней точки! Думал в чем дело, где рыба?) Подсыпав секретного порошка от сенсас и пшикнув трапером увидел красивый загиб и лещик полторашка оказался в подсаке! В том году на этой локации таких рыбок не было, поэтому я неслабо был удивлен! Спустя час отвлекся от удилищ и по приходу вижу как дистанция красиво качает! Подсек и на том конце сидел такой же красивый лещик! Такая успешная разведка!",
+            comment = "В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб!",
             user = sampleUser,
             fishingFromTheShore = true,
             isPublic = false
@@ -36,7 +43,8 @@ object MockData {
             name = "Утренняя щука",
             water = Water(waterName = "Заславское вдхр. (Дамба)", latitude = 53.978, longitude = 27.352, isPaid = true),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2024, Calendar.MAY, 10) }.time,
+            fishingStartAt = zoned(2024, 5, 10, 5, 0),
+            fishingEndAt = zoned(2024, 5, 10, 11, 30),
             weight = 3.5,
             fish = listOf(Fish(name = "Щука", count = 1)),
             fishingMethod = FishingMethod.SPINNING,
@@ -52,7 +60,8 @@ object MockData {
             name = "Карасиный рай",
             water = Water(waterName = "Чистый пруд", latitude = 53.965, longitude = 27.310, isPaid = true),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2024, Calendar.JUNE, 1) }.time,
+            fishingStartAt = zoned(2024, 6, 1, 7, 0),
+            fishingEndAt = zoned(2024, 6, 1, 14, 0),
             weight = 1.5,
             fish = listOf(Fish(name = "Карась", count = 10)),
             fishingMethod = FishingMethod.FEEDER,
@@ -68,7 +77,8 @@ object MockData {
             name = "Трофейный Сазан",
             water = Water(waterName = "Заславское вдхр. (Остров)", latitude = 53.992, longitude = 27.320, isPaid = true),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2024, Calendar.JULY, 15) }.time,
+            fishingStartAt = zoned(2024, 7, 15, 4, 30),
+            fishingEndAt = zoned(2024, 7, 15, 21, 0),
             weight = 8.4,
             fish = listOf(Fish(name = "Сазан", count = 1)),
             fishingMethod = FishingMethod.FEEDER,
@@ -84,12 +94,13 @@ object MockData {
             name = "Ночной хищник",
             water = Water(waterName = "Заславское вдхр. (Семково)", latitude = 54.015, longitude = 27.360, isPaid = true),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2024, Calendar.AUGUST, 5) }.time,
+            fishingStartAt = zoned(2024, 8, 5, 22, 0),
+            fishingEndAt = zoned(2024, 8, 6, 3, 30),
             weight = 5.2,
             fish = listOf(Fish(name = "Судак", count = 1)),
             fishingMethod = FishingMethod.SPINNING,
             bait = listOf(Bait.WOBBLER),
-            comment = "Взял на глубине, в самой темноте. Мощный удар!",
+            comment = "Взял на глубине, в самой темноте. Мощный удар! Рыбалка через полночь.",
             user = sampleUser,
             fishingFromTheShore = false,
             isPublic = false
@@ -100,12 +111,13 @@ object MockData {
             name = "Летний зной на Заславском",
             water = Water(waterName = "Заславское вдхр. (Ратомский залив)", latitude = 53.958, longitude = 27.345, isPaid = true),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2024, Calendar.JULY, 20) }.time,
+            fishingStartAt = zoned(2024, 7, 20, 5, 30),
+            fishingEndAt = zoned(2024, 7, 20, 13, 0),
             weight = 4.8,
             fish = listOf(Fish(name = "Лещ", count = 5), Fish(name = "Густера", count = 10)),
             fishingMethod = FishingMethod.FEEDER,
             bait = listOf(Bait.BARLEY, Bait.MAGGOT),
-            comment = "Приехал на реку еще затемно, надеясь занять перспективное место, но, как оказалось, не я один такой предприимчивый. Пришлось обосноваться на менее знакомом участке. Начал с активного закорма: две пачки тяжелой речной прикормки, немного мелассы и резаный опарыш. Первые два часа — полная тишина, только мелкая верховодка периодически теребила кончик фидера. Но стоило солнцу подняться чуть выше деревьев, как последовал мощный отстрел квивертипа. Первый лещ на килограмм в подсаке! Следом пошла густера, да такая бойкая, что скучать не давала. К полудню жара стала невыносимой, рыба ушла на глубину, и поклевки прекратились. Тем не менее, выездом крайне доволен, река как всегда порадовала своей красотой и порцией адреналина. В следующий раз попробую приехать с вечера, чтобы захватить самый пик ночного клева.",
+            comment = "Приехал на реку еще затемно, надеясь занять перспективное место.",
             user = sampleUser,
             fishingFromTheShore = true,
             isPublic = true
@@ -116,12 +128,13 @@ object MockData {
             name = "Осенний монстр",
             water = Water(waterName = "Заславское вдхр. (Каналы)", latitude = 53.985, longitude = 27.275, isPaid = true),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2024, Calendar.SEPTEMBER, 12) }.time,
+            fishingStartAt = zoned(2024, 9, 12, 6, 0),
+            fishingEndAt = zoned(2024, 9, 12, 18, 30),
             weight = 12.5,
             fish = listOf(Fish(name = "Карп", count = 1)),
             fishingMethod = FishingMethod.FEEDER,
             bait = listOf(Bait.CORN),
-            comment = "Это была одна из тех рыбалок, которые запоминаются на всю жизнь. Осень, легкий туман над водой, тишина, нарушаемая только всплесками далекой рыбы. Поклевка была совершенно неожиданной — фрикцион просто взвизгнул, и удилище согнулось в дугу. Я сразу понял, что на том конце серьезный противник. Минут 15 мы просто перетягивали канат: я отыгрывал метр, он забирал три. Руки начали дрожать от напряжения, а сердце билось где-то в горле. Когда в первый раз показался бок этого монстра, я даже испугался, что подсак окажется мал. Но удача была на моей стороне. Этот золотистый красавец на 12.5 кг заставил меня попотеть, как никогда раньше. После быстрой фотосессии и взвешивания, трофей был бережно отпущен обратно в родную стихию. Эмоции зашкаливают до сих пор, ради таких моментов мы и ездим на рыбалку!",
+            comment = "Это была одна из тех рыбалок, которые запоминаются на всю жизнь.",
             user = sampleUser,
             fishingFromTheShore = true,
             isPublic = true
@@ -132,28 +145,13 @@ object MockData {
             name = "Бесконечный зимний день",
             water = Water(waterName = "Минское море (Центр)", latitude = 53.990, longitude = 27.330, isPaid = false),
             photo = emptyList(),
-            fishingTime = calendar.apply { set(2025, Calendar.JANUARY, 15) }.time,
+            fishingStartAt = zoned(2025, 1, 15, 8, 0),
+            fishingEndAt = zoned(2025, 1, 15, 16, 30),
             weight = 2.1,
             fish = listOf(Fish(name = "Плотва", count = 30), Fish(name = "Окунь", count = 5)),
             fishingMethod = FishingMethod.BOBBER,
             bait = listOf(Bait.BLOODWORM),
-            comment = """
-                Зимняя рыбалка — это всегда испытание воли и снаряжения. В тот день мороз крепчал с каждой минутой, а ветер так и норовил утащить палатку в сторону дамбы. Но разве это может остановить истинного любителя подледного лова?
-
-                Начал я с того, что пробурил около десяти лунок на разных глубинах, от четырех до семи метров. Закормил каждую чистым лиманом с добавлением сухарей. Первые полчаса — тишина. Только пар изо рта и хруст снега под сапогами. Решил начать обход. В первой лунке — пусто, во второй — один легкий тычок, и всё. А вот на третьей, самой глубокой, кивок вдруг плавно пошел вверх. Сердце екнуло. Подсечка! И вот она, первая плотвица, сверкает серебром на скупом зимнем солнце.
-
-                И тут началось... Клев был такой интенсивный, что я едва успевал опускать мормышку. Плотва шла мерная, "батончики" грамм по 150-200. Периодически проскакивал окунь, заставляя мормышку танцевать активнее. Время пролетело незаметно. Когда я в очередной раз взглянул на часы, оказалось, что прошло уже четыре часа! 
-                
-                Но самое интересное началось ближе к вечеру. Ветер внезапно стих, и над озером повисла звенящая тишина. В такие моменты кажется, что ты один во всей вселенной. Я сидел над лункой, завороженный игрой света на льду. В вдруг кивок не просто дрогнул, а резко прижался к самому льду. Это был не окунь и не плотва. Леска 0.08 звенела как струна. Я понимал, что форсировать нельзя — оборвет в мгновение ока.
-
-                Минут десять я водил рыбу под лункой, пытаясь завести голову в 130-й диаметр. Когда, наконец, на поверхности показалась морда приличного подлещика, я понял, что день прожит не зря. Этот красавец стал достойным завершением моей рыбалки. 
-                
-                Домой возвращался уже в сумерках. Уставший, продрогший, но абсолютно счастливый. Сумка с рыбой приятно оттягивала плечо, а в голове уже зрели планы на следующие выходные. Ведь рыбалка — это не только улов, это состояние души, это единение с природой, которого так не хватает в городском шуме.
-
-                Каждый раз, собирая ящик и сматывая удочки, я обещаю себе приехать сюда снова. Потому что каждый выезд — это новая история, новые эмоции и новые открытия. Даже если улова не будет совсем, сам процесс, эта тишина и ожидание поклевки стоят того, чтобы проснуться в пять утра и отправиться в морозную даль.
-                
-                За эти годы я понял одну простую истину: на рыбалке время не засчитывается в счет жизни. И это, пожалуй, самое главное открытие, которое я сделал. Надеюсь, мой следующий отчет будет еще более захватывающим, а рыба — еще крупнее!
-            """.trimIndent(),
+            comment = "Зимняя рыбалка — это всегда испытание воли и снаряжения.",
             user = sampleUser,
             fishingFromTheShore = false,
             isPublic = true

@@ -42,7 +42,7 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
         
         UserInfoBlock(
             user = report.user,
-            date = report.publishedAt ?: report.fishingTime,
+            date = report.publishedAt ?: report.fishingStartAt?.let { java.util.Date.from(it) } ?: java.util.Date(),
             modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
@@ -191,7 +191,8 @@ fun ReportHeaderPreview() {
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
             photo = listOf(""),
-            fishingTime = Date(),
+            fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 3),
+            fishingEndAt = java.time.Instant.now(),
             weight = 3.2,
             fish = listOf(Fish(name = "Окунь", count = 1)),
             fishingMethod = FishingMethod.SPINNING,

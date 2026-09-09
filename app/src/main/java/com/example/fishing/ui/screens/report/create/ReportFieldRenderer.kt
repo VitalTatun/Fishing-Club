@@ -36,8 +36,8 @@ internal fun ReportFieldRenderer(
     onNavigateToMethodAndBaitEdit: () -> Unit,
     onNavigateToCatchEdit: () -> Unit,
     onNavigateToCommentEdit: () -> Unit,
-    onDatePickerClick: () -> Unit,
-    onTimePickerClick: () -> Unit,
+    onDatePickerClick: (String) -> Unit,
+    onTimePickerClick: (String) -> Unit,
     onPhotoPickerClick: () -> Unit,
     isDetailsExpanded: Boolean,
     onDetailsExpandClick: () -> Unit,
@@ -50,7 +50,11 @@ internal fun ReportFieldRenderer(
                 headlineContent = {
                     Text(
                         text = field.title + if (field.isRequired) " *" else "",
-                        modifier = if (field.fieldId == "date_time") Modifier.clickable { onDatePickerClick() } else Modifier
+                        modifier = when (field.fieldId) {
+                            "date_time" -> Modifier.clickable { onDatePickerClick("start") }
+                            "date_time_end" -> Modifier.clickable { onDatePickerClick("end") }
+                            else -> Modifier
+                        }
                     )
                 },
                 supportingContent = field.supportingText?.let { { Text(it) } },
@@ -70,13 +74,17 @@ internal fun ReportFieldRenderer(
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = if (field.fieldId == "date_time") Modifier.clickable { onTimePickerClick() } else Modifier
+                            modifier = when (field.fieldId) {
+                                "date_time" -> Modifier.clickable { onTimePickerClick("start") }
+                                "date_time_end" -> Modifier.clickable { onTimePickerClick("end") }
+                                else -> Modifier
+                            }
                         )
                     }
                 },
                 modifier = Modifier
                     .then(
-                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight" || field.fieldId == "placeholder_date") {
+                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight") {
                             Modifier.padding(start = 40.dp)
                         } else {
                             Modifier

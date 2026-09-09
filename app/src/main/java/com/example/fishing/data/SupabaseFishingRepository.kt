@@ -20,6 +20,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.time.Duration.Companion.hours
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -61,7 +64,7 @@ class SupabaseFishingRepository @Inject constructor(
         try {
             val fishings = supabase.postgrest["fishing"].select {
                 filter { eq("user_id", userId) }
-                order("fishing_time", Order.DESCENDING)
+                order("fishing_start_at", Order.DESCENDING)
             }.decodeList<FishingDto>()
 
             val fish = supabase.postgrest["fishing_fish"].select().decodeList<FishDto>()
@@ -129,7 +132,7 @@ class SupabaseFishingRepository @Inject constructor(
                         eq("user_id", authRepository.currentUser()?.id ?: UUID.randomUUID())
                     }
                 }
-                order("fishing_time", Order.DESCENDING)
+                order("fishing_start_at", Order.DESCENDING)
             }.decodeList<FishingDto>()
 
             val entities = fishings.map { dto ->
@@ -311,6 +314,26 @@ class SupabaseFishingRepository @Inject constructor(
         return getDateFormat(datePatterns[0]).format(date)
     }
 
+    private fun parseInstant(value: String?): Instant? {
+        if (value.isNullOrBlank()) return null
+        return try {
+            Instant.parse(value)
+        } catch (_: Exception) {
+            try {
+                val date = parseDate(value)
+                date?.toInstant()
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun formatInstant(instant: Instant?): String? {
+        return instant?.let {
+            DateTimeFormatter.ISO_INSTANT.format(it)
+        }
+    }
+
     private fun enumValueOf(name: String, values: Array<out Enum<*>>): Enum<*>? {
         return values.firstOrNull {
             it.name.equals(name, ignoreCase = true) ||
@@ -338,7 +361,8 @@ class SupabaseFishingRepository @Inject constructor(
             spotLat = spotLat,
             spotLng = spotLng,
             photo = photos.map { it.storagePath },
-            fishingTime = parseDate(fishingTime) ?: Date(),
+            fishingStartAt = parseInstant(fishingStartAt),
+            fishingEndAt = parseInstant(fishingEndAt),
             weight = weight,
             fish = fish.map { Fish(id = it.id, name = it.name, count = it.count) },
             fishingMethod = (enumValueOf(fishingMethod ?: "", FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
@@ -360,7 +384,7 @@ class SupabaseFishingRepository @Inject constructor(
             waterLng = waterLng ?: 0.0,
             type = type,
             fishingMethod = fishingMethod ?: "",
-            fishingTime = fishingTime,
+            fishingStartAt = fishingStartAt,
             isPublic = isPublic,
             isPaidWater = waterPaid,
             fishNames = fishNames
@@ -385,7 +409,8 @@ class SupabaseFishingRepository @Inject constructor(
             waterPaid = waterPaid,
             spotLat = spotLat,
             spotLng = spotLng,
-            fishingTime = fishingTime,
+            fishingStartAt = fishingStartAt,
+            fishingEndAt = fishingEndAt,
             weight = weight,
             fishingMethod = fishingMethod,
             comment = comment,
@@ -409,7 +434,7 @@ class SupabaseFishingRepository @Inject constructor(
             waterLng = waterLng,
             type = (enumValueOf(type, FishingType.entries.toTypedArray()) as? FishingType) ?: FishingType.FISHING_LOG,
             fishingMethod = (enumValueOf(fishingMethod, FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
-            fishingTime = parseDate(fishingTime) ?: Date(),
+            fishingStartAt = parseInstant(fishingStartAt),
             isPublic = isPublic,
             isPaidWater = isPaidWater,
             fishNames = fishNames
@@ -435,7 +460,8 @@ class SupabaseFishingRepository @Inject constructor(
             spotLat = spotLat,
             spotLng = spotLng,
             photo = imageUrls,
-            fishingTime = parseDate(fishingTime) ?: Date(),
+            fishingStartAt = parseInstant(fishingStartAt),
+            fishingEndAt = parseInstant(fishingEndAt),
             weight = weight,
             fish = fish.map { Fish(id = it.id, name = it.name, count = it.count) },
             fishingMethod = (enumValueOf(fishingMethod ?: "", FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
@@ -466,7 +492,8 @@ class SupabaseFishingRepository @Inject constructor(
             waterPaid = water.isPaid,
             spotLat = spotLat,
             spotLng = spotLng,
-            fishingTime = formatDate(fishingTime),
+            fishingStartAt = formatInstant(fishingStartAt),
+            fishingEndAt = formatInstant(fishingEndAt),
             weight = weight,
             fishingMethod = fishingMethod.name,
             comment = comment,

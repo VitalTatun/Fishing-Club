@@ -230,7 +230,8 @@ fun ReportLocationSectionPreview() {
                 isPaid = true
             ),
             photo = listOf(),
-            fishingTime = Date(),
+            fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 3),
+            fishingEndAt = java.time.Instant.now(),
             weight = 0.0,
             fish = listOf(),
             fishingMethod = FishingMethod.SPINNING,

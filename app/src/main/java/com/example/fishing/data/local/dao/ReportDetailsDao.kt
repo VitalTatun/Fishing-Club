@@ -13,10 +13,10 @@ interface ReportDetailsDao {
     @Query("SELECT * FROM report_details WHERE id = :id")
     fun getById(id: UUID): Flow<ReportDetailsEntity?>
 
-    @Query("SELECT * FROM report_details ORDER BY fishingTime DESC")
+    @Query("SELECT * FROM report_details ORDER BY fishingStartAt DESC")
     fun getAll(): Flow<List<ReportDetailsEntity>>
 
-    @Query("SELECT * FROM report_details WHERE userId = :userId ORDER BY fishingTime DESC")
+    @Query("SELECT * FROM report_details WHERE userId = :userId ORDER BY fishingStartAt DESC")
     fun getByUserId(userId: UUID): Flow<List<ReportDetailsEntity>>
 
     @Query("""
@@ -24,7 +24,7 @@ interface ReportDetailsDao {
         LEFT JOIN favorites ON favorites.reportId = report_details.id
             AND favorites.userId = :userId
         WHERE report_details.userId = :userId OR favorites.reportId IS NOT NULL
-        ORDER BY report_details.fishingTime DESC
+        ORDER BY report_details.fishingStartAt DESC
     """)
     fun getHomeReports(userId: UUID): Flow<List<ReportDetailsEntity>>
 
@@ -32,7 +32,7 @@ interface ReportDetailsDao {
         SELECT report_details.* FROM report_details
         INNER JOIN favorites ON favorites.reportId = report_details.id
         WHERE favorites.userId = :userId
-        ORDER BY report_details.fishingTime DESC
+        ORDER BY report_details.fishingStartAt DESC
     """)
     fun getFavorites(userId: UUID): Flow<List<ReportDetailsEntity>>
 

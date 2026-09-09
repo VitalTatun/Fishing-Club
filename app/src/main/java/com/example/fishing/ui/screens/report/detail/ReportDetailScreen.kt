@@ -188,7 +188,8 @@ fun ReportDetailScreenPreview() {
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
             photo = emptyList(),
-            fishingTime = Date(),
+            fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 9),
+            fishingEndAt = java.time.Instant.now(),
             weight = 3.2,
             fish = listOf(
                 Fish(name = "Карась", count = 2),
@@ -216,7 +217,8 @@ fun ReportDetailScreenTrophyPreview() {
             name = "Тот самый улов!",
             water = Water(waterName = "Неман", latitude = 53.9, longitude = 25.3),
             photo = emptyList(),
-            fishingTime = Date(),
+            fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 9),
+            fishingEndAt = java.time.Instant.now(),
             weight = 12.5,
             fish = listOf(
                 Fish(name = "Щука", count = 1),

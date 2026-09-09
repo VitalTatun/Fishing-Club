@@ -13,13 +13,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fishing.R
 import com.example.fishing.model.*
-import java.text.SimpleDateFormat
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 @Composable
 fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
-    val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
-    val timeFormatter = remember { SimpleDateFormat("H:mm", Locale.forLanguageTag("ru")) }
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru")).withZone(ZoneId.systemDefault()) }
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("H:mm", Locale.forLanguageTag("ru")).withZone(ZoneId.systemDefault()) }
 
     Column(
         modifier = modifier
@@ -30,12 +31,25 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
         Row(modifier = Modifier.fillMaxWidth()) {
             InfoGridItem(
                 title = stringResource(R.string.date),
-                value = dateFormatter.format(report.fishingTime),
+                value = report.fishingStartAt?.let { dateFormatter.format(it) } ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f)
             )
             InfoGridItem(
-                title = stringResource(R.string.time),
-                value = timeFormatter.format(report.fishingTime),
+                title = stringResource(R.string.fishing_start),
+                value = report.fishingStartAt?.let { timeFormatter.format(it) } ?: stringResource(R.string.not_specified),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            InfoGridItem(
+                title = stringResource(R.string.fishing_end),
+                value = report.fishingEndAt?.let { timeFormatter.format(it) } ?: stringResource(R.string.not_specified),
+                modifier = Modifier.weight(1f)
+            )
+            InfoGridItem(
+                title = stringResource(R.string.duration),
+                value = report.durationFormatted() ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f)
             )
         }

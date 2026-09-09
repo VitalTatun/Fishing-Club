@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,19 +67,8 @@ fun CreateReportScreen(
     onNavigateToWaterEdit: () -> Unit = {},
     onNavigateToWaterNameEdit: () -> Unit = {},
 ) {
-    val calendar = remember { Calendar.getInstance() }
     val haptic = LocalHapticFeedback.current
     val dateFormatter = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru")) }
-    val timeFormatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-
-    LaunchedEffect(Unit) {
-        if (viewModel.formFishingDate.isEmpty()) {
-            viewModel.formFishingDate = dateFormatter.format(calendar.time)
-        }
-        if (viewModel.formFishingStartTime.isEmpty()) {
-            viewModel.formFishingStartTime = timeFormatter.format(calendar.time)
-        }
-    }
 
     val isSaveEnabled = viewModel.isSaveEnabled
     val formHasData = viewModel.formHasData
@@ -88,10 +76,16 @@ fun CreateReportScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var pickerTarget by remember { mutableStateOf("start") }
     var isDetailsExpanded by remember { mutableStateOf(false) }
 
     val currentTime = Calendar.getInstance()
-    val timePickerState = rememberTimePickerState(
+    val startTimePickerState = rememberTimePickerState(
+        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
+        initialMinute = currentTime.get(Calendar.MINUTE),
+        is24Hour = true,
+    )
+    val endTimePickerState = rememberTimePickerState(
         initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
         initialMinute = currentTime.get(Calendar.MINUTE),
         is24Hour = true,
@@ -144,7 +138,12 @@ fun CreateReportScreen(
             onConfirm = { millis ->
                 millis?.let {
                     val d = Date(it)
-                    viewModel.formFishingDate = dateFormatter.format(d)
+                    val formatted = dateFormatter.format(d)
+                    if (pickerTarget == "start") {
+                        viewModel.formStartDate = formatted
+                    } else {
+                        viewModel.formEndDate = formatted
+                    }
                 }
                 showDatePicker = false
             }
@@ -155,17 +154,23 @@ fun CreateReportScreen(
         TimePickerDialog(
             onDismiss = { showTimePicker = false },
             onConfirm = {
+                val state = if (pickerTarget == "start") startTimePickerState else endTimePickerState
                 val formattedTime = String.format(
                     Locale.getDefault(),
                     "%02d:%02d",
-                    timePickerState.hour,
-                    timePickerState.minute
+                    state.hour,
+                    state.minute
                 )
-                viewModel.formFishingStartTime = formattedTime
+                if (pickerTarget == "start") {
+                    viewModel.formStartTime = formattedTime
+                } else {
+                    viewModel.formEndTime = formattedTime
+                }
                 showTimePicker = false
             }
         ) {
-            TimePicker(state = timePickerState)
+            if (pickerTarget == "start") TimePicker(state = startTimePickerState)
+            else TimePicker(state = endTimePickerState)
         }
     }
 
@@ -221,8 +226,14 @@ fun CreateReportScreen(
                             onNavigateToMethodAndBaitEdit = onNavigateToMethodAndBaitEdit,
                             onNavigateToCatchEdit = onNavigateToCatchEdit,
                             onNavigateToCommentEdit = onNavigateToCommentEdit,
-                            onDatePickerClick = { showDatePicker = true },
-                            onTimePickerClick = { showTimePicker = true },
+                            onDatePickerClick = { target ->
+                                pickerTarget = target
+                                showDatePicker = true
+                            },
+                            onTimePickerClick = { target ->
+                                pickerTarget = target
+                                showTimePicker = true
+                            },
                             onPhotoPickerClick = {
                                 if (viewModel.formSelectedPhotoUris.size < MaxPhotos) {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)

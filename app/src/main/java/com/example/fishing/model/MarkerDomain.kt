@@ -1,6 +1,6 @@
 package com.example.fishing.model
 
-import java.util.Date
+import java.time.Instant
 import java.util.UUID
 
 data class MarkerDomain(
@@ -11,7 +11,7 @@ data class MarkerDomain(
     val waterLng: Double,
     val type: FishingType,
     val fishingMethod: FishingMethod,
-    val fishingTime: Date,
+    val fishingStartAt: Instant?,
     val isPublic: Boolean,
     val isPaidWater: Boolean = false,
     val fishNames: List<String> = emptyList()
