@@ -54,6 +54,9 @@ fun FishingNavHost(
     val mapMarkers by viewModel.mapMarkers.collectAsState()
     val isInitialLoading by viewModel.isInitialLoading.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val mapIsLoading by viewModel.mapIsLoading.collectAsState()
+    val mapIsRefreshing by viewModel.mapIsRefreshing.collectAsState()
+    val mapErrorMessage by viewModel.mapRefreshError.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val reportUnavailable by viewModel.reportUnavailable.collectAsState()
 
@@ -97,6 +100,9 @@ fun FishingNavHost(
                     reports = reports,
                     isInitialLoading = isInitialLoading,
                     isRefreshing = isRefreshing,
+                    mapIsLoading = mapIsLoading,
+                    mapIsRefreshing = mapIsRefreshing,
+                    mapErrorMessage = mapErrorMessage,
                     selectedTab = selectedTab,
                     favoriteReports = favoriteReports,
                     mapMarkers = mapMarkers,

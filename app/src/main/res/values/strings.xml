@@ -187,4 +187,11 @@
     <string name="error_start_in_future">Начало рыбалки не может быть в будущем</string>
     <string name="error_end_in_future">Окончание рыбалки не может быть в будущем</string>
     <string name="saving">Сохранение</string>
+
+    <!-- Карта: состояния загрузки -->
+    <string name="map_loading">Загрузка карты…</string>
+    <string name="map_no_reports">На карте пока нет отчётов</string>
+    <string name="map_no_reports_for_filter">Нет отчётов, соответствующих фильтрам</string>
+    <string name="map_loading_failed">Не удалось загрузить отчёты</string>
+    <string name="map_stale_data">Не удалось обновить данные. Показаны кэшированные отчёты.</string>
 </resources>

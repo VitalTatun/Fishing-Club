@@ -48,7 +48,11 @@ fun MapScreen(
     markersInteractive: Boolean = true,
     initialReportId: UUID? = null,
     repository: FishingRepository,
-    favoriteReports: List<FishingReport> = emptyList()
+    favoriteReports: List<FishingReport> = emptyList(),
+    isLoading: Boolean = false,
+    isRefreshing: Boolean = false,
+    errorMessage: String? = null,
+    onRetry: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
@@ -112,6 +116,9 @@ fun MapScreen(
             matchesFavorites && matchesTrophy && matchesPaid && matchesCatch && matchesMethod
         }
     }
+
+    val isFilterActive = isFavoritesSelected || isTrophySelected || isPaidSelected ||
+        selectedCatch != null || selectedMethod != null
 
     DisposableEffect(mapView) {
         mapView.onResume()
@@ -234,6 +241,73 @@ fun MapScreen(
             initialZoom = lastZoom
         )
 
+        when (
+            mapOverlayState(
+                rawMarkers = markers,
+                filteredMarkers = filteredMarkers,
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                isFilterActive = isFilterActive
+            )
+        ) {
+            MapOverlayState.Loading -> {
+                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = stringResource(R.string.map_loading),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            MapOverlayState.Error -> {
+                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
+                    Icon(
+                        imageVector = Icons.Default.CloudOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = stringResource(R.string.map_loading_failed),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(R.string.retry))
+                    }
+                }
+            }
+            MapOverlayState.Empty -> {
+                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
+                    Text(
+                        text = stringResource(R.string.map_no_reports),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            MapOverlayState.FilteredEmpty -> {
+                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
+                    Text(
+                        text = stringResource(R.string.map_no_reports_for_filter),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            MapOverlayState.None -> Unit
+        }
+
+        if (isRefreshing && markers.isNotEmpty()) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 72.dp)
+                    .fillMaxWidth(0.6f)
+            )
+        }
+
         if (onBackClick != null) {
             FilledIconButton(
                 onClick = onBackClick,
@@ -292,6 +366,22 @@ fun MapScreen(
                     },
                     uniqueFish = uniqueFish
                 )
+            }
+        }
+
+        if (errorMessage != null && markers.isNotEmpty()) {
+            Snackbar(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 72.dp, start = 16.dp, end = 16.dp),
+                action = {
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(R.string.retry))
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.map_stale_data))
             }
         }
 
@@ -438,4 +528,47 @@ fun OsmMapView(
             mv.invalidate()
         }
     )
+}
+
+internal enum class MapOverlayState {
+    Loading,
+    Error,
+    Empty,
+    FilteredEmpty,
+    None
+}
+
+internal fun mapOverlayState(
+    rawMarkers: List<MarkerDomain>,
+    filteredMarkers: List<MarkerDomain>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    isFilterActive: Boolean
+): MapOverlayState = when {
+    rawMarkers.isEmpty() && isLoading -> MapOverlayState.Loading
+    rawMarkers.isEmpty() && errorMessage != null -> MapOverlayState.Error
+    rawMarkers.isEmpty() -> MapOverlayState.Empty
+    isFilterActive && filteredMarkers.isEmpty() -> MapOverlayState.FilteredEmpty
+    else -> MapOverlayState.None
+}
+
+@Composable
+private fun MapStateOverlayCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content
+        )
+    }
 }

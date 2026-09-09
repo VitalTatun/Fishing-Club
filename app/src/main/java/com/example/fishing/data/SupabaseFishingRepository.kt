@@ -15,6 +15,7 @@ import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CancellationException
 import androidx.room.withTransaction
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
@@ -119,16 +120,17 @@ class SupabaseFishingRepository @Inject constructor(
         entity?.toDomain()
     }
 
-    suspend fun refreshMapMarkers() {
-        if (authRepository.currentUser() == null) return
-        try {
+    override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
+        val userId = authRepository.currentUser()?.id
+            ?: return Result.failure(IllegalStateException("Нет активной сессии"))
+        return try {
             val fishings = supabase.postgrest["fishing"].select(
                 columns = io.github.jan.supabase.postgrest.query.Columns.raw("*, fishing_fish(*)")
             ) {
                 filter {
                     or {
                         eq("is_public", true)
-                        eq("user_id", authRepository.currentUser()?.id ?: UUID.randomUUID())
+                        eq("user_id", userId)
                     }
                 }
                 order("fishing_start_at", Order.DESCENDING)
@@ -139,10 +141,17 @@ class SupabaseFishingRepository @Inject constructor(
                     fishNames = dto.fish.map { it.name }
                 )
             }
-            markerDao.deleteAll()
-            markerDao.insertAll(entities)
+            // Cache is replaced atomically so a mid-refresh failure cannot wipe
+            // previously cached markers out from under the user.
+            database.withTransaction {
+                markerDao.deleteAll()
+                markerDao.insertAll(entities)
+            }
+            Result.success(entities.map { it.toDomain() })
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Result.failure(e)
         }
     }
 

@@ -54,6 +54,9 @@ fun MainScreen(
     mapMarkers: List<MarkerDomain> = emptyList(),
     isInitialLoading: Boolean = false,
     isRefreshing: Boolean = false,
+    mapIsLoading: Boolean = false,
+    mapIsRefreshing: Boolean = false,
+    mapErrorMessage: String? = null,
     selectedTab: Int = 0,
     viewModel: MainViewModel? = null,
     repository: com.example.fishing.data.FishingRepository,
@@ -291,7 +294,11 @@ fun MainScreen(
                             ))
                         },
                         viewModel = viewModel,
-                        repository = repository
+                        repository = repository,
+                        isLoading = mapIsLoading,
+                        isRefreshing = mapIsRefreshing,
+                        errorMessage = mapErrorMessage,
+                        onRetry = { viewModel?.loadMapMarkers(force = true) }
                     )
                 }
                 2 -> {

@@ -13,6 +13,7 @@ interface FishingRepository {
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
     suspend fun refreshHomeReports(userId: UUID)
+    suspend fun refreshMapMarkers(): Result<List<MarkerDomain>>
     suspend fun addFavorite(report: FishingReport)
     suspend fun removeFavorite(reportId: UUID)
     suspend fun saveReport(report: FishingReport): Result<Unit>
@@ -57,6 +58,10 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun refreshHomeReports(userId: UUID) {
         // Mock — no-op
+    }
+
+    override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
+        return Result.success(reports.map { it.toMarkerDomain() })
     }
 
     override suspend fun addFavorite(report: FishingReport) {

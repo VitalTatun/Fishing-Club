@@ -37,6 +37,11 @@ class FakeFishingRepository : FishingRepository {
     var refreshHomeReportsException: Exception? = null
     var refreshHomeReportsGate: CompletableDeferred<Unit>? = null
 
+    var refreshMapMarkersCallCount = 0
+    var refreshMapMarkersException: Exception? = null
+    var refreshMapMarkersGate: CompletableDeferred<Unit>? = null
+    var refreshMapMarkersResult: List<MarkerDomain>? = null
+
     var addFavoriteCallCount = 0
     var removeFavoriteCallCount = 0
     var deleteReportCallCount = 0
@@ -59,6 +64,13 @@ class FakeFishingRepository : FishingRepository {
         refreshHomeReportsCallCount++
         refreshHomeReportsGate?.await()
         refreshHomeReportsException?.let { throw it }
+    }
+
+    override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
+        refreshMapMarkersCallCount++
+        refreshMapMarkersGate?.await()
+        refreshMapMarkersException?.let { return Result.failure(it) }
+        return Result.success(refreshMapMarkersResult ?: mapMarkersValue)
     }
 
     override suspend fun addFavorite(report: FishingReport) {

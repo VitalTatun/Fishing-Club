@@ -59,6 +59,15 @@ class MainViewModel @Inject constructor(
     private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
     val mapMarkers: StateFlow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
 
+    private val _mapIsLoading = MutableStateFlow(false)
+    val mapIsLoading: StateFlow<Boolean> = _mapIsLoading.asStateFlow()
+
+    private val _mapIsRefreshing = MutableStateFlow(false)
+    val mapIsRefreshing: StateFlow<Boolean> = _mapIsRefreshing.asStateFlow()
+
+    private val _mapRefreshError = MutableStateFlow<String?>(null)
+    val mapRefreshError: StateFlow<String?> = _mapRefreshError.asStateFlow()
+
     private val _currentReport = MutableStateFlow<FishingReport?>(null)
     val currentReport: StateFlow<FishingReport?> = _currentReport.asStateFlow()
 
@@ -159,6 +168,9 @@ class MainViewModel @Inject constructor(
         _isInitialLoading.value = true
         _isRefreshing.value = false
         _selectedTab.value = 0
+        _mapIsLoading.value = true
+        _mapIsRefreshing.value = false
+        _mapRefreshError.value = null
 
         searchQuery = ""
         searchSelectedDate = null
@@ -214,11 +226,20 @@ class MainViewModel @Inject constructor(
 
         mapMarkersLoadJob?.cancel()
         mapMarkersLoadJob = viewModelScope.launch {
+            if (_mapMarkers.value.isEmpty()) {
+                _mapIsLoading.value = true
+            }
+            _mapIsRefreshing.value = false
+            _mapRefreshError.value = null
+
             // Observe Room cache (never completes — updates UI on every DB change)
             launch {
                 try {
-                    repository.getMapMarkers().collect {
-                        _mapMarkers.value = it
+                    repository.getMapMarkers().collect { markers ->
+                        _mapMarkers.value = markers
+                        if (markers.isNotEmpty()) {
+                            _mapIsLoading.value = false
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -226,18 +247,31 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
             }
-            // Refresh from network → saves to Room → Flow auto-updates UI
-            launch {
-                try {
-                    if (repository is SupabaseFishingRepository) {
-                        repository.refreshMapMarkers()
+            // Refresh from network → saves to Room → Flow auto-updates UI.
+            // Errors are propagated so the ViewModel can distinguish "no data yet",
+            // "cache kept + refresh failed" and "nothing loaded at all".
+            if (_mapMarkers.value.isNotEmpty()) {
+                _mapIsRefreshing.value = true
+            }
+            try {
+                val result = repository.refreshMapMarkers()
+                if (result.isSuccess) {
+                    val fresh = result.getOrNull()
+                    if (!fresh.isNullOrEmpty()) {
+                        _mapMarkers.value = fresh
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    _error.value = "Ошибка загрузки маркеров: ${e.message ?: "неизвестная"}"
+                    _mapRefreshError.value = null
+                } else {
+                    _mapRefreshError.value =
+                        "Не удалось загрузить отчёты: ${result.exceptionOrNull()?.message ?: "неизвестная ошибка"}"
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _mapRefreshError.value = "Не удалось загрузить отчёты: ${e.message ?: "неизвестная ошибка"}"
+            } finally {
+                _mapIsRefreshing.value = false
+                _mapIsLoading.value = false
             }
         }
     }
