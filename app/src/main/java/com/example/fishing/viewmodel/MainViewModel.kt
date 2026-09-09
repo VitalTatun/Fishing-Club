@@ -103,9 +103,19 @@ class MainViewModel @Inject constructor(
     private val _reportUnavailable = MutableStateFlow(false)
     val reportUnavailable: StateFlow<Boolean> = _reportUnavailable.asStateFlow()
 
+    private val _isDeletingReport = MutableStateFlow(false)
+    val isDeletingReport: StateFlow<Boolean> = _isDeletingReport.asStateFlow()
+
+    private val _deleteReportError = MutableStateFlow<String?>(null)
+    val deleteReportError: StateFlow<String?> = _deleteReportError.asStateFlow()
+
+    private val _deletedReportId = MutableStateFlow<UUID?>(null)
+    val deletedReportId: StateFlow<UUID?> = _deletedReportId.asStateFlow()
+
     private var reportsLoadJob: Job? = null
     private var mapMarkersLoadJob: Job? = null
     private var reportDetailsJob: Job? = null
+    private var deleteReportJob: Job? = null
     private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
     private var currentUserId: UUID? = null
@@ -134,6 +144,7 @@ class MainViewModel @Inject constructor(
         reportsLoadJob?.cancel()
         mapMarkersLoadJob?.cancel()
         reportDetailsJob?.cancel()
+        deleteReportJob?.cancel()
         currentUserId = null
 
         _reports.value = emptyList()
@@ -142,6 +153,9 @@ class MainViewModel @Inject constructor(
         _currentReport.value = null
         _error.value = null
         _reportUnavailable.value = false
+        _isDeletingReport.value = false
+        _deleteReportError.value = null
+        _deletedReportId.value = null
         _isInitialLoading.value = true
         _isRefreshing.value = false
         _selectedTab.value = 0
@@ -244,6 +258,7 @@ class MainViewModel @Inject constructor(
     fun loadReportDetails(id: UUID) {
         reportDetailsJob?.cancel()
         _reportUnavailable.value = false
+        _deleteReportError.value = null
 
         if (_currentReport.value?.id != id) {
             _currentReport.value = null
@@ -368,10 +383,31 @@ class MainViewModel @Inject constructor(
     }
 
     fun deleteReport(id: UUID) {
-        viewModelScope.launch {
+        if (_isDeletingReport.value) return
+
+        _isDeletingReport.value = true
+        _deleteReportError.value = null
+        _deletedReportId.value = null
+
+        deleteReportJob = viewModelScope.launch {
             repository.deleteReport(id)
-            loadReports(force = true)
-            loadMapMarkers(force = true)
+                .onSuccess {
+                    _deletedReportId.value = id
+                    loadReports(force = true)
+                    loadMapMarkers(force = true)
+                }
+                .onFailure { e ->
+                    _deleteReportError.value = "Не удалось удалить отчет: ${e.message ?: "неизвестная ошибка"}"
+                }
+            _isDeletingReport.value = false
         }
+    }
+
+    fun clearDeleteReportError() {
+        _deleteReportError.value = null
+    }
+
+    fun clearDeletedReport() {
+        _deletedReportId.value = null
     }
 }

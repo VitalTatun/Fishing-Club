@@ -36,10 +36,53 @@ fun ReportDetailScreen(
     onMapClick: (GeoPoint) -> Unit = {},
     isFavorite: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    isOwnReport: Boolean = false,
+    onDeleteReport: () -> Unit = {},
+    isDeleting: Boolean = false,
+    deleteError: String? = null,
+    onDeleteErrorDismiss: () -> Unit = {},
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(deleteError) {
+        if (deleteError != null) {
+            snackbarHostState.showSnackbar(deleteError)
+            onDeleteErrorDismiss()
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.delete_report)) },
+            text = { Text(stringResource(R.string.delete_report_confirm)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDeleteReport()
+                    },
+                    enabled = !isDeleting
+                ) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteDialog = false },
+                    enabled = !isDeleting
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             val fishFallback = stringResource(R.string.fish_fallback)
             val methodName = stringResource(report.fishingMethod.labelRes)
@@ -72,11 +115,20 @@ fun ReportDetailScreen(
                         )
                     }
 
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = stringResource(R.string.menu),
+                    if (isDeleting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .size(24.dp),
+                            strokeWidth = 2.dp
                         )
+                    } else {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = stringResource(R.string.menu),
+                            )
+                        }
                     }
                     DropdownMenu(
                         expanded = menuExpanded,
@@ -89,21 +141,26 @@ fun ReportDetailScreen(
                                 Icon(Icons.Outlined.BorderColor, contentDescription = null)
                             }
                         )
-                        DropdownMenuItem(
-                            text = { Text(if (report.isPublic) stringResource(R.string.make_private) else stringResource(R.string.make_public)) },
-                            onClick = { menuExpanded = false },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.Lock, contentDescription = null)
-                            }
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
-                            onClick = { menuExpanded = false },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                            }
-                        )
+                        if (isOwnReport) {
+                            DropdownMenuItem(
+                                text = { Text(if (report.isPublic) stringResource(R.string.make_private) else stringResource(R.string.make_public)) },
+                                onClick = { menuExpanded = false },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Lock, contentDescription = null)
+                                }
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    menuExpanded = false
+                                    showDeleteDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            )
+                        }
                     }
                 }
             )

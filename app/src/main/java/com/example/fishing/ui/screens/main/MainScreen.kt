@@ -71,6 +71,8 @@ fun MainScreen(
     onChangeHistoryClick: () -> Unit = {},
     errorText: String? = null,
     onErrorDismiss: () -> Unit = {},
+    deleteErrorText: String? = null,
+    onDeleteErrorDismiss: () -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -194,6 +196,20 @@ fun MainScreen(
                     }
                 ) {
                     Text(errorText)
+                }
+            }
+            if (deleteErrorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 64.dp, start = 8.dp, end = 8.dp),
+                    action = {
+                        TextButton(onClick = onDeleteErrorDismiss) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                ) {
+                    Text(deleteErrorText)
                 }
             }
             when (selectedTab) {

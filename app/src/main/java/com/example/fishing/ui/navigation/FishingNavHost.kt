@@ -135,7 +135,9 @@ fun FishingNavHost(
                         navController.navigate("change_history")
                     },
                     errorText = viewModel.error.collectAsState().value,
-                    onErrorDismiss = { viewModel.refresh() }
+                    onErrorDismiss = { viewModel.refresh() },
+                    deleteErrorText = viewModel.deleteReportError.collectAsState().value,
+                    onDeleteErrorDismiss = { viewModel.clearDeleteReportError() }
                 )
             }
 
@@ -360,6 +362,16 @@ fun FishingNavHost(
 
                 val currentReport by viewModel.currentReport.collectAsState()
                 val isReportUnavailable by viewModel.reportUnavailable.collectAsState()
+                val isDeletingReport by viewModel.isDeletingReport.collectAsState()
+                val deleteReportError by viewModel.deleteReportError.collectAsState()
+                val deletedReportId by viewModel.deletedReportId.collectAsState()
+
+                LaunchedEffect(deletedReportId, reportId) {
+                    if (deletedReportId == reportId) {
+                        viewModel.clearDeletedReport()
+                        navController.popBackStack()
+                    }
+                }
 
                 val report = currentReport
                 if (report != null && report.id == reportId) {
@@ -371,7 +383,12 @@ fun FishingNavHost(
                         onMapClick = { point ->
                             viewModel.requestMapLocation(point)
                             navController.navigate("full_map/${report.id}")
-                        }
+                        },
+                        isOwnReport = report.userId == currentUser?.id,
+                        isDeleting = isDeletingReport,
+                        onDeleteReport = { viewModel.deleteReport(report.id) },
+                        deleteError = deleteReportError,
+                        onDeleteErrorDismiss = { viewModel.clearDeleteReportError() }
                     )
                 } else if (isReportUnavailable) {
                     ReportDetailUnavailableScreen(

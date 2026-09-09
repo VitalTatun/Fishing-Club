@@ -40,6 +40,8 @@ class FakeFishingRepository : FishingRepository {
     var addFavoriteCallCount = 0
     var removeFavoriteCallCount = 0
     var deleteReportCallCount = 0
+    var deleteReportException: Exception? = null
+    var deleteReportGate: CompletableDeferred<Unit>? = null
 
     var saveReportCallCount = 0
     var saveReportException: Exception? = null
@@ -77,10 +79,13 @@ class FakeFishingRepository : FishingRepository {
         return Result.success(Unit)
     }
 
-    override suspend fun deleteReport(id: UUID) {
+    override suspend fun deleteReport(id: UUID): Result<Unit> {
         deleteReportCallCount++
+        deleteReportGate?.await()
+        deleteReportException?.let { return Result.failure(it) }
         _homeReports.value = _homeReports.value.filterNot { it.id == id }
         _favoriteReports.value = _favoriteReports.value.filterNot { it.id == id }
+        return Result.success(Unit)
     }
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? = storagePath

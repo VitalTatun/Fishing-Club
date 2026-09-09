@@ -174,6 +174,71 @@ class MainViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, fakeFishingRepository.deleteReportCallCount)
+        assertFalse(vm.isDeletingReport.value)
+        assertEquals(report.id, vm.deletedReportId.value)
+        assertEquals(0, vm.reports.value.size)
+    }
+
+    @Test
+    fun `delete failure publishes error and allows retry`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.homeReportsValue = listOf(report)
+        fakeFishingRepository.deleteReportException = RuntimeException("Network error")
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.deleteReport(report.id)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.deleteReportCallCount)
+        assertNotNull(vm.deleteReportError.value)
+        assertNull(vm.deletedReportId.value)
+        assertFalse(vm.isDeletingReport.value)
+        // No false success — the report is still present.
+        assertEquals(1, vm.reports.value.size)
+
+        // Retry after clearing the failure must succeed.
+        fakeFishingRepository.deleteReportException = null
+        vm.deleteReport(report.id)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeFishingRepository.deleteReportCallCount)
+        assertNull(vm.deleteReportError.value)
+        assertEquals(report.id, vm.deletedReportId.value)
+        assertEquals(0, vm.reports.value.size)
+    }
+
+    @Test
+    fun `duplicate delete while in-flight is ignored`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.homeReportsValue = listOf(report)
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val deleteGate = CompletableDeferred<Unit>()
+        fakeFishingRepository.deleteReportGate = deleteGate
+
+        vm.deleteReport(report.id)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.isDeletingReport.value)
+        assertEquals(1, fakeFishingRepository.deleteReportCallCount)
+
+        // Second tap while deletion is in flight must not start another operation.
+        vm.deleteReport(report.id)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, fakeFishingRepository.deleteReportCallCount)
+
+        // Release the gate — the first deletion completes.
+        deleteGate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(vm.isDeletingReport.value)
+        assertEquals(report.id, vm.deletedReportId.value)
     }
 
     @Test

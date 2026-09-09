@@ -16,7 +16,7 @@ interface FishingRepository {
     suspend fun addFavorite(report: FishingReport)
     suspend fun removeFavorite(reportId: UUID)
     suspend fun saveReport(report: FishingReport): Result<Unit>
-    suspend fun deleteReport(id: UUID)
+    suspend fun deleteReport(id: UUID): Result<Unit>
     suspend fun getPhotoSignedUrl(storagePath: String): String?
     fun isStoragePath(path: String): Boolean
 }
@@ -50,8 +50,9 @@ class MockFishingRepository : FishingRepository {
         return Result.success(Unit)
     }
 
-    override suspend fun deleteReport(id: UUID) {
+    override suspend fun deleteReport(id: UUID): Result<Unit> {
         reports.removeAll { it.id == id }
+        return Result.success(Unit)
     }
 
     override suspend fun refreshHomeReports(userId: UUID) {

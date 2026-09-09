@@ -211,17 +211,39 @@ class SupabaseFishingRepository @Inject constructor(
         }
     }
 
-    override suspend fun deleteReport(id: UUID) {
-        try {
+    override suspend fun deleteReport(id: UUID): Result<Unit> {
+        return try {
+            // Storage paths MUST be read before deleting fishing: ON DELETE CASCADE
+            // removes fishing_photos rows, making the paths unrecoverable afterwards.
+            val storagePaths = supabase.postgrest["fishing_photos"].select {
+                filter { eq("fishing_id", id) }
+            }.decodeList<PhotoDto>().map { it.storagePath }
+
+            // Delete the report — CASCADE removes fishing_fish, fishing_baits,
+            // fishing_photos and favorites in Supabase. RLS keeps this restricted
+            // to the report owner.
             supabase.postgrest["fishing"].delete {
                 filter { eq("id", id) }
             }
-            // Удаляем локально сразу, чтобы UI обновился мгновенно через Flow
+
+            // Clean the local Room cache immediately so flows update the UI.
             reportDetailsDao.deleteById(id)
             markerDao.deleteById(id)
             favoriteReportDao.deleteByReportId(id)
+
+            // Best-effort Storage cleanup after a successful DB delete: a cleanup
+            // failure must not turn an already-successful deletion into a user-visible
+            // failure.
+            if (storagePaths.isNotEmpty()) {
+                try {
+                    supabase.storage.from("fishing_photos").delete(storagePaths)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            Result.success(Unit)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Result.failure(e)
         }
     }
 
