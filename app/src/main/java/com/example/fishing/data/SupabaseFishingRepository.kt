@@ -60,7 +60,6 @@ class SupabaseFishingRepository @Inject constructor(
         }
 
     override suspend fun refreshHomeReports(userId: UUID) {
-        if (!authRepository.isLoggedIn()) return
         try {
             val fishings = supabase.postgrest["fishing"].select {
                 filter { eq("user_id", userId) }
@@ -121,7 +120,7 @@ class SupabaseFishingRepository @Inject constructor(
     }
 
     suspend fun refreshMapMarkers() {
-        if (!authRepository.isLoggedIn()) return
+        if (authRepository.currentUser() == null) return
         try {
             val fishings = supabase.postgrest["fishing"].select(
                 columns = io.github.jan.supabase.postgrest.query.Columns.raw("*, fishing_fish(*)")
@@ -148,7 +147,7 @@ class SupabaseFishingRepository @Inject constructor(
     }
 
     suspend fun refreshReportDetails(id: UUID) {
-        if (!authRepository.isLoggedIn()) return
+        if (authRepository.currentUser() == null) return
         try {
             val fishing = supabase.postgrest["fishing"].select {
                 filter { eq("id", id) }
