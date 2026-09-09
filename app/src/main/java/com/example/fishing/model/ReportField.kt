@@ -40,14 +40,6 @@ sealed class ReportField(val id: String) {
         val isRequired: Boolean = false
     ) : ReportField("fish_list")
 
-    data class TextInputField(
-        val label: String,
-        val value: String,
-        val onValueChange: (String) -> Unit,
-        val isRequired: Boolean = false,
-        val supportingText: String? = null
-    ) : ReportField("text_input")
-
     data class ErrorField(
         val text: String
     ) : ReportField("error")

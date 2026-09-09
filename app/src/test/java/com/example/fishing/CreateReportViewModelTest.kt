@@ -82,7 +82,6 @@ class CreateReportViewModelTest {
     }
 
     private fun fillValidReport(vm: CreateReportViewModel, start: Instant, end: Instant) {
-        vm.formTitle = "Отчёт по щуке"
         vm.formWaterName = "Озеро Нарочь"
         vm.formLocation = GeoPoint(54.9, 26.7)
         setStartEndDateTimes(vm, start, end)
@@ -102,15 +101,6 @@ class CreateReportViewModelTest {
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
         assertTrue(vm.isSaveEnabled)
-    }
-
-    @Test
-    fun `missing title disables save`() = runTest {
-        val vm = createViewModel()
-        val (start, end) = validPastRange()
-        fillValidReport(vm, start, end)
-        vm.formTitle = "   "
-        assertFalse(vm.isSaveEnabled)
     }
 
     @Test
@@ -210,11 +200,10 @@ class CreateReportViewModelTest {
     }
 
     @Test
-    fun `successful save records user id trimmed title and datetimes`() = runTest {
+    fun `successful save records user id derived name and datetimes`() = runTest {
         val vm = createViewModel()
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
-        vm.formTitle = "   Название с пробелами   "
 
         var successCalled = false
         vm.saveReport { successCalled = true }
@@ -224,9 +213,65 @@ class CreateReportViewModelTest {
         assertEquals(1, fakeFishingRepository.saveReportCallCount)
         val saved = fakeFishingRepository.savedReports.single()
         assertEquals(testUser.id, saved.userId)
-        assertEquals("Название с пробелами", saved.name)
+        assertEquals("${context.getString(FishingMethod.SPINNING.labelRes)} • Щука", saved.name)
         assertEquals(start.truncatedTo(ChronoUnit.MINUTES), saved.fishingStartAt)
         assertEquals(end.truncatedTo(ChronoUnit.MINUTES), saved.fishingEndAt)
+    }
+
+    @Test
+    fun `report name is method and first fish`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+
+        var successCalled = false
+        vm.saveReport { successCalled = true }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(successCalled)
+        val saved = fakeFishingRepository.savedReports.single()
+        assertEquals(
+            "${context.getString(FishingMethod.SPINNING.labelRes)} • Щука",
+            saved.name
+        )
+    }
+
+    @Test
+    fun `report name is feeder and first fish bream`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+        vm.formSelectedMethod = FishingMethod.FEEDER
+        vm.formSelectedBaits = listOf(Bait.WORM)
+        vm.formSelectedFish = listOf(Fish(name = "Лещ", count = 2), Fish(name = "Карась", count = 1))
+
+        vm.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val saved = fakeFishingRepository.savedReports.single()
+        assertEquals(
+            "${context.getString(FishingMethod.FEEDER.labelRes)} • Лещ",
+            saved.name
+        )
+    }
+
+    @Test
+    fun `report name is bobber and first fish crucian`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+        vm.formSelectedMethod = FishingMethod.BOBBER
+        vm.formSelectedBaits = listOf(Bait.WORM)
+        vm.formSelectedFish = listOf(Fish(name = "Карась", count = 4))
+
+        vm.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val saved = fakeFishingRepository.savedReports.single()
+        assertEquals(
+            "${context.getString(FishingMethod.BOBBER.labelRes)} • Карась",
+            saved.name
+        )
     }
 
     @Test
@@ -241,7 +286,6 @@ class CreateReportViewModelTest {
 
         assertEquals(CreateReportSaveState.Success, stateAtSuccess)
         assertEquals(CreateReportSaveState.Success, vm.saveState)
-        assertEquals("", vm.formTitle)
         assertTrue(vm.formSelectedFish.isEmpty())
         assertTrue(vm.formSelectedBaits.isEmpty())
     }
@@ -261,7 +305,6 @@ class CreateReportViewModelTest {
         assertEquals(1, fakeFishingRepository.saveReportCallCount)
         assertEquals(CreateReportSaveState.Error, vm.saveState)
         assertNotNull(vm.saveErrorMessage)
-        assertEquals("Отчёт по щуке", vm.formTitle)
         assertEquals("Озеро Нарочь", vm.formWaterName)
         assertFalse(vm.formSelectedFish.isEmpty())
     }
@@ -390,34 +433,9 @@ class CreateReportViewModelTest {
     @Test
     fun `form config shows date time errors when dates missing`() = runTest {
         val vm = createViewModel()
-        vm.formTitle = "Название"
         val config = vm.formConfig
 
         val dateTimeSection = config.first { it.id == "date_time" }
         assertTrue(dateTimeSection.items.filterIsInstance<ReportField.ErrorField>().isNotEmpty())
-    }
-
-    @Test
-    fun `form config renders editable title field`() = runTest {
-        val vm = createViewModel()
-        vm.formTitle = "Старое название"
-        val config = vm.formConfig
-
-        val typeSection = config.first { it.id == "type" }
-        val titleField = typeSection.items
-            .filterIsInstance<ReportField.TextInputField>()
-            .firstOrNull()
-        assertNotNull(titleField)
-        assertEquals("Старое название", titleField!!.value)
-
-        titleField!!.onValueChange("Новое название")
-        assertEquals("Новое название", vm.formTitle)
-
-        val updatedConfig = vm.formConfig
-        val updatedTitle = updatedConfig.first { it.id == "type" }
-            .items
-            .filterIsInstance<ReportField.TextInputField>()
-            .single()
-        assertEquals("Новое название", updatedTitle.value)
     }
 }

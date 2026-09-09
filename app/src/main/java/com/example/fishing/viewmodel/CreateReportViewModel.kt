@@ -47,7 +47,6 @@ class CreateReportViewModel @Inject constructor(
 ) : ViewModel() {
 
     // Form state
-    var formTitle by mutableStateOf("")
     var formReportType by mutableStateOf(FishingType.FISHING_LOG)
     var formWaterName by mutableStateOf("")
     var formSelectedPhotoUris by mutableStateOf<List<Uri>>(emptyList())
@@ -90,15 +89,7 @@ class CreateReportViewModel @Inject constructor(
         sections.add(
             ReportFormSection(
                 id = "type",
-                items = listOf(
-                    ReportField.TextInputField(
-                        label = context.getString(R.string.report_name),
-                        value = formTitle,
-                        onValueChange = { formTitle = it },
-                        isRequired = true
-                    ),
-                    ReportField.CustomField("report_type")
-                )
+                items = listOf(ReportField.CustomField("report_type"))
             )
         )
 
@@ -254,8 +245,7 @@ class CreateReportViewModel @Inject constructor(
     val isSaveEnabled: Boolean
         get() {
             if (isSaving) return false
-            val baseValid = formTitle.isNotBlank() &&
-                formWaterName.isNotBlank() &&
+            val baseValid = formWaterName.isNotBlank() &&
                 formLocation != null &&
                 formSelectedMethod != FishingMethod.NONE &&
                 formSelectedBaits.isNotEmpty() &&
@@ -271,8 +261,7 @@ class CreateReportViewModel @Inject constructor(
         }
 
     val formHasData: Boolean
-        get() = formTitle.isNotBlank() ||
-                formWaterName.isNotBlank() ||
+        get() = formWaterName.isNotBlank() ||
                 formLocation != null ||
                 formSelectedMethod != FishingMethod.NONE ||
                 formSelectedFish.isNotEmpty() ||
@@ -331,7 +320,7 @@ class CreateReportViewModel @Inject constructor(
             val report = FishingReport(
                 userId = currentUser.id,
                 type = formReportType,
-                name = formTitle.trim(),
+                name = buildReportName(),
                 water = Water(
                     waterName = formWaterName,
                     latitude = formLocation?.latitude ?: 0.0,
@@ -385,7 +374,6 @@ class CreateReportViewModel @Inject constructor(
     }
 
     fun resetFormState() {
-        formTitle = ""
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
         formSelectedPhotoUris = emptyList()
@@ -403,6 +391,13 @@ class CreateReportViewModel @Inject constructor(
         formMood = 3
         formComment = ""
         formLocation = null
+    }
+
+    private fun buildReportName(): String {
+        return listOfNotNull(
+            context.getString(formSelectedMethod.labelRes).takeIf { it.isNotBlank() },
+            formSelectedFish.firstOrNull()?.name?.takeIf { it.isNotBlank() }
+        ).joinToString(" • ")
     }
 
     private fun combineStart(): Instant? {
