@@ -15,4 +15,10 @@ abstract class RepositoryModule {
     abstract fun bindFishingRepository(
         repository: SupabaseFishingRepository
     ): FishingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserPreferencesSource(
+        repository: UserPreferencesRepository
+    ): UserPreferencesSource
 }

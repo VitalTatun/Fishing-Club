@@ -13,12 +13,6 @@ interface ReportDetailsDao {
     @Query("SELECT * FROM report_details WHERE id = :id")
     fun getById(id: UUID): Flow<ReportDetailsEntity?>
 
-    @Query("SELECT * FROM report_details ORDER BY fishingStartAt DESC")
-    fun getAll(): Flow<List<ReportDetailsEntity>>
-
-    @Query("SELECT * FROM report_details WHERE userId = :userId ORDER BY fishingStartAt DESC")
-    fun getByUserId(userId: UUID): Flow<List<ReportDetailsEntity>>
-
     @Query("""
         SELECT report_details.* FROM report_details
         LEFT JOIN favorites ON favorites.reportId = report_details.id

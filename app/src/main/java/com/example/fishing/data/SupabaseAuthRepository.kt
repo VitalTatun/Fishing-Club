@@ -4,6 +4,7 @@ import com.example.fishing.model.AuthState
 import com.example.fishing.model.User
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.dao.FavoriteReportDao
+import com.example.fishing.data.local.dao.MarkerDao
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -32,7 +33,8 @@ import javax.inject.Singleton
 class SupabaseAuthRepository @Inject constructor(
     private val supabase: SupabaseClient,
     private val reportDetailsDao: ReportDetailsDao,
-    private val favoriteReportDao: FavoriteReportDao
+    private val favoriteReportDao: FavoriteReportDao,
+    private val markerDao: MarkerDao
 ) : AuthRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -121,6 +123,7 @@ class SupabaseAuthRepository @Inject constructor(
             try {
                 reportDetailsDao.deleteByUserId(userId)
                 favoriteReportDao.deleteAllForUser(userId)
+                markerDao.deleteAll()
             } catch (e: Exception) {
                 Log.e("SupabaseAuth", "Failed to clear user cache on logout: ${e.message}")
             }

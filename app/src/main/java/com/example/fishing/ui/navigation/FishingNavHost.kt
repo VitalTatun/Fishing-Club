@@ -18,6 +18,7 @@ import com.example.fishing.ui.screens.report.create.*
 import com.example.fishing.ui.screens.report.detail.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
+import com.example.fishing.ui.screens.report.detail.ReportDetailUnavailableScreen
 import com.example.fishing.ui.screens.search.LocationSearchScreen
 import com.example.fishing.ui.screens.search.ReportSearchScreen
 import com.example.fishing.ui.screens.login.LoginScreen
@@ -51,8 +52,10 @@ fun FishingNavHost(
     val reports by viewModel.sortedReports.collectAsState()
     val favoriteReports by viewModel.favoriteReports.collectAsState()
     val mapMarkers by viewModel.mapMarkers.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val isInitialLoading by viewModel.isInitialLoading.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
+    val reportUnavailable by viewModel.reportUnavailable.collectAsState()
 
     val isAuthenticated = authState is AuthState.Authenticated
     val currentUser = (authState as? AuthState.Authenticated)?.user
@@ -90,14 +93,10 @@ fun FishingNavHost(
             }
 
             composable("main") {
-                LaunchedEffect(Unit) {
-                    viewModel.loadReportsIfNeeded()
-                    viewModel.loadMapMarkers()
-                }
-
                 MainScreen(
                     reports = reports,
-                    isLoading = isLoading,
+                    isInitialLoading = isInitialLoading,
+                    isRefreshing = isRefreshing,
                     selectedTab = selectedTab,
                     favoriteReports = favoriteReports,
                     mapMarkers = mapMarkers,
@@ -360,6 +359,7 @@ fun FishingNavHost(
                 }
 
                 val currentReport by viewModel.currentReport.collectAsState()
+                val isReportUnavailable by viewModel.reportUnavailable.collectAsState()
 
                 val report = currentReport
                 if (report != null && report.id == reportId) {
@@ -372,6 +372,10 @@ fun FishingNavHost(
                             viewModel.requestMapLocation(point)
                             navController.navigate("full_map/${report.id}")
                         }
+                    )
+                } else if (isReportUnavailable) {
+                    ReportDetailUnavailableScreen(
+                        onBackClick = { navController.popBackStack() }
                     )
                 } else {
                     ReportDetailLoadingScreen(

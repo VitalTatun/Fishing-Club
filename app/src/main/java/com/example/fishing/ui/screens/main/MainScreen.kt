@@ -52,7 +52,8 @@ fun MainScreen(
     reports: List<FishingReport>,
     favoriteReports: List<FishingReport> = emptyList(),
     mapMarkers: List<MarkerDomain> = emptyList(),
-    isLoading: Boolean = false,
+    isInitialLoading: Boolean = false,
+    isRefreshing: Boolean = false,
     selectedTab: Int = 0,
     viewModel: MainViewModel? = null,
     repository: com.example.fishing.data.FishingRepository,
@@ -197,41 +198,51 @@ fun MainScreen(
             }
             when (selectedTab) {
                 0 -> {
-                    PullToRefreshBox(
-                        isRefreshing = isLoading,
-                        onRefresh = { viewModel?.refresh() },
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        LazyColumn(
+                    if (isInitialLoading && reports.isEmpty()) {
+                        // Fullscreen loading for initial load
+                        Box(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            contentAlignment = Alignment.Center
                         ) {
-                            if (reports.isEmpty() && !isLoading) {
-                                item {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.no_reports),
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        PullToRefreshBox(
+                            isRefreshing = isRefreshing,
+                            onRefresh = { viewModel?.refresh() },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (reports.isEmpty() && !isRefreshing) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.no_reports_hint),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
-                            }
-                            itemsIndexed(
-                                items = reports,
-                                key = { _, report -> report.id }
-                            ) { index, report ->
-                                FishingReportItem(
-                                    report = report,
-                                    onClick = { onReportClick(report) },
-                                    onDeleteReport = onDeleteReport,
-                                    isFavorite = favoriteReports.any { it.id == report.id },
-                                    currentUserId = currentUserId
-                                )
+                                itemsIndexed(
+                                    items = reports,
+                                    key = { _, report -> report.id }
+                                ) { index, report ->
+                                    FishingReportItem(
+                                        report = report,
+                                        onClick = { onReportClick(report) },
+                                        onDeleteReport = onDeleteReport,
+                                        isFavorite = favoriteReports.any { it.id == report.id },
+                                        currentUserId = currentUserId
+                                    )
+                                }
                             }
                         }
                     }

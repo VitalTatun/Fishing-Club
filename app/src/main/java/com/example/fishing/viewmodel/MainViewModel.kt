@@ -8,7 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.SupabaseFishingRepository
-import com.example.fishing.data.UserPreferencesRepository
+import com.example.fishing.data.UserPreferencesSource
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,7 +33,7 @@ import java.util.UUID
 class MainViewModel @Inject constructor(
     private val repository: FishingRepository,
     private val authRepository: AuthRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesSource
 ) : ViewModel() {
 
     private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
@@ -62,8 +62,11 @@ class MainViewModel @Inject constructor(
     private val _currentReport = MutableStateFlow<FishingReport?>(null)
     val currentReport: StateFlow<FishingReport?> = _currentReport.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val _isInitialLoading = MutableStateFlow(true)
+    val isInitialLoading: StateFlow<Boolean> = _isInitialLoading.asStateFlow()
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
@@ -97,22 +100,30 @@ class MainViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _reportUnavailable = MutableStateFlow(false)
+    val reportUnavailable: StateFlow<Boolean> = _reportUnavailable.asStateFlow()
+
     private var reportsLoadJob: Job? = null
     private var mapMarkersLoadJob: Job? = null
     private var reportDetailsJob: Job? = null
     private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
+    private var currentUserId: UUID? = null
+
     init {
         viewModelScope.launch {
             authRepository.authState
-                .filterIsInstance<com.example.fishing.model.AuthState.Authenticated>()
+                .filterIsInstance<AuthState.Authenticated>()
                 .collect { authState ->
-                    refresh()
+                    currentUserId = authState.user.id
+                    _reportSortOrder.value = userPreferencesRepository.getSortOrder(authState.user.id)
+                    loadReports(force = false)
+                    loadMapMarkers(force = false)
                 }
         }
         viewModelScope.launch {
             authRepository.authState.collect { state ->
-                if (state == com.example.fishing.model.AuthState.Unauthenticated) {
+                if (state == AuthState.Unauthenticated) {
                     clearUserContent()
                 }
             }
@@ -120,11 +131,21 @@ class MainViewModel @Inject constructor(
     }
 
     private fun clearUserContent() {
+        reportsLoadJob?.cancel()
+        mapMarkersLoadJob?.cancel()
+        reportDetailsJob?.cancel()
+        currentUserId = null
+
         _reports.value = emptyList()
         _favoriteReports.value = emptyList()
         _mapMarkers.value = emptyList()
         _currentReport.value = null
         _error.value = null
+        _reportUnavailable.value = false
+        _isInitialLoading.value = true
+        _isRefreshing.value = false
+        _selectedTab.value = 0
+
         searchQuery = ""
         searchSelectedDate = null
         searchIsFavoritesSelected = false
@@ -132,6 +153,16 @@ class MainViewModel @Inject constructor(
         searchIsPaidSelected = false
         searchSelectedCatch = null
         searchSelectedMethod = null
+
+        mapIsFavoritesSelected = false
+        mapIsTrophySelected = false
+        mapIsPaidSelected = false
+        mapSelectedCatch = null
+        mapSelectedMethod = null
+        mapLastCenterLat = null
+        mapLastCenterLon = null
+        mapLastZoom = 6.0
+
         signedPhotoUrlCache.clear()
     }
 
@@ -147,7 +178,7 @@ class MainViewModel @Inject constructor(
 
     fun setSortOrder(order: ReportSortOrder) {
         _reportSortOrder.value = order
-        userPreferencesRepository.setSortOrder(order)
+        currentUserId?.let { userPreferencesRepository.setSortOrder(it, order) }
     }
 
     fun requestMapLocation(point: GeoPoint?) {
@@ -207,24 +238,28 @@ class MainViewModel @Inject constructor(
                 repository.addFavorite(report)
                 _favoriteReports.value = (_favoriteReports.value + report).distinctBy { it.id }
             }
-            // Both main and favorite lists observe Room, so the local relation update above
-            // refreshes them immediately without starting another overlapping network sync.
         }
     }
 
     fun loadReportDetails(id: UUID) {
         reportDetailsJob?.cancel()
+        _reportUnavailable.value = false
+
         if (_currentReport.value?.id != id) {
             _currentReport.value = null
         }
+
         reportDetailsJob = viewModelScope.launch {
+            var reportFound = false
+
             // Observe Room cache
             launch {
                 try {
                     repository.getReportDetails(id).collect { report ->
-                        _currentReport.value = report?.let {
-                            it.copy(
-                                photo = resolvePhotoUrls(it.photo)
+                        if (report != null) {
+                            reportFound = true
+                            _currentReport.value = report.copy(
+                                photo = resolvePhotoUrls(report.photo)
                             )
                         }
                     }
@@ -246,6 +281,15 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                     _error.value = "Ошибка загрузки отчета: ${e.message ?: "неизвестная"}"
                 }
+                // After network refresh completes, check if the report was found.
+                // Room Flow auto-updates _currentReport if data exists.
+                // Give a brief moment for Room Flow to emit after the write, then check.
+                kotlinx.coroutines.yield()
+                if (_currentReport.value == null || _currentReport.value?.id != id) {
+                    if (!reportFound) {
+                        _reportUnavailable.value = true
+                    }
+                }
             }
         }
     }
@@ -255,15 +299,22 @@ class MainViewModel @Inject constructor(
             return
         }
 
-        val currentUserId = authRepository.currentUser()?.id
-        if (currentUserId == null) return
+        val userId = currentUserId ?: authRepository.currentUser()?.id
+        if (userId == null) return
+        currentUserId = userId
+
         reportsLoadJob?.cancel()
         reportsLoadJob = viewModelScope.launch {
-            _isLoading.value = true
+            if (_reports.value.isEmpty()) {
+                _isInitialLoading.value = true
+            } else {
+                _isRefreshing.value = true
+            }
+
             // Observe Room cache (updates UI on every DB change)
             launch {
                 try {
-                    repository.getHomeReports(userId = currentUserId).collect { reports ->
+                    repository.getHomeReports(userId = userId).collect { reports ->
                         _reports.value = reports.map { report ->
                             report.copy(
                                 photo = resolvePhotoUrls(report.photo)
@@ -278,7 +329,7 @@ class MainViewModel @Inject constructor(
             }
             launch {
                 try {
-                    repository.getFavoriteReports(currentUserId).collect { reports ->
+                    repository.getFavoriteReports(userId).collect { reports ->
                         _favoriteReports.value = reports.map { report ->
                             report.copy(photo = resolvePhotoUrls(report.photo))
                         }
@@ -291,14 +342,15 @@ class MainViewModel @Inject constructor(
             }
             // Refresh from network → saves to Room → Flow auto-updates UI
             try {
-                currentUserId?.let { repository.refreshHomeReports(it) }
+                repository.refreshHomeReports(userId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 e.printStackTrace()
                 _error.value = "Ошибка загрузки: ${e.message ?: "неизвестная"}"
             } finally {
-                _isLoading.value = false
+                _isInitialLoading.value = false
+                _isRefreshing.value = false
             }
         }
     }
