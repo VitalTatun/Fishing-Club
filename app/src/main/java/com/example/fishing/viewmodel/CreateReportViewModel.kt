@@ -61,6 +61,16 @@ class CreateReportViewModel @Inject constructor(
     var formComment by mutableStateOf("")
     var formLocation by mutableStateOf<GeoPoint?>(null)
 
+    init {
+        viewModelScope.launch {
+            authRepository.authState.collect { state ->
+                if (state == com.example.fishing.model.AuthState.Unauthenticated) {
+                    resetFormState()
+                }
+            }
+        }
+    }
+
     val formConfig by derivedStateOf {
         val sections = mutableListOf<ReportFormSection>()
 

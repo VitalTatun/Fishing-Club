@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -103,12 +104,35 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            authRepository.userStatus.collect { user ->
-                if (user != null) {
+            authRepository.authState
+                .filterIsInstance<com.example.fishing.model.AuthState.Authenticated>()
+                .collect { authState ->
                     refresh()
+                }
+        }
+        viewModelScope.launch {
+            authRepository.authState.collect { state ->
+                if (state == com.example.fishing.model.AuthState.Unauthenticated) {
+                    clearUserContent()
                 }
             }
         }
+    }
+
+    private fun clearUserContent() {
+        _reports.value = emptyList()
+        _favoriteReports.value = emptyList()
+        _mapMarkers.value = emptyList()
+        _currentReport.value = null
+        _error.value = null
+        searchQuery = ""
+        searchSelectedDate = null
+        searchIsFavoritesSelected = false
+        searchIsTrophySelected = false
+        searchIsPaidSelected = false
+        searchSelectedCatch = null
+        searchSelectedMethod = null
+        signedPhotoUrlCache.clear()
     }
 
     fun refresh() {
