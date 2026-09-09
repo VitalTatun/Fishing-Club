@@ -2,6 +2,7 @@ package com.example.fishing.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
@@ -26,13 +27,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
+import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 import javax.inject.Inject
+
+enum class CreateReportSaveState {
+    Idle, Saving, Success, Error
+}
 
 @HiltViewModel
 class CreateReportViewModel @Inject constructor(
@@ -61,11 +66,18 @@ class CreateReportViewModel @Inject constructor(
     var formComment by mutableStateOf("")
     var formLocation by mutableStateOf<GeoPoint?>(null)
 
+    var saveState by mutableStateOf(CreateReportSaveState.Idle)
+    var saveErrorMessage by mutableStateOf<String?>(null)
+
+    val isSaving: Boolean
+        get() = saveState == CreateReportSaveState.Saving
+
     init {
         viewModelScope.launch {
             authRepository.authState.collect { state ->
                 if (state == com.example.fishing.model.AuthState.Unauthenticated) {
                     resetFormState()
+                    resetSaveState()
                 }
             }
         }
@@ -78,40 +90,59 @@ class CreateReportViewModel @Inject constructor(
         sections.add(
             ReportFormSection(
                 id = "type",
-                items = listOf(ReportField.CustomField("report_type"))
+                items = listOf(
+                    ReportField.TextInputField(
+                        label = context.getString(R.string.report_name),
+                        value = formTitle,
+                        onValueChange = { formTitle = it },
+                        isRequired = true
+                    ),
+                    ReportField.CustomField("report_type")
+                )
             )
         )
 
         // Date/Time Section
-        sections.add(
-            ReportFormSection(
-                id = "date_time",
-                items = listOf(
-                    ReportField.ListItemField(
-                        fieldId = "date_time",
-                        overline = context.getString(R.string.start),
-                        title = formStartDate.ifEmpty { context.getString(R.string.select_date) },
-                        leadingIcon = Icons.Default.Schedule,
-                        trailingText = formStartTime.ifEmpty { context.getString(R.string.select_time) }
-                    ),
-                    ReportField.ListItemField(
-                        fieldId = "date_time_end",
-                        overline = context.getString(R.string.end),
-                        title = formEndDate.ifEmpty { context.getString(R.string.select_date) },
-                        leadingIcon = Icons.Default.Schedule,
-                        trailingText = formEndTime.ifEmpty { context.getString(R.string.select_time) }
-                    ),
-                    ReportField.ToggleField(
-                        fieldId = "is_public",
-                        title = "Опубликовать",
-                        supportingText = context.getString(R.string.publish_supporting),
-                        leadingIcon = Icons.Default.PublishedWithChanges,
-                        checked = formIsPublic,
-                        onCheckedChange = { formIsPublic = it }
+        val dateTimeItems = mutableListOf<ReportField>(
+            ReportField.ListItemField(
+                fieldId = "date_time",
+                overline = context.getString(R.string.start),
+                title = formStartDate.ifEmpty { context.getString(R.string.select_date) },
+                leadingIcon = Icons.Default.Schedule,
+                trailingText = formStartTime.ifEmpty { context.getString(R.string.select_time) }
+            ),
+            ReportField.ListItemField(
+                fieldId = "date_time_end",
+                overline = context.getString(R.string.end),
+                title = formEndDate.ifEmpty { context.getString(R.string.select_date) },
+                leadingIcon = Icons.Default.Schedule,
+                trailingText = formEndTime.ifEmpty { context.getString(R.string.select_time) }
+            ),
+            ReportField.ToggleField(
+                fieldId = "is_public",
+                title = "Опубликовать",
+                supportingText = context.getString(R.string.publish_supporting),
+                leadingIcon = Icons.Default.PublishedWithChanges,
+                checked = formIsPublic,
+                onCheckedChange = { formIsPublic = it }
+            )
+        )
+        dateTimeErrors().forEach { error ->
+            dateTimeItems.add(
+                ReportField.ErrorField(
+                    text = context.getString(
+                        when (error) {
+                            FishingDateTimeError.START_MISSING -> R.string.error_start_missing
+                            FishingDateTimeError.END_MISSING -> R.string.error_end_missing
+                            FishingDateTimeError.END_NOT_AFTER_START -> R.string.error_end_not_after_start
+                            FishingDateTimeError.START_IN_FUTURE -> R.string.error_start_in_future
+                            FishingDateTimeError.END_IN_FUTURE -> R.string.error_end_in_future
+                        }
                     )
                 )
             )
-        )
+        }
+        sections.add(ReportFormSection(id = "date_time", items = dateTimeItems))
 
         // Photos Section
         sections.add(
@@ -129,7 +160,7 @@ class CreateReportViewModel @Inject constructor(
                 fieldId = "water_body",
                 title = context.getString(R.string.water_body),
                 leadingIcon = Icons.Default.LocationOn,
-                isRequired = !hasLocation
+                isRequired = true
             )
         )
         if (hasLocation) {
@@ -221,15 +252,16 @@ class CreateReportViewModel @Inject constructor(
         get() = formReportType == FishingType.HAUL
 
     val isSaveEnabled: Boolean
-        get() = (
-            formWaterName.isNotBlank() &&
+        get() {
+            if (isSaving) return false
+            val baseValid = formTitle.isNotBlank() &&
+                formWaterName.isNotBlank() &&
                 formLocation != null &&
                 formSelectedMethod != FishingMethod.NONE &&
                 formSelectedBaits.isNotEmpty() &&
                 formSelectedFish.isNotEmpty() &&
-                FishingDateTimeValidator.isValid(fishingStartAt(), fishingEndAt())
-            ).let { baseValid ->
-            if (isTrophy) {
+                FishingDateTimeValidator.isValid(fishingStartAt(), fishingEndAt(), Instant.now())
+            return if (isTrophy) {
                 baseValid &&
                     formSelectedPhotoUris.isNotEmpty() &&
                     formSelectedFish.size == 1
@@ -239,7 +271,8 @@ class CreateReportViewModel @Inject constructor(
         }
 
     val formHasData: Boolean
-        get() = formWaterName.isNotBlank() ||
+        get() = formTitle.isNotBlank() ||
+                formWaterName.isNotBlank() ||
                 formLocation != null ||
                 formSelectedMethod != FishingMethod.NONE ||
                 formSelectedFish.isNotEmpty() ||
@@ -265,21 +298,40 @@ class CreateReportViewModel @Inject constructor(
     }
 
     fun saveReport(onSuccess: () -> Unit) {
-        viewModelScope.launch {
-            val currentUser = authRepository.currentUser()
+        if (saveState == CreateReportSaveState.Saving) {
+            Log.w(TAG, "saveReport ignored: save already in progress")
+            return
+        }
 
-            // Photo processing
+        val currentUser = authRepository.currentUser()
+        if (currentUser == null) {
+            Log.e(TAG, "saveReport aborted: no authenticated user")
+            saveState = CreateReportSaveState.Error
+            saveErrorMessage = context.getString(R.string.error_no_auth_session)
+            return
+        }
+
+        saveState = CreateReportSaveState.Saving
+        saveErrorMessage = null
+
+        viewModelScope.launch {
             val internalPhotos = formSelectedPhotoUris.mapNotNull { uri ->
                 PhotoUtils.copyPhotoToInternalStorage(context.contentResolver, context.filesDir, uri)
+            }
+            if (formSelectedPhotoUris.isNotEmpty() && internalPhotos.isEmpty()) {
+                Log.e(TAG, "saveReport failed: none of the selected photos could be processed")
+                saveState = CreateReportSaveState.Error
+                saveErrorMessage = context.getString(R.string.error_photo_processing_failed)
+                return@launch
             }
 
             val startAt = combineStart()
             val endAt = combineEnd()
 
             val report = FishingReport(
-                userId = currentUser?.id ?: UUID.randomUUID(),
+                userId = currentUser.id,
                 type = formReportType,
-                name = formTitle,
+                name = formTitle.trim(),
                 water = Water(
                     waterName = formWaterName,
                     latitude = formLocation?.latitude ?: 0.0,
@@ -297,14 +349,39 @@ class CreateReportViewModel @Inject constructor(
                 fishingMethod = formSelectedMethod,
                 bait = formSelectedBaits,
                 comment = formComment,
-                user = currentUser ?: User(name = "", email = "", image = ""),
+                user = currentUser,
                 fishingFromTheShore = formFishingFromShore,
                 isPublic = formIsPublic
             )
-            repository.saveReport(report)
-            resetFormState()
-            onSuccess()
+
+            val result = try {
+                repository.saveReport(report)
+            } catch (e: Exception) {
+                Log.e(TAG, "saveReport failed", e)
+                Result.failure(e)
+            } finally {
+                internalPhotos.forEach { path ->
+                    runCatching { File(path).delete() }
+                }
+            }
+
+            result
+                .onSuccess {
+                    saveState = CreateReportSaveState.Success
+                    onSuccess()
+                    resetFormState()
+                }
+                .onFailure { e ->
+                    Log.e(TAG, "saveReport failed: ${e.message}", e)
+                    saveState = CreateReportSaveState.Error
+                    saveErrorMessage = context.getString(R.string.error_save_report)
+                }
         }
+    }
+
+    fun resetSaveState() {
+        saveState = CreateReportSaveState.Idle
+        saveErrorMessage = null
     }
 
     fun resetFormState() {
@@ -356,5 +433,9 @@ class CreateReportViewModel @Inject constructor(
         } catch (_: Exception) {
             null
         }
+    }
+
+    companion object {
+        private const val TAG = "CreateReportVM"
     }
 }

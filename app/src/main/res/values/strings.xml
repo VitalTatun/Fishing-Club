@@ -176,4 +176,16 @@
     <string name="fish_perch">Окунь</string>
     <string name="fish_white_bream">Подлещик</string>
     <string name="fish_ide">Язь</string>
+
+    <!-- Создание отчета -->
+    <string name="report_name">Название отчёта</string>
+    <string name="error_save_report">Не удалось сохранить отчёт. Попробуйте ещё раз.</string>
+    <string name="error_no_auth_session">Сессия истекла. Войдите в аккаунт ещё раз.</string>
+    <string name="error_photo_processing_failed">Не удалось обработать фотографии. Попробуйте выбрать другие.</string>
+    <string name="error_start_missing">Укажите дату и время начала рыбалки</string>
+    <string name="error_end_missing">Укажите дату и время окончания рыбалки</string>
+    <string name="error_end_not_after_start">Окончание не может быть раньше начала</string>
+    <string name="error_start_in_future">Начало рыбалки не может быть в будущем</string>
+    <string name="error_end_in_future">Окончание рыбалки не может быть в будущем</string>
+    <string name="saving">Сохранение</string>
 </resources>

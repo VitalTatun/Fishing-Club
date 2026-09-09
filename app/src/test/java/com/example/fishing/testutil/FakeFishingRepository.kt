@@ -41,6 +41,10 @@ class FakeFishingRepository : FishingRepository {
     var removeFavoriteCallCount = 0
     var deleteReportCallCount = 0
 
+    var saveReportCallCount = 0
+    var saveReportException: Exception? = null
+    val savedReports = mutableListOf<FishingReport>()
+
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = _homeReports.asStateFlow()
 
     override fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>> = _favoriteReports.asStateFlow()
@@ -65,8 +69,12 @@ class FakeFishingRepository : FishingRepository {
         _favoriteReports.value = _favoriteReports.value.filterNot { it.id == reportId }
     }
 
-    override suspend fun saveReport(report: FishingReport) {
+    override suspend fun saveReport(report: FishingReport): Result<Unit> {
+        saveReportCallCount++
+        saveReportException?.let { return Result.failure(it) }
+        savedReports.add(report)
         _homeReports.value = listOf(report) + _homeReports.value
+        return Result.success(Unit)
     }
 
     override suspend fun deleteReport(id: UUID) {

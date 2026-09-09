@@ -176,28 +176,22 @@ class SupabaseFishingRepository @Inject constructor(
         }
     }
 
-    override suspend fun saveReport(report: FishingReport) {
-        try {
+    override suspend fun saveReport(report: FishingReport): Result<Unit> {
+        return try {
             val now = formatDate(Date())
             supabase.postgrest["fishing"].insert(report.toFishingDto(now))
 
-            val storagePaths = report.photo.mapIndexed { index, localPath ->
+            val storagePaths = report.photo.map { localPath ->
                 val ext = File(localPath).extension.ifEmpty { "jpg" }
                 val storagePath = "${report.userId}/${report.id}/${UUID.randomUUID()}.$ext"
-                try {
-                    val file = File(localPath)
-                    if (file.exists()) {
-                        supabase.storage.from("fishing_photos").upload(storagePath, file.readBytes()) {
-                            upsert = true
-                        }
-                        storagePath
-                    } else {
-                        localPath
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    localPath
+                val file = File(localPath)
+                if (!file.exists()) {
+                    throw IllegalStateException("Photo file not found: $localPath")
                 }
+                supabase.storage.from("fishing_photos").upload(storagePath, file.readBytes()) {
+                    upsert = true
+                }
+                storagePath
             }
 
             supabase.postgrest["fishing_fish"].insert(report.fish.map { it.toFishDto(report.id) })
@@ -211,8 +205,9 @@ class SupabaseFishingRepository @Inject constructor(
                     )
                 }
             )
+            Result.success(Unit)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Result.failure(e)
         }
     }
 
