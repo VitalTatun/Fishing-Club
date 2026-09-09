@@ -26,8 +26,15 @@
     <string name="fishing_journal">Fishing Journal</string>
     <string name="email">Email</string>
     <string name="password">Пароль</string>
+    <string name="name">Имя</string>
+    <string name="confirm_password">Повторите пароль</string>
     <string name="login">Войти</string>
     <string name="create_account">Создать аккаунт</string>
+    <string name="registration">Регистрация</string>
+    <string name="register_button">Зарегистрироваться</string>
+    <string name="require_confirmation_title">Подтвердите email</string>
+    <string name="require_confirmation_message">Мы отправили письмо на %1$s. Перейдите по ссылке в письме, чтобы подтвердить email. После подтверждения вы сможете войти в приложение.</string>
+    <string name="go_to_login">Перейти ко входу</string>
 
     <!-- Навигация -->
     <string name="tab_home">Главная</string>

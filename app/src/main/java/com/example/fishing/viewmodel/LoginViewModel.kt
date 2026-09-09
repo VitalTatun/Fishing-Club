@@ -5,7 +5,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fishing.data.AuthErrorMapper
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.EmailValidator
+import com.example.fishing.model.AuthState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,52 +30,34 @@ class LoginViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _isAuthenticated = MutableStateFlow(false)
-    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
-
     fun login() {
-        if (email.isBlank() || password.isBlank()) {
-            _error.value = "Заполните все поля"
+        val validationError = validate()
+        if (validationError != null) {
+            _error.value = validationError
             return
         }
+
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             val result = authRepository.login(email.trim(), password)
             result.fold(
                 onSuccess = {
-                    _isAuthenticated.value = true
+                    _error.value = null
                 },
                 onFailure = { e ->
-                    _error.value = userFriendlyError(e)
+                    _error.value = AuthErrorMapper.toUserFriendlyMessage(e)
                 }
             )
             _isLoading.value = false
         }
     }
 
-    private fun userFriendlyError(e: Throwable): String {
-        val msg = e.message ?: ""
-        return when {
-            msg.contains("Invalid login credentials", ignoreCase = true) ||
-            msg.contains("Email not confirmed", ignoreCase = true) ||
-            msg.contains("Invalid email or password", ignoreCase = true) ->
-                "Неверный email или пароль"
-            msg.contains("User already registered", ignoreCase = true) ->
-                "Этот email уже зарегистрирован"
-            msg.contains("Password should be at least", ignoreCase = true) ->
-                "Пароль должен быть минимум 6 символов"
-            msg.contains("rate limit", ignoreCase = true) ||
-            msg.contains("429", ignoreCase = true) ->
-                "Слишком много попыток. Попробуйте позже"
-            msg.contains("timeout", ignoreCase = true) ||
-            msg.contains("Unable to resolve host", ignoreCase = true) ||
-            msg.contains("Network is unreachable", ignoreCase = true) ->
-                "Нет соединения с интернетом"
-            msg.contains("Email link is invalid or expired", ignoreCase = true) ->
-                "Ссылка устарела"
-            else -> e.message ?: "Неизвестная ошибка"
-        }
+    private fun validate(): String? {
+        if (email.isBlank()) return "Введите email"
+        if (!EmailValidator.isValid(email)) return "Некорректный формат email"
+        if (password.isBlank()) return "Введите пароль"
+        return null
     }
 
     fun clearError() {

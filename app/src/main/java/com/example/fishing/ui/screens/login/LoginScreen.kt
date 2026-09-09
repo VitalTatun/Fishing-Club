@@ -9,23 +9,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -41,22 +37,15 @@ import com.example.fishing.ui.screens.report.create.CreateReportColors
 
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.LoginViewModel
 
 @Composable
 fun LoginScreen(
-    viewModel: com.example.fishing.viewmodel.LoginViewModel,
-    onAuthenticated: () -> Unit,
+    viewModel: LoginViewModel,
     onNavigateToRegistration: () -> Unit
 ) {
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-    val isAuthenticated by viewModel.isAuthenticated.collectAsState()
-
-    LaunchedEffect(isAuthenticated) {
-        if (isAuthenticated) {
-            onAuthenticated()
-        }
-    }
 
     LoginContent(
         email = viewModel.email,
@@ -119,6 +108,11 @@ fun LoginContent(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 isError = error != null,
+                supportingText = {
+                    if (error != null) {
+                        Text(text = error)
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next
@@ -134,11 +128,6 @@ fun LoginContent(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 isError = error != null,
-                supportingText = {
-                    if (error != null) {
-                        Text(text = error)
-                    }
-                },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,

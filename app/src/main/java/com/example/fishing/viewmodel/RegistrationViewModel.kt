@@ -5,13 +5,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fishing.data.AuthErrorMapper
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.EmailValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface RegistrationResult {
+    data object Idle : RegistrationResult
+    data object Loading : RegistrationResult
+    data object NeedsEmailConfirmation : RegistrationResult
+    data object Success : RegistrationResult
+    data class Error(val message: String) : RegistrationResult
+}
 
 @HiltViewModel
 class RegistrationViewModel @Inject constructor(
@@ -21,56 +31,55 @@ class RegistrationViewModel @Inject constructor(
     var name by mutableStateOf("")
     var email by mutableStateOf("")
     var password by mutableStateOf("")
+    var confirmPassword by mutableStateOf("")
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val _result = MutableStateFlow<RegistrationResult>(RegistrationResult.Idle)
+    val result: StateFlow<RegistrationResult> = _result.asStateFlow()
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _isRegistered = MutableStateFlow(false)
-    val isRegistered: StateFlow<Boolean> = _isRegistered.asStateFlow()
+    val isLoading: Boolean
+        get() = _result.value is RegistrationResult.Loading
 
     fun register() {
-        if (name.isBlank() || email.isBlank() || password.isBlank()) {
-            _error.value = "Заполните все поля"
+        val validationError = validate()
+        if (validationError != null) {
+            _result.value = RegistrationResult.Error(validationError)
             return
         }
+
         viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
+            _result.value = RegistrationResult.Loading
             val result = authRepository.register(email.trim(), password, name.trim())
             result.fold(
-                onSuccess = {
-                    _isRegistered.value = true
+                onSuccess = { user ->
+                    val hasSession = authRepository.currentUser() != null
+                    _result.value = if (hasSession) {
+                        RegistrationResult.Success
+                    } else {
+                        RegistrationResult.NeedsEmailConfirmation
+                    }
                 },
                 onFailure = { e ->
-                    _error.value = userFriendlyError(e)
+                    _result.value = RegistrationResult.Error(
+                        AuthErrorMapper.toUserFriendlyMessage(e)
+                    )
                 }
             )
-            _isLoading.value = false
         }
     }
 
-    private fun userFriendlyError(e: Throwable): String {
-        val msg = e.message ?: ""
-        return when {
-            msg.contains("User already registered", ignoreCase = true) ->
-                "Этот email уже зарегистрирован"
-            msg.contains("Password should be at least", ignoreCase = true) ->
-                "Пароль должен быть минимум 6 символов"
-            msg.contains("rate limit", ignoreCase = true) ||
-            msg.contains("429", ignoreCase = true) ->
-                "Слишком много попыток. Попробуйте позже"
-            msg.contains("timeout", ignoreCase = true) ||
-            msg.contains("Unable to resolve host", ignoreCase = true) ||
-            msg.contains("Network is unreachable", ignoreCase = true) ->
-                "Нет соединения с интернетом"
-            else -> e.message ?: "Неизвестная ошибка"
-        }
+    private fun validate(): String? {
+        if (name.isBlank()) return "Введите имя"
+        if (email.isBlank()) return "Введите email"
+        if (!EmailValidator.isValid(email)) return "Некорректный формат email"
+        if (password.isBlank()) return "Введите пароль"
+        if (password.length < 6) return "Пароль должен быть минимум 6 символов"
+        if (password != confirmPassword) return "Пароли не совпадают"
+        return null
     }
 
     fun clearError() {
-        _error.value = null
+        if (_result.value is RegistrationResult.Error) {
+            _result.value = RegistrationResult.Idle
+        }
     }
 }

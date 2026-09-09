@@ -51,6 +51,8 @@ import androidx.compose.material3.rememberTimePickerState
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.MockFishingRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 
 
@@ -273,14 +275,13 @@ private fun CreateReportScreenPreview() {
             CreateReportViewModel(
                 repository = MockFishingRepository(),
                 authRepository = object : AuthRepository {
+                    override val authState: StateFlow<AuthState> = MutableStateFlow(AuthState.Unauthenticated)
                     override suspend fun login(email: String, password: String) = Result.failure<User>(Exception("mock"))
                     override suspend fun register(email: String, password: String, name: String) = Result.failure<User>(Exception("mock"))
                     override suspend fun logout() {}
                     override fun currentUser(): User? = null
-                    override fun isLoggedIn() = false
                     override suspend fun loadSession() {}
                     override suspend fun updateProfile(name: String, imageUri: String?): Result<User> = Result.failure(Exception("mock"))
-                    override val userStatus: Flow<User?> = flowOf(null)
                     override fun resolveImageUrl(path: String): String = ""
                 },
                 context = context

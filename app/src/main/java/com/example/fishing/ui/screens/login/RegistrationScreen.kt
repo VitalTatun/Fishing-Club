@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -42,36 +40,42 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.ui.screens.report.create.CreateReportColors
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.RegistrationResult
 import com.example.fishing.viewmodel.RegistrationViewModel
 
 @Composable
 fun RegistrationScreen(
     viewModel: RegistrationViewModel,
     onBackClick: () -> Unit,
-    onRegistered: () -> Unit
+    onConfirmedLogin: () -> Unit
 ) {
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val isRegistered by viewModel.isRegistered.collectAsState()
+    val result by viewModel.result.collectAsState()
 
-    LaunchedEffect(isRegistered) {
-        if (isRegistered) {
-            onRegistered()
+    when (val current = result) {
+        is RegistrationResult.NeedsEmailConfirmation -> {
+            RegistrationConfirmationContent(
+                email = viewModel.email,
+                onBackClick = onBackClick,
+                onGoToLogin = onConfirmedLogin
+            )
+        }
+        else -> {
+            RegistrationContent(
+                name = viewModel.name,
+                email = viewModel.email,
+                password = viewModel.password,
+                confirmPassword = viewModel.confirmPassword,
+                isLoading = current is RegistrationResult.Loading,
+                error = (current as? RegistrationResult.Error)?.message,
+                onNameChange = { viewModel.name = it },
+                onEmailChange = { viewModel.email = it },
+                onPasswordChange = { viewModel.password = it },
+                onConfirmPasswordChange = { viewModel.confirmPassword = it },
+                onRegisterClick = { viewModel.register() },
+                onBackClick = onBackClick
+            )
         }
     }
-
-    RegistrationContent(
-        name = viewModel.name,
-        email = viewModel.email,
-        password = viewModel.password,
-        isLoading = isLoading,
-        error = error,
-        onNameChange = { viewModel.name = it },
-        onEmailChange = { viewModel.email = it },
-        onPasswordChange = { viewModel.password = it },
-        onRegisterClick = { viewModel.register() },
-        onBackClick = onBackClick
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,18 +84,20 @@ fun RegistrationContent(
     name: String,
     email: String,
     password: String,
+    confirmPassword: String,
     isLoading: Boolean,
     error: String?,
     onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
     onRegisterClick: () -> Unit,
     onBackClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Регистрация") },
+                title = { Text(stringResource(R.string.registration)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -118,12 +124,12 @@ fun RegistrationContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
                 value = name,
                 onValueChange = onNameChange,
-                label = { Text("Имя") },
+                label = { Text(stringResource(R.string.name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 isError = error != null,
@@ -157,6 +163,22 @@ fun RegistrationContent(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 isError = error != null,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Next
+                ),
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = onConfirmPasswordChange,
+                label = { Text(stringResource(R.string.confirm_password)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                isError = error != null,
                 supportingText = {
                     if (error != null) {
                         Text(text = error)
@@ -177,7 +199,6 @@ fun RegistrationContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(4.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = CreateReportColors.OnSurface
                 )
@@ -189,11 +210,80 @@ fun RegistrationContent(
                     )
                 } else {
                     Text(
-                        text = "Зарегистрироваться",
+                        text = stringResource(R.string.register_button),
                         style = MaterialTheme.typography.labelLarge,
                         color = CreateReportColors.Surface
                     )
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RegistrationConfirmationContent(
+    email: String,
+    onBackClick: () -> Unit,
+    onGoToLogin: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.registration)) },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = CreateReportColors.ScreenBackground,
+                    titleContentColor = CreateReportColors.OnSurface,
+                    navigationIconContentColor = CreateReportColors.OnSurface
+                )
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CreateReportColors.ScreenBackground)
+                .padding(padding)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = stringResource(R.string.require_confirmation_title),
+                style = MaterialTheme.typography.headlineSmall,
+                color = CreateReportColors.OnSurface,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = stringResource(R.string.require_confirmation_message, email),
+                style = MaterialTheme.typography.bodyLarge,
+                color = CreateReportColors.OnSurface,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = onGoToLogin,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.go_to_login),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     }
@@ -207,13 +297,27 @@ private fun RegistrationScreenPreview() {
             name = "Иван",
             email = "test@example.com",
             password = "password",
+            confirmPassword = "password",
             isLoading = false,
             error = null,
             onNameChange = {},
             onEmailChange = {},
             onPasswordChange = {},
+            onConfirmPasswordChange = {},
             onRegisterClick = {},
             onBackClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RegistrationConfirmationPreview() {
+    FishingTheme {
+        RegistrationConfirmationContent(
+            email = "test@example.com",
+            onBackClick = {},
+            onGoToLogin = {}
         )
     }
 }
