@@ -450,8 +450,6 @@ class MainViewModel @Inject constructor(
             repository.deleteReport(id)
                 .onSuccess {
                     _deletedReportId.value = id
-                    loadReports(force = true)
-                    loadMapMarkers(force = true)
                 }
                 .onFailure { e ->
                     _deleteReportError.value = "Не удалось удалить отчет: ${e.message ?: "неизвестная ошибка"}"

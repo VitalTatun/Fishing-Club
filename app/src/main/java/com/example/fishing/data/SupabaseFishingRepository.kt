@@ -289,34 +289,48 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {
         return try {
-            // Storage paths MUST be read before deleting fishing: ON DELETE CASCADE
-            // removes fishing_photos rows, making the paths unrecoverable afterwards.
-            val storagePaths = supabase.postgrest["fishing_photos"].select {
-                filter { eq("fishing_id", id) }
-            }.decodeList<PhotoDto>().map { it.storagePath }
-
-            // Delete the report — CASCADE removes fishing_fish, fishing_baits,
-            // fishing_photos and favorites in Supabase. RLS keeps this restricted
-            // to the report owner.
-            supabase.postgrest["fishing"].delete {
-                filter { eq("id", id) }
+            // 1. Fetch storage paths before deleting the report.
+            // ON DELETE CASCADE would remove these records, making paths unrecoverable.
+            val storagePaths = try {
+                supabase.postgrest["fishing_photos"].select {
+                    filter { eq("fishing_id", id) }
+                }.decodeList<PhotoDto>().map { it.storagePath }
+            } catch (e: Exception) {
+                // If we can't even fetch paths, we can't proceed with safe cleanup.
+                return Result.failure(e)
             }
 
-            // Clean the local Room cache immediately so flows update the UI.
-            reportDetailsDao.deleteById(id)
-            markerDao.deleteById(id)
-            favoriteReportDao.deleteByReportId(id)
-
-            // Best-effort Storage cleanup after a successful DB delete: a cleanup
-            // failure must not turn an already-successful deletion into a user-visible
-            // failure.
+            // 2. Delete Storage objects BEFORE deleting DB record.
+            // If this fails (e.g. network), we don't delete the DB, allowing retry.
             if (storagePaths.isNotEmpty()) {
                 try {
                     supabase.storage.from("fishing_photos").delete(storagePaths)
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    // Suppress "404 Not Found" or similar errors that indicate files are already gone.
+                    // If it's a real network/auth error, let it throw to stop the flow.
+                    val errorBody = e.message ?: ""
+                    val isNotFoundError = errorBody.contains("not found", ignoreCase = true) ||
+                            errorBody.contains("404")
+
+                    if (!isNotFoundError) {
+                        return Result.failure(e)
+                    }
                 }
             }
+
+            // 3. Delete the report from Supabase DB.
+            // CASCADE removes fishing_fish, fishing_baits, fishing_photos, and favorites.
+            supabase.postgrest["fishing"].delete {
+                filter { eq("id", id) }
+            }
+
+            // 4. Clean local Room cache in a single transaction.
+            database.withTransaction {
+                reportDetailsDao.deleteById(id)
+                markerDao.deleteById(id)
+                favoriteReportDao.deleteByReportId(id)
+            }
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
