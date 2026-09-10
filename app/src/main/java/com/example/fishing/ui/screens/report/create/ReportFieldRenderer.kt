@@ -183,11 +183,11 @@ internal fun ReportFieldRenderer(
                 modifier = Modifier.clickable { onPhotoPickerClick() }
             )
 
-            if (viewModel.formSelectedPhotoUris.isNotEmpty()) {
+            if (viewModel.formPhotos.isNotEmpty()) {
                 ReportPhotosList(
-                    selectedPhotoUris = viewModel.formSelectedPhotoUris,
-                    onRemoveClick = { uri ->
-                        viewModel.formSelectedPhotoUris -= uri
+                    selectedPhotos = viewModel.formPhotos,
+                    onRemoveClick = { photo ->
+                        viewModel.formPhotos = viewModel.formPhotos - photo
                     }
                 )
             }

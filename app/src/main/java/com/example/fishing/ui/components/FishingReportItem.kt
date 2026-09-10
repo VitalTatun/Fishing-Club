@@ -104,8 +104,8 @@ fun FishingReportItem(
                 )
             }
         }
-        if (report.photo.isNotEmpty()) {
-            FishingReportPhotos(photos = report.photo)
+        if (report.photos.isNotEmpty()) {
+            FishingReportPhotos(photos = report.photos)
         }
     }
 }
@@ -276,7 +276,7 @@ private fun FishingReportDetails(
 
 @Composable
 private fun FishingReportPhotos(
-    photos: List<String>,
+    photos: List<FishingPhoto>,
 ) {
     val pagerState = rememberPagerState { photos.size }
 
@@ -291,7 +291,7 @@ private fun FishingReportPhotos(
             pageSpacing = 8.dp
         ) { index ->
             AsyncImage(
-                model = photos[index],
+                model = photos[index].url,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
@@ -332,18 +332,19 @@ fun FishingReportItemPreview() {
     }
     val sampleUserId = UUID.randomUUID()
     val sampleReport = FishingReport(
+        id = UUID.randomUUID(),
         userId = sampleUserId,
         type = FishingType.HAUL,
         name = "Смеркалось...",
         water = sampleWater,
-        photo = listOf(
-            "https://picsum.photos/800/400?random=1",
-            "https://picsum.photos/800/400?random=2"
+        photos = listOf(
+            FishingPhoto(url = "https://picsum.photos/800/400?random=1"),
+            FishingPhoto(url = "https://picsum.photos/800/400?random=2")
         ),
         fishingStartAt = calendar.time.toInstant(),
         fishingEndAt = calendar.time.toInstant().plusSeconds(3600 * 3),
         weight = 2.5,
-        fish = listOf(Fish(name = "Окунь", count = 5)),
+        fish = listOf(Fish(id = UUID.randomUUID(), name = "Окунь", count = 5)),
         fishingMethod = FishingMethod.SPINNING,
         bait = listOf(Bait.WOBBLER),
         comment = "Прекрасное утро. В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб!",

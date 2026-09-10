@@ -9,7 +9,7 @@ import java.util.Locale
 import java.util.UUID
 
 data class FishingReport(
-    val id: UUID = UUID.randomUUID(),
+    val id: UUID,
     val userId: UUID,
     var publishedAt: Date? = null,
     var type: FishingType,
@@ -17,7 +17,7 @@ data class FishingReport(
     var water: Water,
     var spotLat: Double? = null,
     var spotLng: Double? = null,
-    var photo: List<String>,
+    var photos: List<FishingPhoto>,
     var fishingStartAt: Instant? = null,
     var fishingEndAt: Instant? = null,
     var weight: Double,

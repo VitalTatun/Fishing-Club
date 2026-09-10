@@ -33,11 +33,17 @@ import java.time.Instant
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 enum class CreateReportSaveState {
     Idle, Saving, Success, Error
 }
+
+data class ReportPhoto(
+    val id: UUID = UUID.randomUUID(),
+    val uri: Uri
+)
 
 @HiltViewModel
 class CreateReportViewModel @Inject constructor(
@@ -46,10 +52,12 @@ class CreateReportViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
 
+    private var currentReportId: UUID = UUID.randomUUID()
+
     // Form state
     var formReportType by mutableStateOf(FishingType.FISHING_LOG)
     var formWaterName by mutableStateOf("")
-    var formSelectedPhotoUris by mutableStateOf<List<Uri>>(emptyList())
+    var formPhotos by mutableStateOf<List<ReportPhoto>>(emptyList())
     var formStartDate by mutableStateOf("")
     var formStartTime by mutableStateOf("")
     var formEndDate by mutableStateOf("")
@@ -139,7 +147,7 @@ class CreateReportViewModel @Inject constructor(
         sections.add(
             ReportFormSection(
                 id = "photos",
-                items = listOf(ReportField.PhotoPicker(isRequired = isTrophy && formSelectedPhotoUris.isEmpty()))
+                items = listOf(ReportField.PhotoPicker(isRequired = isTrophy && formPhotos.isEmpty()))
             )
         )
 
@@ -252,7 +260,7 @@ class CreateReportViewModel @Inject constructor(
                 FishingDateTimeValidator.isValid(fishingStartAt(), fishingEndAt(), Instant.now())
             return if (isTrophy) {
                 baseValid &&
-                    formSelectedPhotoUris.isNotEmpty() &&
+                    formPhotos.isNotEmpty() &&
                     formSelectedFish.size == 1
             } else {
                 baseValid
@@ -265,7 +273,7 @@ class CreateReportViewModel @Inject constructor(
                 formSelectedMethod != FishingMethod.NONE ||
                 formSelectedFish.isNotEmpty() ||
                 formSelectedBaits.isNotEmpty() ||
-                formSelectedPhotoUris.isNotEmpty() ||
+                formPhotos.isNotEmpty() ||
                 formComment.isNotBlank() ||
                 formWeight > 0f ||
                 formStartDate.isNotBlank() ||
@@ -303,10 +311,16 @@ class CreateReportViewModel @Inject constructor(
         saveErrorMessage = null
 
         viewModelScope.launch {
-            val internalPhotos = formSelectedPhotoUris.mapNotNull { uri ->
-                PhotoUtils.copyPhotoToInternalStorage(context.contentResolver, context.filesDir, uri)
+            val photoProcessingResults = formPhotos.map { reportPhoto ->
+                val internalPath = PhotoUtils.copyPhotoToInternalStorage(
+                    context.contentResolver,
+                    context.filesDir,
+                    reportPhoto.uri
+                )
+                reportPhoto.id to internalPath
             }
-            if (formSelectedPhotoUris.isNotEmpty() && internalPhotos.isEmpty()) {
+
+            if (formPhotos.isNotEmpty() && photoProcessingResults.all { it.second == null }) {
                 Log.e(TAG, "saveReport failed: none of the selected photos could be processed")
                 saveState = CreateReportSaveState.Error
                 saveErrorMessage = context.getString(R.string.error_photo_processing_failed)
@@ -316,7 +330,12 @@ class CreateReportViewModel @Inject constructor(
             val startAt = combineStart()
             val endAt = combineEnd()
 
+            val fishingPhotos = photoProcessingResults.mapNotNull { (id, path) ->
+                path?.let { FishingPhoto(id = id, url = it) }
+            }
+
             val report = FishingReport(
+                id = currentReportId,
                 userId = currentUser.id,
                 type = formReportType,
                 name = buildReportName(),
@@ -328,7 +347,7 @@ class CreateReportViewModel @Inject constructor(
                 ),
                 spotLat = formLocation?.latitude,
                 spotLng = formLocation?.longitude,
-                photo = internalPhotos,
+                photos = fishingPhotos,
                 fishingStartAt = startAt,
                 fishingEndAt = endAt,
                 createdAt = Date(),
@@ -348,8 +367,8 @@ class CreateReportViewModel @Inject constructor(
                 Log.e(TAG, "saveReport failed", e)
                 Result.failure(e)
             } finally {
-                internalPhotos.forEach { path ->
-                    runCatching { File(path).delete() }
+                fishingPhotos.forEach { photo ->
+                    runCatching { File(photo.url).delete() }
                 }
             }
 
@@ -373,9 +392,10 @@ class CreateReportViewModel @Inject constructor(
     }
 
     fun resetFormState() {
+        currentReportId = UUID.randomUUID()
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
-        formSelectedPhotoUris = emptyList()
+        formPhotos = emptyList()
         formStartDate = ""
         formStartTime = ""
         formEndDate = ""

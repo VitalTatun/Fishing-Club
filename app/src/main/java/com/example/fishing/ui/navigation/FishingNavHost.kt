@@ -37,6 +37,8 @@ import com.example.fishing.data.AuthRepository
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 import java.util.*
+import android.net.Uri
+import com.example.fishing.viewmodel.ReportPhoto
 
 @Composable
 fun FishingNavHost(
@@ -219,6 +221,11 @@ fun FishingNavHost(
                 }
                 currentEntry.savedStateHandle.get<GeoPoint>("location")?.let {
                     createReportViewModel.formLocation = it
+                }
+                currentEntry.savedStateHandle.get<List<Uri>>("photos")?.let { uris ->
+                    createReportViewModel.formPhotos = uris.map { uri ->
+                        createReportViewModel.formPhotos.find { it.uri == uri } ?: ReportPhoto(uri = uri)
+                    }
                 }
 
                 CreateReportScreen(
@@ -486,7 +493,7 @@ fun FishingNavHost(
                 val report = (reportDetailState as? ReportDetailUiState.Success)?.report
                 if (report != null && report.id == reportId) {
                     FullScreenPhotoScreen(
-                        photos = report.photo,
+                        photos = report.photos.map { it.url },
                         initialPage = index,
                         onBackClick = { navController.popBackStack() }
                     )

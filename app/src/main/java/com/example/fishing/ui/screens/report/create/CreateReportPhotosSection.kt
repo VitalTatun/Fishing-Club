@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -29,12 +29,14 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.fishing.R
 
+import com.example.fishing.viewmodel.ReportPhoto
+
 internal const val MaxPhotos = 6
 
 @Composable
 internal fun ReportPhotosList(
-    selectedPhotoUris: List<Uri>,
-    onRemoveClick: (Uri) -> Unit,
+    selectedPhotos: List<ReportPhoto>,
+    onRemoveClick: (ReportPhoto) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyRow(
@@ -44,10 +46,10 @@ internal fun ReportPhotosList(
         contentPadding = PaddingValues(start = 64.dp, end = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        itemsIndexed(items = selectedPhotoUris, key = { index, _ -> index }) { _, photoUri ->
+        items(items = selectedPhotos, key = { it.id }) { photo ->
             PhotoTile(
-                photoUri = photoUri,
-                onRemoveClick = { onRemoveClick(photoUri) },
+                photoUri = photo.uri,
+                onRemoveClick = { onRemoveClick(photo) },
                 modifier = Modifier
                     .width(120.dp)
                     .aspectRatio(1f)

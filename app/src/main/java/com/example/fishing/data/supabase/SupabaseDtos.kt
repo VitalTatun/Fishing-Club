@@ -42,7 +42,7 @@ data class FishingDto(
 
 @Serializable
 data class FishDto(
-    @Serializable(with = UuidSerializer::class) val id: UUID = UUID.randomUUID(),
+    @Serializable(with = UuidSerializer::class) val id: UUID,
     @Serializable(with = UuidSerializer::class) @SerialName("fishing_id") val fishingId: UUID,
     val name: String,
     val count: Int = 0
@@ -56,7 +56,7 @@ data class BaitDto(
 
 @Serializable
 data class PhotoDto(
-    @Serializable(with = UuidSerializer::class) val id: UUID = UUID.randomUUID(),
+    @Serializable(with = UuidSerializer::class) val id: UUID,
     @Serializable(with = UuidSerializer::class) @SerialName("fishing_id") val fishingId: UUID,
     @SerialName("storage_path") val storagePath: String,
     @SerialName("sort_order") val sortOrder: Int? = 0,

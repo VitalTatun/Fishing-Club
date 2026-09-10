@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.viewmodel.CreateReportViewModel
+import com.example.fishing.viewmodel.ReportPhoto
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -114,10 +115,11 @@ fun CreateReportScreen(
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
     ) { uris ->
-        val currentUris = viewModel.formSelectedPhotoUris
-        val availableSlots = MaxPhotos - currentUris.size
+        val currentPhotos = viewModel.formPhotos
+        val currentUris = currentPhotos.map { it.uri }
+        val availableSlots = MaxPhotos - currentPhotos.size
         val newUris = uris.take(availableSlots).filter { it !in currentUris }
-        viewModel.formSelectedPhotoUris = currentUris + newUris
+        viewModel.formPhotos = currentPhotos + newUris.map { ReportPhoto(uri = it) }
     }
 
     val handleBack = {
@@ -267,7 +269,7 @@ fun CreateReportScreen(
                                 showTimePicker = true
                             },
                             onPhotoPickerClick = {
-                                if (viewModel.formSelectedPhotoUris.size < MaxPhotos) {
+                                if (viewModel.formPhotos.size < MaxPhotos) {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     photoPicker.launch(
                                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)

@@ -133,11 +133,12 @@ class FishingDateTimeValidatorTest {
 
     private fun makeReport(startAt: Instant?, endAt: Instant?): FishingReport {
         return FishingReport(
+            id = UUID.randomUUID(),
             userId = UUID.randomUUID(),
             type = FishingType.FISHING_LOG,
             name = "Test",
             water = Water(waterName = "Test", latitude = 0.0, longitude = 0.0),
-            photo = emptyList(),
+            photos = emptyList(),
             fishingStartAt = startAt,
             fishingEndAt = endAt,
             weight = 0.0,

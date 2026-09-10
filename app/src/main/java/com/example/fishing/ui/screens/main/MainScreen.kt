@@ -308,7 +308,7 @@ fun MainScreen(
                                     latitude = marker.waterLat,
                                     longitude = marker.waterLng
                                 ),
-                                photo = emptyList(),
+                                photos = emptyList(),
                                 fishingStartAt = marker.fishingStartAt,
                                 weight = 0.0,
                                 fish = emptyList(),
@@ -352,15 +352,16 @@ fun MainScreenPreview() {
 
         val sampleReports = listOf(
             FishingReport(
+                id = UUID.randomUUID(),
                 userId = UUID.randomUUID(),
                 type = FishingType.FISHING_LOG,
                 name = "Смеркалось...",
                 water = Water(waterName = "Водохранилище Крылово", latitude = 0.0, longitude = 0.0),
-                photo = emptyList(),
+                photos = emptyList(),
                 fishingStartAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant(),
                 fishingEndAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant().plusSeconds(3600 * 3),
                 weight = 1.2,
-                fish = listOf(Fish(name = "Окунь", count = 1)),
+                fish = listOf(Fish(id = UUID.randomUUID(), name = "Окунь", count = 1)),
                 fishingMethod = FishingMethod.SPINNING,
                 bait = listOf(Bait.WOBBLER),
                 comment = "Ловил на джиг, глубина 5 метров.",
@@ -369,15 +370,16 @@ fun MainScreenPreview() {
                 isPublic = false
             ),
             FishingReport(
+                id = UUID.randomUUID(),
                 userId = UUID.randomUUID(),
                 type = FishingType.FISHING_LOG,
                 name = "Отчет без фото",
                 water = Water(waterName = "Чистый пруд", latitude = 0.0, longitude = 0.0),
-                photo = emptyList(),
+                photos = emptyList(),
                 fishingStartAt = calendar.apply { set(2024, Calendar.MAY, 1) }.time.toInstant(),
                 fishingEndAt = calendar.apply { set(2024, Calendar.MAY, 1) }.time.toInstant().plusSeconds(3600 * 3),
                 weight = 0.5,
-                fish = listOf(Fish(name = "Карась", count = 2)),
+                fish = listOf(Fish(id = UUID.randomUUID(), name = "Карась", count = 2)),
                 fishingMethod = FishingMethod.BOBBER,
                 bait = listOf(Bait.BREAD),
                 comment = "Забыл телефон дома, фоток нет.",

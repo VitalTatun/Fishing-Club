@@ -220,6 +220,7 @@ fun ReportLocationSection(
 fun ReportLocationSectionPreview() {
     FishingTheme {
         val sampleReport = FishingReport(
+            id = UUID.randomUUID(),
             userId = UUID.randomUUID(),
             type = FishingType.HAUL,
             name = "Тестовый отчет",
@@ -229,7 +230,7 @@ fun ReportLocationSectionPreview() {
                 longitude = 54.23425,
                 isPaid = true
             ),
-            photo = listOf(),
+            photos = listOf(),
             fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 3),
             fishingEndAt = java.time.Instant.now(),
             weight = 0.0,

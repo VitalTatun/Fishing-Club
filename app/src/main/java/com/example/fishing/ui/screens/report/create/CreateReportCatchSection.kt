@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.Fish
 import com.example.fishing.ui.theme.FishingTheme
+import java.util.UUID
 
 @Composable
 internal fun CatchSection(
@@ -80,8 +81,8 @@ private fun CatchSectionWithDataPreview() {
     FishingTheme {
         CatchSection(
             selectedFish = listOf(
-                Fish(name = "Окунь", count = 3),
-                Fish(name = "Щука", count = 1)
+                Fish(id = UUID.randomUUID(), name = "Окунь", count = 3),
+                Fish(id = UUID.randomUUID(), name = "Щука", count = 1)
             ),
             weight = 2.5f
         )

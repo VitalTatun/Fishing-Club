@@ -51,6 +51,7 @@ class FakeFishingRepository : FishingRepository {
     var saveReportCallCount = 0
     var saveReportException: Exception? = null
     val savedReports = mutableListOf<FishingReport>()
+    val lastSavedReportId: UUID? get() = savedReports.lastOrNull()?.id
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = _homeReports.asStateFlow()
 
@@ -85,8 +86,8 @@ class FakeFishingRepository : FishingRepository {
 
     override suspend fun saveReport(report: FishingReport): Result<Unit> {
         saveReportCallCount++
-        saveReportException?.let { return Result.failure(it) }
         savedReports.add(report)
+        saveReportException?.let { return Result.failure(it) }
         _homeReports.value = listOf(report) + _homeReports.value
         return Result.success(Unit)
     }

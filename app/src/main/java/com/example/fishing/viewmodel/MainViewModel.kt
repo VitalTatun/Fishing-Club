@@ -327,7 +327,7 @@ class MainViewModel @Inject constructor(
                     repository.getReportDetails(id).collect { report ->
                         if (report != null) {
                             _reportDetailUiState.value = ReportDetailUiState.Success(
-                                report.copy(photo = resolvePhotoUrls(report.photo))
+                                report.copy(photos = resolvePhotoUrls(report.photos))
                             )
                         }
                     }
@@ -388,7 +388,7 @@ class MainViewModel @Inject constructor(
                     repository.getHomeReports(userId = userId).collect { reports ->
                         _reports.value = reports.map { report ->
                             report.copy(
-                                photo = resolvePhotoUrls(report.photo)
+                                photos = resolvePhotoUrls(report.photos)
                             )
                         }
                     }
@@ -402,7 +402,7 @@ class MainViewModel @Inject constructor(
                 try {
                     repository.getFavoriteReports(userId).collect { reports ->
                         _favoriteReports.value = reports.map { report ->
-                            report.copy(photo = resolvePhotoUrls(report.photo))
+                            report.copy(photos = resolvePhotoUrls(report.photos))
                         }
                     }
                 } catch (e: CancellationException) {
@@ -426,14 +426,15 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private suspend fun resolvePhotoUrls(paths: List<String>): List<String> {
-        return paths.map { path ->
-            if (repository.isStoragePath(path)) {
-                signedPhotoUrlCache.getOrPut(path) {
-                    repository.getPhotoSignedUrl(path) ?: path
+    private suspend fun resolvePhotoUrls(photos: List<FishingPhoto>): List<FishingPhoto> {
+        return photos.map { photo ->
+            if (repository.isStoragePath(photo.url)) {
+                val signedUrl = signedPhotoUrlCache.getOrPut(photo.url) {
+                    repository.getPhotoSignedUrl(photo.url) ?: photo.url
                 }
+                photo.copy(url = signedUrl)
             } else {
-                path
+                photo
             }
         }
     }

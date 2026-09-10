@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.example.fishing.R
 import com.example.fishing.model.Fish
 import com.example.fishing.ui.theme.FishingTheme
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -76,7 +77,7 @@ fun CatchEditScreen(
         if (isTrophy && editableFish.isNotEmpty()) {
             editableFish.clear()
         }
-        editableFish.add(0, Fish(name = name, count = 1))
+        editableFish.add(0, Fish(id = UUID.randomUUID(), name = name, count = 1))
     }
 
     fun toggleFishSelection(name: String) {
@@ -382,9 +383,9 @@ private fun CatchEditScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
         CatchEditScreen(
             fishList = listOf(
-                Fish(name = "Карась", count = 5),
-                Fish(name = "Окунь", count = 1),
-                Fish(name = "Плотва", count = 4)
+                Fish(id = UUID.randomUUID(), name = "Карась", count = 5),
+                Fish(id = UUID.randomUUID(), name = "Окунь", count = 1),
+                Fish(id = UUID.randomUUID(), name = "Плотва", count = 4)
             ),
             initialWeight = 2.5f,
             onBackClick = {},

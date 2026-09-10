@@ -15,6 +15,7 @@ import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.MainDispatcherRule
 import com.example.fishing.viewmodel.CreateReportSaveState
 import com.example.fishing.viewmodel.CreateReportViewModel
+import com.example.fishing.viewmodel.ReportPhoto
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -87,7 +88,7 @@ class CreateReportViewModelTest {
         setStartEndDateTimes(vm, start, end)
         vm.formSelectedMethod = FishingMethod.SPINNING
         vm.formSelectedBaits = listOf(Bait.WOBBLER)
-        vm.formSelectedFish = listOf(Fish(name = "Щука", count = 2))
+        vm.formSelectedFish = listOf(Fish(id = UUID.randomUUID(), name = "Щука", count = 2))
     }
 
     private fun validPastRange(): Pair<Instant, Instant> {
@@ -243,7 +244,10 @@ class CreateReportViewModelTest {
         fillValidReport(vm, start, end)
         vm.formSelectedMethod = FishingMethod.FEEDER
         vm.formSelectedBaits = listOf(Bait.WORM)
-        vm.formSelectedFish = listOf(Fish(name = "Лещ", count = 2), Fish(name = "Карась", count = 1))
+        vm.formSelectedFish = listOf(
+            Fish(id = UUID.randomUUID(), name = "Лещ", count = 2),
+            Fish(id = UUID.randomUUID(), name = "Карась", count = 1)
+        )
 
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
@@ -262,7 +266,7 @@ class CreateReportViewModelTest {
         fillValidReport(vm, start, end)
         vm.formSelectedMethod = FishingMethod.BOBBER
         vm.formSelectedBaits = listOf(Bait.WORM)
-        vm.formSelectedFish = listOf(Fish(name = "Карась", count = 4))
+        vm.formSelectedFish = listOf(Fish(id = UUID.randomUUID(), name = "Карась", count = 4))
 
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
@@ -345,11 +349,14 @@ class CreateReportViewModelTest {
         fillValidReport(vm, start, end)
         val photoUri = Uri.parse("content://test/photo")
         vm.formReportType = FishingType.HAUL
-        vm.formSelectedPhotoUris = listOf(photoUri)
-        vm.formSelectedFish = listOf(Fish(name = "Щука", count = 1), Fish(name = "Окунь", count = 1))
+        vm.formPhotos = listOf(ReportPhoto(uri = photoUri))
+        vm.formSelectedFish = listOf(
+            Fish(id = UUID.randomUUID(), name = "Щука", count = 1),
+            Fish(id = UUID.randomUUID(), name = "Окунь", count = 1)
+        )
         assertFalse(vm.isSaveEnabled)
 
-        vm.formSelectedFish = listOf(Fish(name = "Щука", count = 1))
+        vm.formSelectedFish = listOf(Fish(id = UUID.randomUUID(), name = "Щука", count = 1))
         assertTrue(vm.isSaveEnabled)
     }
 
@@ -359,10 +366,10 @@ class CreateReportViewModelTest {
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
         vm.formReportType = FishingType.HAUL
-        vm.formSelectedFish = listOf(Fish(name = "Щука", count = 1))
+        vm.formSelectedFish = listOf(Fish(id = UUID.randomUUID(), name = "Щука", count = 1))
         assertFalse(vm.isSaveEnabled)
 
-        vm.formSelectedPhotoUris = listOf(Uri.parse("content://test/photo"))
+        vm.formPhotos = listOf(ReportPhoto(uri = Uri.parse("content://test/photo")))
         assertTrue(vm.isSaveEnabled)
     }
 
@@ -379,7 +386,7 @@ class CreateReportViewModelTest {
 
         assertTrue(successCalled)
         val saved = fakeFishingRepository.savedReports.single()
-        assertTrue(saved.photo.isEmpty())
+        assertTrue(saved.photos.isEmpty())
     }
 
     @Test
@@ -391,7 +398,7 @@ class CreateReportViewModelTest {
         val photoUri = Uri.parse("content://test/photo")
         Shadows.shadowOf(context.contentResolver)
             .registerInputStream(photoUri, ByteArrayInputStream(ByteArray(0)))
-        vm.formSelectedPhotoUris = listOf(photoUri)
+        vm.formPhotos = listOf(ReportPhoto(uri = photoUri))
 
         var successCalled = false
         vm.saveReport { successCalled = true }
@@ -414,7 +421,7 @@ class CreateReportViewModelTest {
         val photoUri = Uri.parse("content://test/photo")
         Shadows.shadowOf(context.contentResolver)
             .registerInputStream(photoUri, ByteArrayInputStream(ByteArray(0)))
-        vm.formSelectedPhotoUris = listOf(photoUri)
+        vm.formPhotos = listOf(ReportPhoto(uri = photoUri))
 
         var successCalled = false
         vm.saveReport { successCalled = true }
@@ -423,11 +430,41 @@ class CreateReportViewModelTest {
         assertTrue(successCalled)
         assertEquals(1, fakeFishingRepository.saveReportCallCount)
         val saved = fakeFishingRepository.savedReports.single()
-        assertEquals(1, saved.photo.size)
-        assertTrue(saved.photo.single().startsWith(File(context.filesDir, "photos").absolutePath))
+        assertEquals(1, saved.photos.size)
+        assertTrue(saved.photos.single().url.startsWith(File(context.filesDir, "photos").absolutePath))
 
         val photosDir = File(context.filesDir, "photos")
         assertTrue(photosDir.listFiles()?.isEmpty() ?: true)
+    }
+
+    @Test
+    fun `save preserves report id on failure and resets on success`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+
+        fakeFishingRepository.saveReportException = RuntimeException("fail")
+        vm.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val idAfterFail = fakeFishingRepository.lastSavedReportId
+        assertNotNull(idAfterFail)
+
+        fakeFishingRepository.saveReportException = null
+        vm.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(idAfterFail, fakeFishingRepository.lastSavedReportId)
+
+        // Reset form should generate new ID (via success or explicit reset)
+        // Success already happened, form is reset
+        fillValidReport(vm, start, end)
+        vm.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val idAfterSuccess = fakeFishingRepository.lastSavedReportId
+        assertNotNull(idAfterSuccess)
+        assertTrue(idAfterFail != idAfterSuccess)
     }
 
     @Test

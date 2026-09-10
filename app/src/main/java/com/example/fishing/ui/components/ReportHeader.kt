@@ -27,6 +27,7 @@ import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.*
 
 @Composable
@@ -36,7 +37,7 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ReportPhotoCarousel(
-            photos = report.photo,
+            photos = report.photos,
             showTrophyBadge = report.type == FishingType.HAUL
         )
         
@@ -50,7 +51,7 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
 
 @Composable
 fun ReportPhotoCarousel(
-    photos: List<String>,
+    photos: List<FishingPhoto>,
     modifier: Modifier = Modifier,
     showTrophyBadge: Boolean = false
 ) {
@@ -72,7 +73,7 @@ fun ReportPhotoCarousel(
             pageSpacing = 8.dp
         ) { index ->
             AsyncImage(
-                model = photos[index],
+                model = photos[index].url,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -186,15 +187,16 @@ fun UserInfoBlock(
 fun ReportHeaderPreview() {
     FishingTheme {
         val sampleReport = FishingReport(
+            id = UUID.randomUUID(),
             userId = UUID.randomUUID(),
             type = FishingType.HAUL,
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
-            photo = listOf(""),
-            fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 3),
-            fishingEndAt = java.time.Instant.now(),
+            photos = listOf(FishingPhoto(url = "")),
+            fishingStartAt = Instant.now().minusSeconds(3600 * 3),
+            fishingEndAt = Instant.now(),
             weight = 3.2,
-            fish = listOf(Fish(name = "Окунь", count = 1)),
+            fish = listOf(Fish(id = UUID.randomUUID(), name = "Окунь", count = 1)),
             fishingMethod = FishingMethod.SPINNING,
             bait = listOf(),
             comment = "",

@@ -26,6 +26,7 @@ import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
 import com.example.fishing.ui.theme.FishingTheme
 import org.osmdroid.util.GeoPoint
+import java.time.Instant
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -329,17 +330,18 @@ fun ReportDetailScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
         val sampleUser = User(name = "Виталий", image = "", email = "vital@example.com")
         val sampleReport = FishingReport(
+            id = UUID.randomUUID(),
             userId = UUID.randomUUID(),
             type = FishingType.FISHING_LOG,
             name = "Смеркалось",
             water = Water(waterName = "Минское Море", latitude = 54.32344, longitude = 54.23425),
-            photo = emptyList(),
-            fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 9),
-            fishingEndAt = java.time.Instant.now(),
+            photos = emptyList(),
+            fishingStartAt = Instant.now().minusSeconds(3600 * 9),
+            fishingEndAt = Instant.now(),
             weight = 3.2,
             fish = listOf(
-                Fish(name = "Карась", count = 2),
-                Fish(name = "Окунь", count = 2)
+                Fish(id = UUID.randomUUID(), name = "Карась", count = 2),
+                Fish(id = UUID.randomUUID(), name = "Окунь", count = 2)
             ),
             fishingMethod = FishingMethod.BOBBER,
             bait = listOf(Bait.BLOODWORM, Bait.MAGGOT),
@@ -358,17 +360,18 @@ fun ReportDetailScreenTrophyPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
         val sampleUser = User(name = "Виталий", image = "", email = "vital@example.com")
         val sampleReport = FishingReport(
+            id = UUID.randomUUID(),
             userId = UUID.randomUUID(),
             type = FishingType.HAUL,
             name = "Тот самый улов!",
             water = Water(waterName = "Неман", latitude = 53.9, longitude = 25.3),
-            photo = emptyList(),
-            fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 9),
-            fishingEndAt = java.time.Instant.now(),
+            photos = emptyList(),
+            fishingStartAt = Instant.now().minusSeconds(3600 * 9),
+            fishingEndAt = Instant.now(),
             weight = 12.5,
             fish = listOf(
-                Fish(name = "Щука", count = 1),
-                Fish(name = "Сом", count = 1)
+                Fish(id = UUID.randomUUID(), name = "Щука", count = 1),
+                Fish(id = UUID.randomUUID(), name = "Сом", count = 1)
             ),
             fishingMethod = FishingMethod.SPINNING,
             bait = listOf(Bait.WOBBLER),

@@ -107,11 +107,12 @@ fun ReportDescriptionSection(
 @Composable
 fun ReportDescriptionSectionPreview() {
     val sampleReport = FishingReport(
+        id = UUID.randomUUID(),
         userId = UUID.randomUUID(),
         type = FishingType.FISHING_LOG,
         name = "Тестовый отчет",
         water = Water(waterName = "Озеро", latitude = 0.0, longitude = 0.0),
-        photo = listOf(),
+        photos = listOf(),
         fishingStartAt = java.time.Instant.now().minusSeconds(3600 * 3),
         fishingEndAt = java.time.Instant.now(),
         weight = 5.4,

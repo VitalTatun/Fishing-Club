@@ -188,37 +188,23 @@ class SupabaseFishingRepository @Inject constructor(
         val now = formatDate(Date())
         val dto = report.toFishingDto(now)
         val uploadedPaths = mutableListOf<String>()
-        var insertedBaseReport = false
 
         return try {
-            val existing = try {
-                supabase.postgrest["fishing"].select {
-                    filter { eq("id", report.id) }
-                }.decodeList<FishingDto>()
-            } catch (_: Exception) {
-                emptyList<FishingDto>()
-            }
+            // 1. Upsert base report. This handles both new and existing reports.
+            // If it exists, it will be updated with the latest data (comment, weight, etc.)
+            supabase.postgrest["fishing"].upsert(dto)
 
-            if (existing.isNotEmpty()) {
-                runCatching {
-                    supabase.postgrest["fishing_fish"].delete { filter { eq("fishing_id", report.id) } }
-                    supabase.postgrest["fishing_baits"].delete { filter { eq("fishing_id", report.id) } }
-                    supabase.postgrest["fishing_photos"].delete { filter { eq("fishing_id", report.id) } }
-                }
-            } else {
-                supabase.postgrest["fishing"].insert(dto)
-                insertedBaseReport = true
-            }
-
-            val storagePaths = report.photo.map { localPath ->
-                if (isStoragePath(localPath)) {
-                    localPath
+            // 2. Upload only new photos.
+            val storagePaths = report.photos.map { photo ->
+                if (isStoragePath(photo.url)) {
+                    photo.url
                 } else {
-                    val ext = File(localPath).extension.ifEmpty { "jpg" }
-                    val storagePath = "${report.userId}/${report.id}/${UUID.randomUUID()}.$ext"
-                    val file = File(localPath)
+                    val ext = File(photo.url).extension.ifEmpty { "jpg" }
+                    // Deterministic storage path using stable photo.id
+                    val storagePath = "${report.userId}/${report.id}/${photo.id}.$ext"
+                    val file = File(photo.url)
                     if (!file.exists()) {
-                        throw IllegalStateException("Photo file not found: $localPath")
+                        throw IllegalStateException("Photo file not found: ${photo.url}")
                     }
                     supabase.storage.from("fishing_photos").upload(storagePath, file.readBytes()) {
                         upsert = true
@@ -228,24 +214,29 @@ class SupabaseFishingRepository @Inject constructor(
                 }
             }
 
+            // 3. Prepare child DTOs.
             val fishDtos = report.fish.map { it.toFishDto(report.id) }
             val baitDtos = report.bait.map { BaitDto(report.id, it.name) }
-            val photoDtos = storagePaths.mapIndexed { index, path ->
+            val photoDtos = report.photos.mapIndexed { index, photo ->
+                val finalPath = storagePaths[index]
                 PhotoDto(
+                    id = photo.id,
                     fishingId = report.id,
-                    storagePath = path,
+                    storagePath = finalPath,
                     sortOrder = index
                 )
             }
 
+            // 4. Upsert children instead of delete+insert to maintain idempotency.
+            // Unique constraints (like PK on fish.id) will prevent duplicates on retry.
             if (fishDtos.isNotEmpty()) {
-                supabase.postgrest["fishing_fish"].insert(fishDtos)
+                supabase.postgrest["fishing_fish"].upsert(fishDtos)
             }
             if (baitDtos.isNotEmpty()) {
-                supabase.postgrest["fishing_baits"].insert(baitDtos)
+                supabase.postgrest["fishing_baits"].upsert(baitDtos)
             }
             if (photoDtos.isNotEmpty()) {
-                supabase.postgrest["fishing_photos"].insert(photoDtos)
+                supabase.postgrest["fishing_photos"].upsert(photoDtos)
             }
 
             val markerEntity = dto.toMarkerEntity(report.fish.map { it.name })
@@ -285,11 +276,7 @@ class SupabaseFishingRepository @Inject constructor(
 
             Result.success(Unit)
         } catch (e: Exception) {
-            if (insertedBaseReport) {
-                runCatching {
-                    supabase.postgrest["fishing"].delete { filter { eq("id", report.id) } }
-                }
-            }
+            // Cleanup: only delete photos uploaded in THIS specific call attempt.
             if (uploadedPaths.isNotEmpty()) {
                 runCatching {
                     supabase.storage.from("fishing_photos").delete(uploadedPaths)
@@ -298,6 +285,7 @@ class SupabaseFishingRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {
         return try {
@@ -468,7 +456,7 @@ class SupabaseFishingRepository @Inject constructor(
             ),
             spotLat = spotLat,
             spotLng = spotLng,
-            photo = photos.map { it.storagePath },
+            photos = photos.map { FishingPhoto(id = it.id, url = it.storagePath) },
             fishingStartAt = parseInstant(fishingStartAt),
             fishingEndAt = parseInstant(fishingEndAt),
             weight = weight,
@@ -567,7 +555,14 @@ class SupabaseFishingRepository @Inject constructor(
             ),
             spotLat = spotLat,
             spotLng = spotLng,
-            photo = imageUrls,
+            photos = imageUrls.map { url -> 
+                // We don't have Photo IDs in details entity, but we can reconstruct them
+                // or ideally we should store them in Room as well.
+                // For now, use deterministic ID based on URL if needed, 
+                // but domain FishingPhoto requires a UUID.
+                // Actually, PhotoDto has an ID.
+                FishingPhoto(id = UUID.nameUUIDFromBytes(url.toByteArray()), url = url)
+            },
             fishingStartAt = parseInstant(fishingStartAt),
             fishingEndAt = parseInstant(fishingEndAt),
             weight = weight,
