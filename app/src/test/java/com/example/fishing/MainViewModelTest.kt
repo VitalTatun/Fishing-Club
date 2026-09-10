@@ -15,7 +15,10 @@ import com.example.fishing.testutil.FakeUserPreferencesRepository
 import com.example.fishing.testutil.MainDispatcherRule
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.ReportDetailUiState
+import com.example.fishing.viewmodel.HomeUiState
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
@@ -567,5 +570,86 @@ class MainViewModelTest {
 
         assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
         assertFalse(vm.mapIsLoading.value)
+    }
+
+    // --- HomeUiState tests ---
+
+    @Test
+    fun `empty cache and successful refresh with zero reports emits Empty`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.homeReportsValue = emptyList()
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(HomeUiState.Empty, vm.homeUiState.value)
+        job.cancel()
+    }
+
+    @Test
+    fun `empty cache and network error emits Error`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.homeReportsValue = emptyList()
+        fakeFishingRepository.refreshHomeReportsException = RuntimeException("Network Error")
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.homeUiState.value is HomeUiState.Error)
+        assertEquals("Ошибка загрузки: Network Error", (vm.homeUiState.value as HomeUiState.Error).message)
+        job.cancel()
+    }
+
+    @Test
+    fun `non empty cache and network error stays Success`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.homeReportsValue = listOf(report)
+        fakeFishingRepository.refreshHomeReportsException = RuntimeException("Network Error")
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.homeUiState.value is HomeUiState.Success)
+        assertEquals(listOf(report), (vm.homeUiState.value as HomeUiState.Success).reports)
+        job.cancel()
+    }
+
+    @Test
+    fun `non empty cache and successful refresh emits Success`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.homeReportsValue = listOf(report)
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.homeUiState.value is HomeUiState.Success)
+        assertEquals(listOf(report), (vm.homeUiState.value as HomeUiState.Success).reports)
+        job.cancel()
+    }
+
+    @Test
+    fun `initial loading is Loading until first refresh completed when empty`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.homeReportsValue = emptyList()
+        val gate = CompletableDeferred<Unit>()
+        fakeFishingRepository.refreshHomeReportsGate = gate
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(HomeUiState.Loading, vm.homeUiState.value)
+
+        gate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(HomeUiState.Empty, vm.homeUiState.value)
+        job.cancel()
     }
 }

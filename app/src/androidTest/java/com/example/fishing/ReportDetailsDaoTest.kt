@@ -154,4 +154,15 @@ class ReportDetailsDaoTest {
         assertEquals(1, favsA.size)
         assertEquals(reportB.id, favsA[0].id)
     }
+
+    @Test
+    fun `getByIdOneShot returns report if exists`() = runTest {
+        val id = UUID.randomUUID()
+        val report = createReportEntity(id = id, userId = userAId)
+        reportDetailsDao.insert(report)
+
+        val fetched = reportDetailsDao.getByIdOneShot(id)
+        assertNotNull(fetched)
+        assertEquals(id, fetched?.id)
+    }
 }

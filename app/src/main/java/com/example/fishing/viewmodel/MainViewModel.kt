@@ -40,6 +40,13 @@ sealed interface ReportDetailUiState {
     data class Error(val reportId: UUID, val message: String) : ReportDetailUiState
 }
 
+sealed interface HomeUiState {
+    data object Loading : HomeUiState
+    data class Success(val reports: List<FishingReport>) : HomeUiState
+    data object Empty : HomeUiState
+    data class Error(val message: String) : HomeUiState
+}
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: FishingRepository,
@@ -128,6 +135,20 @@ class MainViewModel @Inject constructor(
 
     private val _deletedReportId = MutableStateFlow<UUID?>(null)
     val deletedReportId: StateFlow<UUID?> = _deletedReportId.asStateFlow()
+
+    val homeUiState: StateFlow<HomeUiState> = combine(
+        sortedReports,
+        isInitialLoading,
+        error
+    ) { reportsList, initialLoading, currentError ->
+        when {
+            initialLoading && reportsList.isEmpty() && currentError == null -> HomeUiState.Loading
+            reportsList.isEmpty() && currentError != null -> HomeUiState.Error(currentError)
+            reportsList.isEmpty() -> HomeUiState.Empty
+            else -> HomeUiState.Success(reportsList)
+        }
+    }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState.Loading)
 
     private var reportsLoadJob: Job? = null
     private var mapMarkersLoadJob: Job? = null
@@ -288,10 +309,8 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             if (isFavorite) {
                 repository.removeFavorite(report.id)
-                _favoriteReports.value = _favoriteReports.value.filterNot { it.id == report.id }
             } else {
                 repository.addFavorite(report)
-                _favoriteReports.value = (_favoriteReports.value + report).distinctBy { it.id }
             }
         }
     }
@@ -356,6 +375,7 @@ class MainViewModel @Inject constructor(
 
         reportsLoadJob?.cancel()
         reportsLoadJob = viewModelScope.launch {
+            _error.value = null
             if (_reports.value.isEmpty()) {
                 _isInitialLoading.value = true
             } else {

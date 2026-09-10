@@ -104,6 +104,7 @@ class SupabaseFishingRepository @Inject constructor(
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            throw e
         }
     }
 
@@ -270,6 +271,10 @@ class SupabaseFishingRepository @Inject constructor(
             supabase.postgrest["favorites"].delete {
                 filter { eq("user_id", currentUser.id) }
                 filter { eq("fishing_id", reportId) }
+            }
+            val cachedReport = reportDetailsDao.getByIdOneShot(reportId)
+            if (cachedReport != null && cachedReport.userId != currentUser.id) {
+                reportDetailsDao.deleteById(reportId)
             }
             favoriteReportDao.delete(currentUser.id, reportId)
         } catch (e: Exception) {

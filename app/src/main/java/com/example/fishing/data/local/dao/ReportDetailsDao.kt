@@ -13,6 +13,9 @@ interface ReportDetailsDao {
     @Query("SELECT * FROM report_details WHERE id = :id")
     fun getById(id: UUID): Flow<ReportDetailsEntity?>
 
+    @Query("SELECT * FROM report_details WHERE id = :id")
+    suspend fun getByIdOneShot(id: UUID): ReportDetailsEntity?
+
     @Query("""
         SELECT report_details.* FROM report_details
         LEFT JOIN favorites ON favorites.reportId = report_details.id

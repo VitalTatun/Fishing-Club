@@ -32,6 +32,7 @@ import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingReportItem
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.HomeUiState
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.screens.profile.ProfileScreen
 import java.util.*
@@ -49,7 +50,7 @@ sealed class BottomNavItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    reports: List<FishingReport>,
+    homeUiState: HomeUiState,
     favoriteReports: List<FishingReport> = emptyList(),
     mapMarkers: List<MarkerDomain> = emptyList(),
     isInitialLoading: Boolean = false,
@@ -217,50 +218,76 @@ fun MainScreen(
             }
             when (selectedTab) {
                 0 -> {
-                    if (isInitialLoading && reports.isEmpty()) {
-                        // Fullscreen loading for initial load
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        PullToRefreshBox(
-                            isRefreshing = isRefreshing,
-                            onRefresh = { viewModel?.refresh() },
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            LazyColumn(
+                    when (homeUiState) {
+                        is HomeUiState.Loading -> {
+                            Box(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                contentAlignment = Alignment.Center
                             ) {
-                                if (reports.isEmpty() && !isRefreshing) {
-                                    item {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.no_reports_hint),
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
+                                CircularProgressIndicator()
+                            }
+                        }
+                        is HomeUiState.Error -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = homeUiState.message,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Button(onClick = { viewModel?.refresh() }) {
+                                        Text(stringResource(R.string.retry))
                                     }
                                 }
-                                itemsIndexed(
-                                    items = reports,
-                                    key = { _, report -> report.id }
-                                ) { index, report ->
-                                    FishingReportItem(
-                                        report = report,
-                                        onClick = { onReportClick(report) },
-                                        onDeleteReport = onDeleteReport,
-                                        isFavorite = favoriteReports.any { it.id == report.id },
-                                        currentUserId = currentUserId
+                            }
+                        }
+                        is HomeUiState.Empty -> {
+                            PullToRefreshBox(
+                                isRefreshing = isRefreshing,
+                                onRefresh = { viewModel?.refresh() },
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.no_reports_hint),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                }
+                            }
+                        }
+                        is HomeUiState.Success -> {
+                            PullToRefreshBox(
+                                isRefreshing = isRefreshing,
+                                onRefresh = { viewModel?.refresh() },
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    itemsIndexed(
+                                        items = homeUiState.reports,
+                                        key = { _, report -> report.id }
+                                    ) { index, report ->
+                                        FishingReportItem(
+                                            report = report,
+                                            onClick = { onReportClick(report) },
+                                            onDeleteReport = onDeleteReport,
+                                            isFavorite = favoriteReports.any { it.id == report.id },
+                                            currentUserId = currentUserId
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -360,7 +387,7 @@ fun MainScreenPreview() {
             )
         )
         MainScreen(
-            reports = sampleReports,
+            homeUiState = HomeUiState.Success(sampleReports),
             repository = com.example.fishing.data.MockFishingRepository(),
             onReportClick = {}
         )

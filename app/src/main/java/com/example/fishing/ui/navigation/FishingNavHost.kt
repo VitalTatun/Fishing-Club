@@ -52,6 +52,7 @@ fun FishingNavHost(
     val createReportViewModel: CreateReportViewModel = hiltViewModel()
 
     val reports by viewModel.sortedReports.collectAsState()
+    val homeUiState by viewModel.homeUiState.collectAsState()
     val favoriteReports by viewModel.favoriteReports.collectAsState()
     val mapMarkers by viewModel.mapMarkers.collectAsState()
     val isInitialLoading by viewModel.isInitialLoading.collectAsState()
@@ -98,7 +99,7 @@ fun FishingNavHost(
 
             composable("main") {
                 MainScreen(
-                    reports = reports,
+                    homeUiState = homeUiState,
                     isInitialLoading = isInitialLoading,
                     isRefreshing = isRefreshing,
                     mapIsLoading = mapIsLoading,
