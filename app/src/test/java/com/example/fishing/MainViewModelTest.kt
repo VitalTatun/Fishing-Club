@@ -470,4 +470,48 @@ class MainViewModelTest {
         assertFalse(vm.mapIsRefreshing.value)
         assertTrue(vm.mapIsLoading.value)
     }
+
+    // --- Map tab selection (P1.1: no duplicate refresh) ---
+
+    @Test
+    fun `selecting map tab does not duplicate refresh when markers are already loaded`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val m = marker()
+        fakeFishingRepository.mapMarkersValue = listOf(m)
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
+
+        vm.selectTab(1)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
+        assertEquals(listOf(m), vm.mapMarkers.value)
+    }
+
+    @Test
+    fun `selecting map tab while initial refresh is in flight does not start a second refresh`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val gate = CompletableDeferred<Unit>()
+        fakeFishingRepository.refreshMapMarkersGate = gate
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.mapIsLoading.value)
+        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
+
+        vm.selectTab(1)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
+
+        gate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
+        assertFalse(vm.mapIsLoading.value)
+    }
 }

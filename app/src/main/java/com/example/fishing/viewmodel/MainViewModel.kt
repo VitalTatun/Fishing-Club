@@ -199,7 +199,7 @@ class MainViewModel @Inject constructor(
 
     fun selectTab(index: Int) {
         _selectedTab.value = index
-        if (index == 1) loadMapMarkers(force = true)
+        if (index == 1) loadMapMarkers(force = false)
     }
 
     fun setSortOrder(order: ReportSortOrder) {
