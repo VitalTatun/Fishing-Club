@@ -157,7 +157,7 @@ fun ReportLocationSection(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = report.water.waterName,
+                    text = report.water.waterName.ifBlank { stringResource(R.string.not_specified) },
                     style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface

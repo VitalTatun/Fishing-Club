@@ -151,7 +151,7 @@ class CreateReportViewModel @Inject constructor(
                 fieldId = "water_body",
                 title = context.getString(R.string.water_body),
                 leadingIcon = Icons.Default.LocationOn,
-                isRequired = true
+                isRequired = !hasLocation
             )
         )
         if (hasLocation) {
@@ -245,8 +245,7 @@ class CreateReportViewModel @Inject constructor(
     val isSaveEnabled: Boolean
         get() {
             if (isSaving) return false
-            val baseValid = formWaterName.isNotBlank() &&
-                formLocation != null &&
+            val baseValid = formLocation != null &&
                 formSelectedMethod != FishingMethod.NONE &&
                 formSelectedBaits.isNotEmpty() &&
                 formSelectedFish.isNotEmpty() &&

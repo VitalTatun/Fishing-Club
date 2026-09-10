@@ -104,12 +104,12 @@ class CreateReportViewModelTest {
     }
 
     @Test
-    fun `missing water name disables save`() = runTest {
+    fun `missing water name allows save when location exists`() = runTest {
         val vm = createViewModel()
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
         vm.formWaterName = ""
-        assertFalse(vm.isSaveEnabled)
+        assertTrue(vm.isSaveEnabled)
     }
 
     @Test

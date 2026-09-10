@@ -134,8 +134,7 @@ fun WaterEditScreen(
                             viewModel.formIsPaidWater = isPaidWater
                             viewModel.formFishingFromShore = isFishingFromShore
                             onSaveClick()
-                        },
-                        enabled = waterName.isNotBlank()
+                        }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Check,

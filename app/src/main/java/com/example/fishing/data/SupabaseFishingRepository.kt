@@ -185,36 +185,116 @@ class SupabaseFishingRepository @Inject constructor(
     }
 
     override suspend fun saveReport(report: FishingReport): Result<Unit> {
-        return try {
-            val now = formatDate(Date())
-            supabase.postgrest["fishing"].insert(report.toFishingDto(now))
+        val now = formatDate(Date())
+        val dto = report.toFishingDto(now)
+        val uploadedPaths = mutableListOf<String>()
+        var insertedBaseReport = false
 
-            val storagePaths = report.photo.map { localPath ->
-                val ext = File(localPath).extension.ifEmpty { "jpg" }
-                val storagePath = "${report.userId}/${report.id}/${UUID.randomUUID()}.$ext"
-                val file = File(localPath)
-                if (!file.exists()) {
-                    throw IllegalStateException("Photo file not found: $localPath")
-                }
-                supabase.storage.from("fishing_photos").upload(storagePath, file.readBytes()) {
-                    upsert = true
-                }
-                storagePath
+        return try {
+            val existing = try {
+                supabase.postgrest["fishing"].select {
+                    filter { eq("id", report.id) }
+                }.decodeList<FishingDto>()
+            } catch (_: Exception) {
+                emptyList<FishingDto>()
             }
 
-            supabase.postgrest["fishing_fish"].insert(report.fish.map { it.toFishDto(report.id) })
-            supabase.postgrest["fishing_baits"].insert(report.bait.map { BaitDto(report.id, it.name) })
-            supabase.postgrest["fishing_photos"].insert(
-                storagePaths.mapIndexed { index, path ->
-                    PhotoDto(
-                        fishingId = report.id,
-                        storagePath = path,
-                        sortOrder = index
-                    )
+            if (existing.isNotEmpty()) {
+                runCatching {
+                    supabase.postgrest["fishing_fish"].delete { filter { eq("fishing_id", report.id) } }
+                    supabase.postgrest["fishing_baits"].delete { filter { eq("fishing_id", report.id) } }
+                    supabase.postgrest["fishing_photos"].delete { filter { eq("fishing_id", report.id) } }
                 }
+            } else {
+                supabase.postgrest["fishing"].insert(dto)
+                insertedBaseReport = true
+            }
+
+            val storagePaths = report.photo.map { localPath ->
+                if (isStoragePath(localPath)) {
+                    localPath
+                } else {
+                    val ext = File(localPath).extension.ifEmpty { "jpg" }
+                    val storagePath = "${report.userId}/${report.id}/${UUID.randomUUID()}.$ext"
+                    val file = File(localPath)
+                    if (!file.exists()) {
+                        throw IllegalStateException("Photo file not found: $localPath")
+                    }
+                    supabase.storage.from("fishing_photos").upload(storagePath, file.readBytes()) {
+                        upsert = true
+                    }
+                    uploadedPaths.add(storagePath)
+                    storagePath
+                }
+            }
+
+            val fishDtos = report.fish.map { it.toFishDto(report.id) }
+            val baitDtos = report.bait.map { BaitDto(report.id, it.name) }
+            val photoDtos = storagePaths.mapIndexed { index, path ->
+                PhotoDto(
+                    fishingId = report.id,
+                    storagePath = path,
+                    sortOrder = index
+                )
+            }
+
+            if (fishDtos.isNotEmpty()) {
+                supabase.postgrest["fishing_fish"].insert(fishDtos)
+            }
+            if (baitDtos.isNotEmpty()) {
+                supabase.postgrest["fishing_baits"].insert(baitDtos)
+            }
+            if (photoDtos.isNotEmpty()) {
+                supabase.postgrest["fishing_photos"].insert(photoDtos)
+            }
+
+            val markerEntity = dto.toMarkerEntity(report.fish.map { it.name })
+            val detailsEntity = ReportDetailsEntity(
+                id = report.id,
+                userId = report.userId,
+                publishedAt = dto.publishedAt,
+                type = dto.type,
+                name = dto.name,
+                waterName = dto.waterName,
+                waterLat = dto.waterLat,
+                waterLng = dto.waterLng,
+                waterPaid = dto.waterPaid,
+                spotLat = dto.spotLat,
+                spotLng = dto.spotLng,
+                fishingStartAt = dto.fishingStartAt,
+                fishingEndAt = dto.fishingEndAt,
+                weight = dto.weight,
+                fishingMethod = dto.fishingMethod,
+                comment = dto.comment,
+                shore = dto.shore,
+                isPublic = dto.isPublic,
+                imageUrls = storagePaths,
+                fishJson = json.encodeToString(fishDtos),
+                baitsJson = json.encodeToString(baitDtos),
+                authorName = report.user.name,
+                authorAvatar = report.user.image,
+                createdAt = dto.createdAt
             )
+
+            database.withTransaction {
+                reportDetailsDao.insert(detailsEntity)
+                if (dto.isPublic || dto.userId == authRepository.currentUser()?.id) {
+                    markerDao.insertAll(listOf(markerEntity))
+                }
+            }
+
             Result.success(Unit)
         } catch (e: Exception) {
+            if (insertedBaseReport) {
+                runCatching {
+                    supabase.postgrest["fishing"].delete { filter { eq("id", report.id) } }
+                }
+            }
+            if (uploadedPaths.isNotEmpty()) {
+                runCatching {
+                    supabase.storage.from("fishing_photos").delete(uploadedPaths)
+                }
+            }
             Result.failure(e)
         }
     }

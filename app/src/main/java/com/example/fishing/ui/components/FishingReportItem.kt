@@ -259,15 +259,11 @@ private fun FishingReportDetails(
     report: FishingReport,
     modifier: Modifier = Modifier
 ) {
-    val details = buildString {
-        append(report.water.waterName)
-        if (report.water.isPaid) {
-            append(" • ")
-            append(stringResource(R.string.paid_water))
-        }
-        append(" • ")
-        append(stringResource(if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat))
-    }
+    val details = listOfNotNull(
+        report.water.waterName.takeIf { it.isNotBlank() },
+        stringResource(R.string.paid_water).takeIf { report.water.isPaid },
+        stringResource(if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat)
+    ).joinToString(" • ")
 
     Text(
         text = details,
