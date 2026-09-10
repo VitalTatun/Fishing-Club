@@ -19,6 +19,7 @@ import com.example.fishing.ui.screens.report.detail.FullScreenPhotoScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailUnavailableScreen
+import com.example.fishing.ui.screens.report.detail.ReportDetailErrorScreen
 import com.example.fishing.ui.screens.search.LocationSearchScreen
 import com.example.fishing.ui.screens.search.ReportSearchScreen
 import com.example.fishing.ui.screens.login.LoginScreen
@@ -26,6 +27,7 @@ import com.example.fishing.ui.screens.login.RegistrationScreen
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.theme.FishingTransitions
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.ReportDetailUiState
 import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.LoginViewModel
 import com.example.fishing.viewmodel.RegistrationViewModel
@@ -58,7 +60,6 @@ fun FishingNavHost(
     val mapIsRefreshing by viewModel.mapIsRefreshing.collectAsState()
     val mapErrorMessage by viewModel.mapRefreshError.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
-    val reportUnavailable by viewModel.reportUnavailable.collectAsState()
 
     val isAuthenticated = authState is AuthState.Authenticated
     val currentUser = (authState as? AuthState.Authenticated)?.user
@@ -366,8 +367,7 @@ fun FishingNavHost(
                     reportId?.let { viewModel.loadReportDetails(it) }
                 }
 
-                val currentReport by viewModel.currentReport.collectAsState()
-                val isReportUnavailable by viewModel.reportUnavailable.collectAsState()
+                val reportDetailState by viewModel.reportDetailUiState.collectAsState()
                 val isDeletingReport by viewModel.isDeletingReport.collectAsState()
                 val deleteReportError by viewModel.deleteReportError.collectAsState()
                 val deletedReportId by viewModel.deletedReportId.collectAsState()
@@ -379,31 +379,58 @@ fun FishingNavHost(
                     }
                 }
 
-                val report = currentReport
-                if (report != null && report.id == reportId) {
-                    ReportDetailScreen(
-                        report = report,
-                        onBackClick = { navController.popBackStack() },
-                        isFavorite = favoriteReports.any { it.id == report.id },
-                        onToggleFavorite = { viewModel.toggleFavorite(report) },
-                        onMapClick = { point ->
-                            viewModel.requestMapLocation(point)
-                            navController.navigate("full_map/${report.id}")
-                        },
-                        isOwnReport = report.userId == currentUser?.id,
-                        isDeleting = isDeletingReport,
-                        onDeleteReport = { viewModel.deleteReport(report.id) },
-                        deleteError = deleteReportError,
-                        onDeleteErrorDismiss = { viewModel.clearDeleteReportError() }
-                    )
-                } else if (isReportUnavailable) {
-                    ReportDetailUnavailableScreen(
-                        onBackClick = { navController.popBackStack() }
-                    )
-                } else {
-                    ReportDetailLoadingScreen(
-                        onBackClick = { navController.popBackStack() }
-                    )
+                when (val state = reportDetailState) {
+                    is ReportDetailUiState.Success ->
+                        if (state.report.id == reportId) {
+                            ReportDetailScreen(
+                                report = state.report,
+                                onBackClick = { navController.popBackStack() },
+                                isFavorite = favoriteReports.any { it.id == state.report.id },
+                                onToggleFavorite = { viewModel.toggleFavorite(state.report) },
+                                onMapClick = { point ->
+                                    viewModel.requestMapLocation(point)
+                                    navController.navigate("full_map/${state.report.id}")
+                                },
+                                isOwnReport = state.report.userId == currentUser?.id,
+                                isDeleting = isDeletingReport,
+                                onDeleteReport = { viewModel.deleteReport(state.report.id) },
+                                deleteError = deleteReportError,
+                                onDeleteErrorDismiss = { viewModel.clearDeleteReportError() }
+                            )
+                        } else {
+                            ReportDetailLoadingScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+
+                    is ReportDetailUiState.Empty ->
+                        if (state.reportId == reportId) {
+                            ReportDetailUnavailableScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        } else {
+                            ReportDetailLoadingScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+
+                    is ReportDetailUiState.Error ->
+                        if (state.reportId == reportId) {
+                            ReportDetailErrorScreen(
+                                message = state.message,
+                                onBackClick = { navController.popBackStack() },
+                                onRetry = { reportId?.let(viewModel::loadReportDetails) }
+                            )
+                        } else {
+                            ReportDetailLoadingScreen(
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+
+                    ReportDetailUiState.Loading ->
+                        ReportDetailLoadingScreen(
+                            onBackClick = { navController.popBackStack() }
+                        )
                 }
             }
 
@@ -453,9 +480,9 @@ fun FishingNavHost(
                     reportId?.let { viewModel.loadReportDetails(it) }
                 }
 
-                val currentReport by viewModel.currentReport.collectAsState()
+                val reportDetailState by viewModel.reportDetailUiState.collectAsState()
 
-                val report = currentReport
+                val report = (reportDetailState as? ReportDetailUiState.Success)?.report
                 if (report != null && report.id == reportId) {
                     FullScreenPhotoScreen(
                         photos = report.photo,

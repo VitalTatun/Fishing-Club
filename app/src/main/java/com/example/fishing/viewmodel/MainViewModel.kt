@@ -29,6 +29,17 @@ import java.util.Date
 import com.example.fishing.model.*
 import java.util.UUID
 
+sealed interface ReportDetailUiState {
+    data object Loading : ReportDetailUiState
+
+    data class Success(val report: FishingReport) : ReportDetailUiState
+
+    // Report is confirmed absent in the backend, not merely not-yet-loaded.
+    data class Empty(val reportId: UUID) : ReportDetailUiState
+
+    data class Error(val reportId: UUID, val message: String) : ReportDetailUiState
+}
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: FishingRepository,
@@ -68,8 +79,8 @@ class MainViewModel @Inject constructor(
     private val _mapRefreshError = MutableStateFlow<String?>(null)
     val mapRefreshError: StateFlow<String?> = _mapRefreshError.asStateFlow()
 
-    private val _currentReport = MutableStateFlow<FishingReport?>(null)
-    val currentReport: StateFlow<FishingReport?> = _currentReport.asStateFlow()
+    private val _reportDetailUiState = MutableStateFlow<ReportDetailUiState>(ReportDetailUiState.Loading)
+    val reportDetailUiState: StateFlow<ReportDetailUiState> = _reportDetailUiState.asStateFlow()
 
     private val _isInitialLoading = MutableStateFlow(true)
     val isInitialLoading: StateFlow<Boolean> = _isInitialLoading.asStateFlow()
@@ -108,9 +119,6 @@ class MainViewModel @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _reportUnavailable = MutableStateFlow(false)
-    val reportUnavailable: StateFlow<Boolean> = _reportUnavailable.asStateFlow()
 
     private val _isDeletingReport = MutableStateFlow(false)
     val isDeletingReport: StateFlow<Boolean> = _isDeletingReport.asStateFlow()
@@ -159,9 +167,8 @@ class MainViewModel @Inject constructor(
         _reports.value = emptyList()
         _favoriteReports.value = emptyList()
         _mapMarkers.value = emptyList()
-        _currentReport.value = null
+        _reportDetailUiState.value = ReportDetailUiState.Loading
         _error.value = null
-        _reportUnavailable.value = false
         _isDeletingReport.value = false
         _deleteReportError.value = null
         _deletedReportId.value = null
@@ -291,56 +298,51 @@ class MainViewModel @Inject constructor(
 
     fun loadReportDetails(id: UUID) {
         reportDetailsJob?.cancel()
-        _reportUnavailable.value = false
         _deleteReportError.value = null
-
-        if (_currentReport.value?.id != id) {
-            _currentReport.value = null
-        }
+        _reportDetailUiState.value = ReportDetailUiState.Loading
 
         reportDetailsJob = viewModelScope.launch {
-            var reportFound = false
-
-            // Observe Room cache
+            // Observe Room cache and publish Success the moment the report is available.
             launch {
                 try {
                     repository.getReportDetails(id).collect { report ->
                         if (report != null) {
-                            reportFound = true
-                            _currentReport.value = report.copy(
-                                photo = resolvePhotoUrls(report.photo)
+                            _reportDetailUiState.value = ReportDetailUiState.Success(
+                                report.copy(photo = resolvePhotoUrls(report.photo))
                             )
                         }
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    if (_reportDetailUiState.value !is ReportDetailUiState.Success) {
+                        _reportDetailUiState.value = reportDetailError(id, e)
+                    }
                 }
             }
-            // Refresh from network
-            launch {
-                try {
-                    if (repository is SupabaseFishingRepository) {
-                        repository.refreshReportDetails(id)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    _error.value = "Ошибка загрузки отчета: ${e.message ?: "неизвестная"}"
+            // Authoritative network refresh: it knows whether the report actually exists,
+            // so Empty can be decided without racing Room's async emission.
+            try {
+                val found = repository is SupabaseFishingRepository &&
+                    repository.refreshReportDetails(id)
+                if (!found && _reportDetailUiState.value == ReportDetailUiState.Loading) {
+                    _reportDetailUiState.value = ReportDetailUiState.Empty(id)
                 }
-                // After network refresh completes, check if the report was found.
-                // Room Flow auto-updates _currentReport if data exists.
-                // Give a brief moment for Room Flow to emit after the write, then check.
-                kotlinx.coroutines.yield()
-                if (_currentReport.value == null || _currentReport.value?.id != id) {
-                    if (!reportFound) {
-                        _reportUnavailable.value = true
-                    }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (_reportDetailUiState.value !is ReportDetailUiState.Success) {
+                    _reportDetailUiState.value = reportDetailError(id, e)
                 }
             }
         }
+    }
+
+    private fun reportDetailError(id: UUID, e: Exception): ReportDetailUiState.Error {
+        return ReportDetailUiState.Error(
+            reportId = id,
+            message = "Ошибка загрузки отчета: ${e.message ?: "неизвестная"}"
+        )
     }
 
     private fun loadReports(force: Boolean) {

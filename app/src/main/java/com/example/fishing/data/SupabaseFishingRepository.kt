@@ -155,34 +155,32 @@ class SupabaseFishingRepository @Inject constructor(
         }
     }
 
-    suspend fun refreshReportDetails(id: UUID) {
-        if (authRepository.currentUser() == null) return
-        try {
-            val fishing = supabase.postgrest["fishing"].select {
-                filter { eq("id", id) }
-            }.decodeList<FishingDto>().firstOrNull() ?: return
+    suspend fun refreshReportDetails(id: UUID): Boolean {
+        if (authRepository.currentUser() == null) return false
 
-            val fish = supabase.postgrest["fishing_fish"].select {
-                filter { eq("fishing_id", id) }
-            }.decodeList<FishDto>()
+        val fishing = supabase.postgrest["fishing"].select {
+            filter { eq("id", id) }
+        }.decodeList<FishingDto>().firstOrNull() ?: return false
 
-            val baits = supabase.postgrest["fishing_baits"].select {
-                filter { eq("fishing_id", id) }
-            }.decodeList<BaitDto>()
+        val fish = supabase.postgrest["fishing_fish"].select {
+            filter { eq("fishing_id", id) }
+        }.decodeList<FishDto>()
 
-            val photos = supabase.postgrest["fishing_photos"].select {
-                filter { eq("fishing_id", id) }
-                order("sort_order", Order.ASCENDING)
-            }.decodeList<PhotoDto>()
-            val author = supabase.postgrest["profiles"].select {
-                filter { eq("id", fishing.userId) }
-            }.decodeList<ProfileDto>().firstOrNull()
+        val baits = supabase.postgrest["fishing_baits"].select {
+            filter { eq("fishing_id", id) }
+        }.decodeList<BaitDto>()
 
-            val entity = fishing.toReportDetailsEntity(fish, baits, photos, author)
-            reportDetailsDao.insert(entity)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        val photos = supabase.postgrest["fishing_photos"].select {
+            filter { eq("fishing_id", id) }
+            order("sort_order", Order.ASCENDING)
+        }.decodeList<PhotoDto>()
+        val author = supabase.postgrest["profiles"].select {
+            filter { eq("id", fishing.userId) }
+        }.decodeList<ProfileDto>().firstOrNull()
+
+        val entity = fishing.toReportDetailsEntity(fish, baits, photos, author)
+        reportDetailsDao.insert(entity)
+        return true
     }
 
     override suspend fun saveReport(report: FishingReport): Result<Unit> {

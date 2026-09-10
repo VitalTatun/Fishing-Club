@@ -14,6 +14,7 @@ import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeUserPreferencesRepository
 import com.example.fishing.testutil.MainDispatcherRule
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.ReportDetailUiState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -120,12 +121,65 @@ class MainViewModelTest {
         assertTrue(vm.reports.value.isEmpty())
         assertTrue(vm.favoriteReports.value.isEmpty())
         assertTrue(vm.mapMarkers.value.isEmpty())
-        assertNull(vm.currentReport.value)
+        assertEquals(ReportDetailUiState.Loading, vm.reportDetailUiState.value)
         assertNull(vm.error.value)
-        assertFalse(vm.reportUnavailable.value)
         assertTrue(vm.isInitialLoading.value)
         assertFalse(vm.isRefreshing.value)
         assertEquals(0, vm.selectedTab.value)
+    }
+
+    @Test
+    fun `report detail - opening a report starts from Loading synchronously`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.reportDetailsValue = report
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(ReportDetailUiState.Loading, vm.reportDetailUiState.value)
+
+        vm.loadReportDetails(report.id)
+        assertEquals(ReportDetailUiState.Loading, vm.reportDetailUiState.value)
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        val state = vm.reportDetailUiState.value
+        assertTrue(state is ReportDetailUiState.Success)
+        assertEquals(report.id, (state as ReportDetailUiState.Success).report.id)
+    }
+
+    @Test
+    fun `report detail - absent report resolves to Empty only after load completes`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.loadReportDetails(UUID.randomUUID())
+        assertEquals(ReportDetailUiState.Loading, vm.reportDetailUiState.value)
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.reportDetailUiState.value is ReportDetailUiState.Empty)
+    }
+
+    @Test
+    fun `report detail - opening another report resets stale Empty to Loading`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val absentId = UUID.randomUUID()
+        vm.loadReportDetails(absentId)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.reportDetailUiState.value is ReportDetailUiState.Empty)
+
+        val report = createReport()
+        fakeFishingRepository.reportDetailsValue = report
+        vm.loadReportDetails(report.id)
+        assertEquals(ReportDetailUiState.Loading, vm.reportDetailUiState.value)
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.reportDetailUiState.value is ReportDetailUiState.Success)
     }
 
     @Test

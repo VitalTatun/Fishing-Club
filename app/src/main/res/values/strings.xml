@@ -47,6 +47,7 @@
     <string name="no_reports">Нет отчётов</string>
     <string name="no_reports_hint">Нет отчётов. Создайте первый отчёт!</string>
     <string name="report_unavailable">Этот отчёт был удалён или стал приватным</string>
+    <string name="report_load_error">Не удалось загрузить отчёт</string>
     <string name="logout">Выйти</string>
 
     <!-- Поиск мест -->
