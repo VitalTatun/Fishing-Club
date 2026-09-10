@@ -20,4 +20,7 @@ interface FavoriteReportDao {
 
     @Query("DELETE FROM favorites WHERE userId = :userId")
     suspend fun deleteAllForUser(userId: UUID)
+
+    @Query("DELETE FROM favorites")
+    suspend fun deleteAll()
 }

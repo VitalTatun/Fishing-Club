@@ -51,9 +51,20 @@ fun ReportSearchScreen(
     onMethodChange: (FishingMethod?) -> Unit,
     onReportClick: (FishingReport) -> Unit,
     onBack: () -> Unit,
+    onToggleFavorite: (FishingReport) -> Unit = {},
+    favoriteError: String? = null,
+    onFavoriteErrorDismiss: () -> Unit = {},
     currentUserId: UUID? = null,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(favoriteError) {
+        if (favoriteError != null) {
+            snackbarHostState.showSnackbar(favoriteError)
+            onFavoriteErrorDismiss()
+        }
+    }
 
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
@@ -158,6 +169,7 @@ fun ReportSearchScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column(modifier = Modifier.statusBarsPadding()) {
                 ReportSearchHeader(
@@ -216,6 +228,7 @@ fun ReportSearchScreen(
                             FishingReportItem(
                                 report = report,
                                 onClick = { onReportClick(report) },
+                                onToggleFavorite = { onToggleFavorite(report) },
                                 isFavorite = favoriteReports.any { it.id == report.id },
                                 currentUserId = currentUserId
                             )

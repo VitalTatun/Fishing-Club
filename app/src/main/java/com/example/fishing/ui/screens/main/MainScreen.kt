@@ -77,6 +77,8 @@ fun MainScreen(
     onErrorDismiss: () -> Unit = {},
     deleteErrorText: String? = null,
     onDeleteErrorDismiss: () -> Unit = {},
+    favoriteErrorText: String? = null,
+    onFavoriteErrorDismiss: () -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -216,6 +218,20 @@ fun MainScreen(
                     Text(deleteErrorText)
                 }
             }
+            if (favoriteErrorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 116.dp, start = 8.dp, end = 8.dp),
+                    action = {
+                        TextButton(onClick = onFavoriteErrorDismiss) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                ) {
+                    Text(favoriteErrorText)
+                }
+            }
             when (selectedTab) {
                 0 -> {
                     when (homeUiState) {
@@ -284,6 +300,7 @@ fun MainScreen(
                                             report = report,
                                             onClick = { onReportClick(report) },
                                             onDeleteReport = onDeleteReport,
+                                            onToggleFavorite = { viewModel?.toggleFavorite(report) },
                                             isFavorite = favoriteReports.any { it.id == report.id },
                                             currentUserId = currentUserId
                                         )

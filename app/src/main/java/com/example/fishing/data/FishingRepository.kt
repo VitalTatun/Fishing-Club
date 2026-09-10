@@ -14,8 +14,8 @@ interface FishingRepository {
     fun getReportDetails(id: UUID): Flow<FishingReport?>
     suspend fun refreshHomeReports(userId: UUID)
     suspend fun refreshMapMarkers(): Result<List<MarkerDomain>>
-    suspend fun addFavorite(report: FishingReport)
-    suspend fun removeFavorite(reportId: UUID)
+    suspend fun addFavorite(report: FishingReport): Result<Unit>
+    suspend fun removeFavorite(reportId: UUID): Result<Unit>
     suspend fun saveReport(report: FishingReport): Result<Unit>
     suspend fun deleteReport(id: UUID): Result<Unit>
     suspend fun getPhotoSignedUrl(storagePath: String): String?
@@ -64,14 +64,16 @@ class MockFishingRepository : FishingRepository {
         return Result.success(reports.map { it.toMarkerDomain() })
     }
 
-    override suspend fun addFavorite(report: FishingReport) {
+    override suspend fun addFavorite(report: FishingReport): Result<Unit> {
         if (favoriteReports.none { it.id == report.id }) {
             favoriteReports.add(report)
         }
+        return Result.success(Unit)
     }
 
-    override suspend fun removeFavorite(reportId: UUID) {
+    override suspend fun removeFavorite(reportId: UUID): Result<Unit> {
         favoriteReports.removeAll { it.id == reportId }
+        return Result.success(Unit)
     }
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? {

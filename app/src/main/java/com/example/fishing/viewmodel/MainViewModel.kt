@@ -133,6 +133,11 @@ class MainViewModel @Inject constructor(
     private val _deleteReportError = MutableStateFlow<String?>(null)
     val deleteReportError: StateFlow<String?> = _deleteReportError.asStateFlow()
 
+    private val _favoriteError = MutableStateFlow<String?>(null)
+    val favoriteError: StateFlow<String?> = _favoriteError.asStateFlow()
+
+    private val favoriteOpsInFlight = mutableSetOf<UUID>()
+
     private val _deletedReportId = MutableStateFlow<UUID?>(null)
     val deletedReportId: StateFlow<UUID?> = _deletedReportId.asStateFlow()
 
@@ -192,6 +197,8 @@ class MainViewModel @Inject constructor(
         _error.value = null
         _isDeletingReport.value = false
         _deleteReportError.value = null
+        _favoriteError.value = null
+        favoriteOpsInFlight.clear()
         _deletedReportId.value = null
         _isInitialLoading.value = true
         _isRefreshing.value = false
@@ -305,14 +312,37 @@ class MainViewModel @Inject constructor(
     }
 
     fun toggleFavorite(report: FishingReport) {
+        if (!favoriteOpsInFlight.add(report.id)) return
+
+        _favoriteError.value = null
         val isFavorite = _favoriteReports.value.any { it.id == report.id }
+
         viewModelScope.launch {
-            if (isFavorite) {
-                repository.removeFavorite(report.id)
-            } else {
-                repository.addFavorite(report)
+            try {
+                val result = if (isFavorite) {
+                    repository.removeFavorite(report.id)
+                } else {
+                    repository.addFavorite(report)
+                }
+                result.onFailure { e ->
+                    _favoriteError.value = favoriteErrorMessage(e)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _favoriteError.value = favoriteErrorMessage(e)
+            } finally {
+                favoriteOpsInFlight.remove(report.id)
             }
         }
+    }
+
+    private fun favoriteErrorMessage(e: Throwable): String {
+        return "Не удалось изменить избранное: ${e.message ?: "неизвестная ошибка"}"
+    }
+
+    fun clearFavoriteError() {
+        _favoriteError.value = null
     }
 
     fun loadReportDetails(id: UUID) {

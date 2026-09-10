@@ -165,4 +165,24 @@ class ReportDetailsDaoTest {
         assertNotNull(fetched)
         assertEquals(id, fetched?.id)
     }
+
+    @Test
+    fun `logout deleteAll clears all report details including foreign favorited ones`() = runTest {
+        val reportOwn = createReportEntity(id = UUID.randomUUID(), userId = userAId)
+        val reportForeign = createReportEntity(id = UUID.randomUUID(), userId = userBId)
+        reportDetailsDao.insertAll(listOf(reportOwn, reportForeign))
+        favoriteReportDao.insertAll(listOf(
+            FavoriteReportEntity(userId = userAId, reportId = reportForeign.id),
+            FavoriteReportEntity(userId = userBId, reportId = reportOwn.id)
+        ))
+
+        reportDetailsDao.deleteAll()
+        favoriteReportDao.deleteAll()
+
+        // No user data may survive logout, including foreign favorited reports.
+        assertTrue(reportDetailsDao.getHomeReports(userAId).first().isEmpty())
+        assertTrue(reportDetailsDao.getHomeReports(userBId).first().isEmpty())
+        assertTrue(reportDetailsDao.getFavorites(userAId).first().isEmpty())
+        assertTrue(reportDetailsDao.getFavorites(userBId).first().isEmpty())
+    }
 }

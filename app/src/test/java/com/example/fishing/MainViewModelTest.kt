@@ -345,6 +345,122 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `duplicate favorite toggle while in-flight is ignored`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val addGate = CompletableDeferred<Unit>()
+        fakeFishingRepository.addFavoriteGate = addGate
+
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.addFavoriteCallCount)
+
+        // Second tap while the first add is still in flight must not start another operation.
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, fakeFishingRepository.addFavoriteCallCount)
+        assertTrue(vm.favoriteReports.value.isEmpty())
+
+        // Release the gate — the first add completes and the guard is released.
+        addGate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, vm.favoriteReports.value.size)
+        assertEquals(report.id, vm.favoriteReports.value[0].id)
+
+        // A new tap after completion starts a fresh operation.
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, fakeFishingRepository.removeFavoriteCallCount)
+        assertTrue(vm.favoriteReports.value.isEmpty())
+    }
+
+    @Test
+    fun `concurrent favorite toggles on different reports are independent`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val reportA = createReport()
+        val reportB = createReport(userId = UUID.randomUUID())
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val addGate = CompletableDeferred<Unit>()
+        fakeFishingRepository.addFavoriteGate = addGate
+
+        vm.toggleFavorite(reportA)
+        vm.toggleFavorite(reportB)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        addGate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeFishingRepository.addFavoriteCallCount)
+        assertEquals(2, vm.favoriteReports.value.size)
+    }
+
+    @Test
+    fun `favorite add failure publishes error and allows retry`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.addFavoriteException = RuntimeException("Network error")
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.addFavoriteCallCount)
+        assertNotNull(vm.favoriteError.value)
+        assertTrue(vm.favoriteError.value!!.contains("Network error"))
+        // No false success — the report must not appear as favorited.
+        assertTrue(vm.favoriteReports.value.isEmpty())
+
+        // Retry after clearing the failure must succeed.
+        fakeFishingRepository.addFavoriteException = null
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeFishingRepository.addFavoriteCallCount)
+        assertNull(vm.favoriteError.value)
+        assertEquals(report.id, vm.favoriteReports.value[0].id)
+    }
+
+    @Test
+    fun `favorite remove failure publishes error and allows retry`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.favoriteReportsValue = listOf(report)
+        fakeFishingRepository.removeFavoriteException = RuntimeException("Network error")
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.removeFavoriteCallCount)
+        assertNotNull(vm.favoriteError.value)
+        assertTrue(vm.favoriteError.value!!.contains("Network error"))
+        // No false success — the report must remain favorited.
+        assertEquals(1, vm.favoriteReports.value.size)
+
+        // Retry after clearing the failure must succeed.
+        fakeFishingRepository.removeFavoriteException = null
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeFishingRepository.removeFavoriteCallCount)
+        assertNull(vm.favoriteError.value)
+        assertTrue(vm.favoriteReports.value.isEmpty())
+    }
+
+    @Test
     fun `sort order changes when set`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         val vm = createViewModel()

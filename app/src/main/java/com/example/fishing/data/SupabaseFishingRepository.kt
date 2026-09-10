@@ -337,19 +337,24 @@ class SupabaseFishingRepository @Inject constructor(
         }
     }
 
-    override suspend fun addFavorite(report: FishingReport) {
-        val currentUser = authRepository.currentUser() ?: return
-        try {
+    override suspend fun addFavorite(report: FishingReport): Result<Unit> {
+        val currentUser = authRepository.currentUser()
+            ?: return Result.failure(IllegalStateException("Нет активной сессии"))
+        return try {
             supabase.postgrest["favorites"].insert(FavoriteDto(userId = currentUser.id, fishingId = report.id))
             favoriteReportDao.insertAll(listOf(FavoriteReportEntity(currentUser.id, report.id)))
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Result.failure(e)
         }
     }
 
-    override suspend fun removeFavorite(reportId: UUID) {
-        val currentUser = authRepository.currentUser() ?: return
-        try {
+    override suspend fun removeFavorite(reportId: UUID): Result<Unit> {
+        val currentUser = authRepository.currentUser()
+            ?: return Result.failure(IllegalStateException("Нет активной сессии"))
+        return try {
             supabase.postgrest["favorites"].delete {
                 filter { eq("user_id", currentUser.id) }
                 filter { eq("fishing_id", reportId) }
@@ -359,8 +364,11 @@ class SupabaseFishingRepository @Inject constructor(
                 reportDetailsDao.deleteById(reportId)
             }
             favoriteReportDao.delete(currentUser.id, reportId)
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Result.failure(e)
         }
     }
 

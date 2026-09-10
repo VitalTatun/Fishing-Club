@@ -40,6 +40,7 @@ fun FishingReportItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onDeleteReport: (FishingReport) -> Unit = {},
+    onToggleFavorite: () -> Unit = {},
     isFavorite: Boolean = false,
     currentUserId: UUID? = null,
 ) {
@@ -89,7 +90,8 @@ fun FishingReportItem(
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 FishingReportTitle(
                     report = report,
-                    isFavorite = isFavorite
+                    isFavorite = isFavorite,
+                    onToggleFavorite = onToggleFavorite
                 )
                 FishingReportDetails(report = report)
             }
@@ -207,6 +209,7 @@ private fun FishingReportHeader(
 private fun FishingReportTitle(
     report: FishingReport,
     isFavorite: Boolean,
+    onToggleFavorite: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val fishFallback = stringResource(R.string.fish_fallback)
@@ -243,12 +246,14 @@ private fun FishingReportTitle(
             }
         }
 
-        if (isFavorite) {
+        IconButton(
+            onClick = onToggleFavorite,
+            modifier = Modifier.size(32.dp)
+        ) {
             Icon(
-                imageVector = Icons.Default.Bookmark,
-                contentDescription = null,
-                tint = FishingTheme.colors.bookmarkRed,
-                modifier = Modifier.size(24.dp)
+                imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                contentDescription = stringResource(R.string.favorites),
+                tint = if (isFavorite) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

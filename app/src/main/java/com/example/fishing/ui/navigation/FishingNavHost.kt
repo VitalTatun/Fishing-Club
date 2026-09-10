@@ -147,7 +147,9 @@ fun FishingNavHost(
                     errorText = viewModel.error.collectAsState().value,
                     onErrorDismiss = { viewModel.refresh() },
                     deleteErrorText = viewModel.deleteReportError.collectAsState().value,
-                    onDeleteErrorDismiss = { viewModel.clearDeleteReportError() }
+                    onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
+                    favoriteErrorText = viewModel.favoriteError.collectAsState().value,
+                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
                 )
             }
 
@@ -176,6 +178,9 @@ fun FishingNavHost(
                         navController.navigate("detail/${report.id}")
                     },
                     onBack = { navController.popBackStack() },
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    favoriteError = viewModel.favoriteError.collectAsState().value,
+                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
                     currentUserId = currentUser?.id
                 )
             }
@@ -403,7 +408,9 @@ fun FishingNavHost(
                                 isDeleting = isDeletingReport,
                                 onDeleteReport = { viewModel.deleteReport(state.report.id) },
                                 deleteError = deleteReportError,
-                                onDeleteErrorDismiss = { viewModel.clearDeleteReportError() }
+                                onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
+                                favoriteError = viewModel.favoriteError.collectAsState().value,
+                                onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
                             )
                         } else {
                             ReportDetailLoadingScreen(

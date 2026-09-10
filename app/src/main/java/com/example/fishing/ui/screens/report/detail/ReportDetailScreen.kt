@@ -42,6 +42,8 @@ fun ReportDetailScreen(
     isDeleting: Boolean = false,
     deleteError: String? = null,
     onDeleteErrorDismiss: () -> Unit = {},
+    favoriteError: String? = null,
+    onFavoriteErrorDismiss: () -> Unit = {},
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -51,6 +53,13 @@ fun ReportDetailScreen(
         if (deleteError != null) {
             snackbarHostState.showSnackbar(deleteError)
             onDeleteErrorDismiss()
+        }
+    }
+
+    LaunchedEffect(favoriteError) {
+        if (favoriteError != null) {
+            snackbarHostState.showSnackbar(favoriteError)
+            onFavoriteErrorDismiss()
         }
     }
 

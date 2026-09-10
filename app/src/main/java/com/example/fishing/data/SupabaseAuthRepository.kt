@@ -121,8 +121,8 @@ class SupabaseAuthRepository @Inject constructor(
         _sessionUser.value = null
         if (userId != null) {
             try {
-                reportDetailsDao.deleteByUserId(userId)
-                favoriteReportDao.deleteAllForUser(userId)
+                reportDetailsDao.deleteAll()
+                favoriteReportDao.deleteAll()
                 markerDao.deleteAll()
             } catch (e: Exception) {
                 Log.e("SupabaseAuth", "Failed to clear user cache on logout: ${e.message}")

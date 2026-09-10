@@ -43,7 +43,13 @@ class FakeFishingRepository : FishingRepository {
     var refreshMapMarkersResult: List<MarkerDomain>? = null
 
     var addFavoriteCallCount = 0
+    var addFavoriteException: Exception? = null
+    var addFavoriteGate: CompletableDeferred<Unit>? = null
+
     var removeFavoriteCallCount = 0
+    var removeFavoriteException: Exception? = null
+    var removeFavoriteGate: CompletableDeferred<Unit>? = null
+
     var deleteReportCallCount = 0
     var deleteReportException: Exception? = null
     var deleteReportGate: CompletableDeferred<Unit>? = null
@@ -74,14 +80,20 @@ class FakeFishingRepository : FishingRepository {
         return Result.success(refreshMapMarkersResult ?: mapMarkersValue)
     }
 
-    override suspend fun addFavorite(report: FishingReport) {
+    override suspend fun addFavorite(report: FishingReport): Result<Unit> {
         addFavoriteCallCount++
+        addFavoriteGate?.await()
+        addFavoriteException?.let { return Result.failure(it) }
         _favoriteReports.value = (_favoriteReports.value + report).distinctBy { it.id }
+        return Result.success(Unit)
     }
 
-    override suspend fun removeFavorite(reportId: UUID) {
+    override suspend fun removeFavorite(reportId: UUID): Result<Unit> {
         removeFavoriteCallCount++
+        removeFavoriteGate?.await()
+        removeFavoriteException?.let { return Result.failure(it) }
         _favoriteReports.value = _favoriteReports.value.filterNot { it.id == reportId }
+        return Result.success(Unit)
     }
 
     override suspend fun saveReport(report: FishingReport): Result<Unit> {
