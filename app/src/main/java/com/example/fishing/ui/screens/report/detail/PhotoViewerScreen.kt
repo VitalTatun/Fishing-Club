@@ -1,5 +1,6 @@
 package com.example.fishing.ui.screens.report.detail
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
@@ -24,53 +25,52 @@ import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import com.example.fishing.R
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PhotoViewerScreen(
+fun PhotoViewerOverlay(
     photos: List<String>,
-    initialPage: Int = 0,
-    onBackClick: () -> Unit
+    initialIndex: Int = 0,
+    onDismiss: () -> Unit
 ) {
-    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { photos.size })
+    BackHandler { onDismiss() }
 
-    Scaffold(
-        containerColor = Color.Black,
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (photos.size > 1) {
-                        Text(
-                            text = "${pagerState.currentPage + 1} / ${photos.size}",
-                            color = Color.White
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.close),
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black.copy(alpha = 0.5f),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
-            )
-        }
-    ) { paddingValues ->
+    val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { photos.size })
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-                .padding(paddingValues),
+            modifier = Modifier.fillMaxSize(),
             pageSpacing = 16.dp
         ) { page ->
             ZoomableImage(model = photos[page])
+        }
+
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(R.string.close),
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
+        if (photos.size > 1) {
+            Text(
+                text = "${pagerState.currentPage + 1} / ${photos.size}",
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
+                style = MaterialTheme.typography.titleMedium
+            )
         }
     }
 }

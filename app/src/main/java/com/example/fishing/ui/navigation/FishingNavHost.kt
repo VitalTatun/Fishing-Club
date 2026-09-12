@@ -1,8 +1,9 @@
 package com.example.fishing.ui.navigation
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -17,7 +18,7 @@ import com.example.fishing.ui.screens.main.MainScreen
 import com.example.fishing.ui.screens.profile.ChangeHistoryScreen
 import com.example.fishing.ui.screens.profile.EditProfileScreen
 import com.example.fishing.ui.screens.report.create.*
-import com.example.fishing.ui.screens.report.detail.PhotoViewerScreen
+import com.example.fishing.ui.screens.report.detail.PhotoViewerOverlay
 import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailUnavailableScreen
@@ -387,6 +388,8 @@ fun FishingNavHost(
                 val deleteReportError by viewModel.deleteReportError.collectAsState()
                 val deletedReportId by viewModel.deletedReportId.collectAsState()
 
+                var photoViewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+
                 LaunchedEffect(deletedReportId, reportId) {
                     if (deletedReportId == reportId) {
                         viewModel.clearDeletedReport()
@@ -394,63 +397,74 @@ fun FishingNavHost(
                     }
                 }
 
-                when (val state = reportDetailState) {
-                    is ReportDetailUiState.Success ->
-                        if (state.report.id == reportId) {
-                            ReportDetailScreen(
-                                report = state.report,
-                                onBackClick = { navController.popBackStack() },
-                                isFavorite = favoriteReports.any { it.id == state.report.id },
-                                onToggleFavorite = { viewModel.toggleFavorite(state.report) },
-                                onMapClick = { point ->
-                                    viewModel.requestMapLocation(point)
-                                    navController.navigate("full_map/${state.report.id}")
-                                },
-                                isOwnReport = state.report.userId == currentUser?.id,
-                                isDeleting = isDeletingReport,
-                                onDeleteReport = { viewModel.deleteReport(state.report.id) },
-                                onPhotoClick = { index ->
-                                    navController.navigate("full_screen_photo/${state.report.id}/$index")
-                                },
-                                deleteError = deleteReportError,
-                                onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
-                                favoriteError = viewModel.favoriteError.collectAsState().value,
-                                onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
-                            )
-                        } else {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (val state = reportDetailState) {
+                        is ReportDetailUiState.Success ->
+                            if (state.report.id == reportId) {
+                                ReportDetailScreen(
+                                    report = state.report,
+                                    onBackClick = { navController.popBackStack() },
+                                    isFavorite = favoriteReports.any { it.id == state.report.id },
+                                    onToggleFavorite = { viewModel.toggleFavorite(state.report) },
+                                    onMapClick = { point ->
+                                        viewModel.requestMapLocation(point)
+                                        navController.navigate("full_map/${state.report.id}")
+                                    },
+                                    isOwnReport = state.report.userId == currentUser?.id,
+                                    isDeleting = isDeletingReport,
+                                    onDeleteReport = { viewModel.deleteReport(state.report.id) },
+                                    onPhotoClick = { index ->
+                                        photoViewerIndex = index
+                                    },
+                                    deleteError = deleteReportError,
+                                    onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
+                                    favoriteError = viewModel.favoriteError.collectAsState().value,
+                                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            }
+
+                        is ReportDetailUiState.Empty ->
+                            if (state.reportId == reportId) {
+                                ReportDetailUnavailableScreen(
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            }
+
+                        is ReportDetailUiState.Error ->
+                            if (state.reportId == reportId) {
+                                ReportDetailErrorScreen(
+                                    message = state.message,
+                                    onBackClick = { navController.popBackStack() },
+                                    onRetry = { reportId?.let(viewModel::loadReportDetails) }
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            }
+
+                        ReportDetailUiState.Loading ->
                             ReportDetailLoadingScreen(
                                 onBackClick = { navController.popBackStack() }
                             )
-                        }
+                    }
 
-                    is ReportDetailUiState.Empty ->
-                        if (state.reportId == reportId) {
-                            ReportDetailUnavailableScreen(
-                                onBackClick = { navController.popBackStack() }
-                            )
-                        } else {
-                            ReportDetailLoadingScreen(
-                                onBackClick = { navController.popBackStack() }
-                            )
-                        }
-
-                    is ReportDetailUiState.Error ->
-                        if (state.reportId == reportId) {
-                            ReportDetailErrorScreen(
-                                message = state.message,
-                                onBackClick = { navController.popBackStack() },
-                                onRetry = { reportId?.let(viewModel::loadReportDetails) }
-                            )
-                        } else {
-                            ReportDetailLoadingScreen(
-                                onBackClick = { navController.popBackStack() }
-                            )
-                        }
-
-                    ReportDetailUiState.Loading ->
-                        ReportDetailLoadingScreen(
-                            onBackClick = { navController.popBackStack() }
+                    val currentReport = (reportDetailState as? ReportDetailUiState.Success)?.report
+                    if (photoViewerIndex != null && currentReport != null && currentReport.id == reportId) {
+                        PhotoViewerOverlay(
+                            photos = currentReport.photos.map { it.url },
+                            initialIndex = photoViewerIndex!!,
+                            onDismiss = { photoViewerIndex = null }
                         )
+                    }
                 }
             }
 
@@ -482,42 +496,6 @@ fun FishingNavHost(
                     repository = fishingRepository,
                     favoriteReports = favoriteReports
                 )
-            }
-
-            composable(
-                route = "full_screen_photo/{reportId}/{index}",
-                arguments = listOf(
-                    navArgument("reportId") { type = NavType.StringType },
-                    navArgument("index") { type = NavType.IntType }
-                ),
-                enterTransition = { EnterTransition.None },
-                exitTransition = { ExitTransition.None },
-                popEnterTransition = { EnterTransition.None },
-                popExitTransition = { ExitTransition.None }
-            ) { backStackEntry ->
-                val reportId = backStackEntry.arguments
-                    ?.getString("reportId")
-                    ?.let(UUID::fromString)
-                val index = backStackEntry.arguments?.getInt("index") ?: 0
-
-                LaunchedEffect(reportId) {
-                    reportId?.let { viewModel.loadReportDetails(it) }
-                }
-
-                val reportDetailState by viewModel.reportDetailUiState.collectAsState()
-
-                val report = (reportDetailState as? ReportDetailUiState.Success)?.report
-                if (report != null && report.id == reportId) {
-                    PhotoViewerScreen(
-                        photos = report.photos.map { it.url },
-                        initialPage = index,
-                        onBackClick = { navController.popBackStack() }
-                    )
-                } else {
-                    ReportDetailLoadingScreen(
-                        onBackClick = { navController.popBackStack() }
-                    )
-                }
             }
 
             composable("change_history") {
