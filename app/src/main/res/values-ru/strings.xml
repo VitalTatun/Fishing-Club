@@ -192,4 +192,7 @@
     <string name="map_no_reports_for_filter">Нет отчётов, соответствующих фильтрам</string>
     <string name="map_loading_failed">Не удалось загрузить отчёты</string>
     <string name="map_stale_data">Не удалось обновить данные. Показаны кэшированные отчёты.</string>
+    <string name="add_photo">Добавить фото</string>
+    <string name="camera">Камера</string>
+    <string name="gallery">Галерея</string>
 </resources>

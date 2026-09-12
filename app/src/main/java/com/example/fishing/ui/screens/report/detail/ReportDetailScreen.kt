@@ -39,6 +39,7 @@ fun ReportDetailScreen(
     onToggleFavorite: () -> Unit = {},
     isOwnReport: Boolean = false,
     onDeleteReport: () -> Unit = {},
+    onPhotoClick: (Int) -> Unit = {},
     isDeleting: Boolean = false,
     deleteError: String? = null,
     onDeleteErrorDismiss: () -> Unit = {},
@@ -185,7 +186,7 @@ fun ReportDetailScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
-            ReportHeader(report = report)
+            ReportHeader(report = report, onPhotoClick = onPhotoClick)
             
             // 2. Описание отчета
             ReportDescriptionSection(report = report)

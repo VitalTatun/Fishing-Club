@@ -376,6 +376,7 @@ class CreateReportViewModel @Inject constructor(
                 .onSuccess {
                     saveState = CreateReportSaveState.Success
                     onSuccess()
+                    cleanupTempPhotos()
                     resetFormState()
                 }
                 .onFailure { e ->
@@ -392,6 +393,7 @@ class CreateReportViewModel @Inject constructor(
     }
 
     fun resetFormState() {
+        cleanupTempPhotos()
         currentReportId = UUID.randomUUID()
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
@@ -410,6 +412,16 @@ class CreateReportViewModel @Inject constructor(
         formMood = 3
         formComment = ""
         formLocation = null
+    }
+
+    private fun cleanupTempPhotos() {
+        formPhotos.forEach { photo ->
+            if (photo.uri.scheme == "file") {
+                photo.uri.path?.let { path ->
+                    runCatching { File(path).delete() }
+                }
+            }
+        }
     }
 
     private fun buildReportName(): String {

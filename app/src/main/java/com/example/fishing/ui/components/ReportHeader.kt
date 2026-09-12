@@ -1,6 +1,7 @@
 package com.example.fishing.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -31,14 +32,19 @@ import java.time.Instant
 import java.util.*
 
 @Composable
-fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
+fun ReportHeader(
+    report: FishingReport,
+    modifier: Modifier = Modifier,
+    onPhotoClick: (Int) -> Unit = {}
+) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ReportPhotoCarousel(
             photos = report.photos,
-            showTrophyBadge = report.type == FishingType.HAUL
+            showTrophyBadge = report.type == FishingType.HAUL,
+            onPhotoClick = onPhotoClick
         )
         
         UserInfoBlock(
@@ -53,7 +59,8 @@ fun ReportHeader(report: FishingReport, modifier: Modifier = Modifier) {
 fun ReportPhotoCarousel(
     photos: List<FishingPhoto>,
     modifier: Modifier = Modifier,
-    showTrophyBadge: Boolean = false
+    showTrophyBadge: Boolean = false,
+    onPhotoClick: (Int) -> Unit = {}
 ) {
     if (photos.isEmpty()) return
 
@@ -75,7 +82,9 @@ fun ReportPhotoCarousel(
             AsyncImage(
                 model = photos[index].url,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { onPhotoClick(index) },
                 contentScale = ContentScale.Crop
             )
         }

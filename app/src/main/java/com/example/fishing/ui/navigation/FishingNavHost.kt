@@ -15,7 +15,7 @@ import com.example.fishing.ui.screens.main.MainScreen
 import com.example.fishing.ui.screens.profile.ChangeHistoryScreen
 import com.example.fishing.ui.screens.profile.EditProfileScreen
 import com.example.fishing.ui.screens.report.create.*
-import com.example.fishing.ui.screens.report.detail.FullScreenPhotoScreen
+import com.example.fishing.ui.screens.report.detail.PhotoViewerScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailUnavailableScreen
@@ -407,6 +407,9 @@ fun FishingNavHost(
                                 isOwnReport = state.report.userId == currentUser?.id,
                                 isDeleting = isDeletingReport,
                                 onDeleteReport = { viewModel.deleteReport(state.report.id) },
+                                onPhotoClick = { index ->
+                                    navController.navigate("full_screen_photo/${state.report.id}/$index")
+                                },
                                 deleteError = deleteReportError,
                                 onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
                                 favoriteError = viewModel.favoriteError.collectAsState().value,
@@ -499,7 +502,7 @@ fun FishingNavHost(
 
                 val report = (reportDetailState as? ReportDetailUiState.Success)?.report
                 if (report != null && report.id == reportId) {
-                    FullScreenPhotoScreen(
+                    PhotoViewerScreen(
                         photos = report.photos.map { it.url },
                         initialPage = index,
                         onBackClick = { navController.popBackStack() }

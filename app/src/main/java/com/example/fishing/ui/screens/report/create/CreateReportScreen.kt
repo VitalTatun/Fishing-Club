@@ -1,10 +1,17 @@
 package com.example.fishing.ui.screens.report.create
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,19 +22,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,34 +47,33 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.example.fishing.R
-import com.example.fishing.ui.theme.FishingTheme
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.MockFishingRepository
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.SectionGroup
+import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.utils.PhotoUtils
 import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.ReportPhoto
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
-import com.example.fishing.data.AuthRepository
-import com.example.fishing.data.MockFishingRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flowOf
-
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,8 +108,12 @@ fun CreateReportScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var pickerTarget by remember { mutableStateOf("start") }
     var isDetailsExpanded by remember { mutableStateOf(false) }
+
+    var tempCameraFile by remember { mutableStateOf<File?>(null) }
+    val context = LocalContext.current
 
     val currentTime = Calendar.getInstance()
     val startTimePickerState = rememberTimePickerState(
@@ -115,11 +130,48 @@ fun CreateReportScreen(
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
     ) { uris ->
-        val currentPhotos = viewModel.formPhotos
-        val currentUris = currentPhotos.map { it.uri }
-        val availableSlots = MaxPhotos - currentPhotos.size
-        val newUris = uris.take(availableSlots).filter { it !in currentUris }
-        viewModel.formPhotos = currentPhotos + newUris.map { ReportPhoto(uri = it) }
+        if (uris.isNotEmpty()) {
+            val currentPhotos = viewModel.formPhotos
+            val currentUris = currentPhotos.map { it.uri }
+            val availableSlots = MaxPhotos - currentPhotos.size
+            val newUris = uris.take(availableSlots).filter { it !in currentUris }
+            viewModel.formPhotos = currentPhotos + newUris.map { ReportPhoto(uri = it) }
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            tempCameraFile?.let { file ->
+                val uri = Uri.fromFile(file)
+                viewModel.formPhotos = viewModel.formPhotos + ReportPhoto(uri = uri)
+            }
+        } else {
+            tempCameraFile?.delete()
+        }
+        tempCameraFile = null
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val file = PhotoUtils.createTempPhotoFile(context)
+            tempCameraFile = file
+            cameraLauncher.launch(PhotoUtils.getUriForFile(context, file))
+        }
+    }
+
+    val openCamera = {
+        val permissionCheckResult = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
+            val file = PhotoUtils.createTempPhotoFile(context)
+            tempCameraFile = file
+            cameraLauncher.launch(PhotoUtils.getUriForFile(context, file))
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     val handleBack = {
@@ -197,6 +249,40 @@ fun CreateReportScreen(
         }
     }
 
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = { Text(stringResource(R.string.add_photo)) },
+            text = {
+                Column {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.camera)) },
+                        leadingContent = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            showPhotoSourceDialog = false
+                            openCamera()
+                        }
+                    )
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.gallery)) },
+                        leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            showPhotoSourceDialog = false
+                            photoPicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPhotoSourceDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -271,9 +357,7 @@ fun CreateReportScreen(
                             onPhotoPickerClick = {
                                 if (viewModel.formPhotos.size < MaxPhotos) {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    photoPicker.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
+                                    showPhotoSourceDialog = true
                                 }
                             },
                             isDetailsExpanded = isDetailsExpanded,
