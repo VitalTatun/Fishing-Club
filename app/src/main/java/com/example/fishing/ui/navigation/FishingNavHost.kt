@@ -1,5 +1,7 @@
 package com.example.fishing.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -487,7 +489,11 @@ fun FishingNavHost(
                 arguments = listOf(
                     navArgument("reportId") { type = NavType.StringType },
                     navArgument("index") { type = NavType.IntType }
-                )
+                ),
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                popEnterTransition = { EnterTransition.None },
+                popExitTransition = { ExitTransition.None }
             ) { backStackEntry ->
                 val reportId = backStackEntry.arguments
                     ?.getString("reportId")
