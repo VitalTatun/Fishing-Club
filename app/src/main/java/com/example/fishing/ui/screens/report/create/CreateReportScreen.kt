@@ -144,12 +144,17 @@ fun CreateReportScreen(
     ) { success ->
         if (success) {
             tempCameraFile?.let { file ->
-                val uri = Uri.fromFile(file)
-                viewModel.formPhotos = viewModel.formPhotos + ReportPhoto(uri = uri)
+                val persistedUri = PhotoUtils.persistCameraPhoto(
+                    context.contentResolver,
+                    context.filesDir,
+                    Uri.fromFile(file)
+                )
+                if (persistedUri != null) {
+                    viewModel.formPhotos = viewModel.formPhotos + ReportPhoto(uri = persistedUri)
+                }
             }
-        } else {
-            tempCameraFile?.delete()
         }
+        tempCameraFile?.delete()
         tempCameraFile = null
     }
 

@@ -390,7 +390,7 @@ class CreateReportViewModelTest {
     }
 
     @Test
-    fun `failed save cleans up copied photo files`() = runTest {
+    fun `failed save preserves copied photo files for retry`() = runTest {
         fakeFishingRepository.saveReportException = RuntimeException("storage upload failed")
         val vm = createViewModel()
         val (start, end) = validPastRange()
@@ -410,7 +410,7 @@ class CreateReportViewModelTest {
         assertNotNull(vm.saveErrorMessage)
 
         val photosDir = File(context.filesDir, "photos")
-        assertTrue(photosDir.listFiles()?.isEmpty() ?: true)
+        assertTrue(photosDir.listFiles()?.isNotEmpty() ?: false)
     }
 
     @Test

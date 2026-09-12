@@ -29,6 +29,30 @@ object PhotoUtils {
         )
     }
 
+    fun persistCameraPhoto(
+        contentResolver: ContentResolver,
+        filesDir: File,
+        sourceUri: Uri
+    ): Uri? {
+        return try {
+            val fileName = "camera_${UUID.randomUUID()}.jpg"
+            val photosDir = File(filesDir, "photos")
+            photosDir.mkdirs()
+            val outputFile = File(photosDir, fileName)
+
+            contentResolver.openInputStream(sourceUri)?.use { input ->
+                FileOutputStream(outputFile).use { output ->
+                    input.copyTo(output)
+                }
+            } ?: return null
+
+            Uri.fromFile(outputFile)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     fun copyPhotoToInternalStorage(
         contentResolver: ContentResolver,
         filesDir: File,

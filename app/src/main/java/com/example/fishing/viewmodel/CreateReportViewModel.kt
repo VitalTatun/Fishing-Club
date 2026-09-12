@@ -366,10 +366,6 @@ class CreateReportViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "saveReport failed", e)
                 Result.failure(e)
-            } finally {
-                fishingPhotos.forEach { photo ->
-                    runCatching { File(photo.url).delete() }
-                }
             }
 
             result
@@ -422,6 +418,8 @@ class CreateReportViewModel @Inject constructor(
                 }
             }
         }
+        val photosDir = File(context.filesDir, "photos")
+        runCatching { photosDir.listFiles()?.forEach { it.delete() } }
     }
 
     private fun buildReportName(): String {
