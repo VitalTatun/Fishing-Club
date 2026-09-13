@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -24,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import com.example.fishing.R
+import kotlin.math.abs
 
 @Composable
 fun PhotoViewerOverlay(
@@ -51,7 +53,8 @@ fun PhotoViewerOverlay(
         IconButton(
             onClick = onDismiss,
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.BottomStart)
+                .navigationBarsPadding()
                 .padding(16.dp)
         ) {
             Icon(
@@ -59,17 +62,6 @@ fun PhotoViewerOverlay(
                 contentDescription = stringResource(R.string.close),
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
-            )
-        }
-
-        if (photos.size > 1) {
-            Text(
-                text = "${pagerState.currentPage + 1} / ${photos.size}",
-                color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp),
-                style = MaterialTheme.typography.titleMedium
             )
         }
     }
@@ -80,16 +72,37 @@ fun ZoomableImage(model: String) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
+    val minScale = 1f
+    val maxScale = 5f
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(1f, 5f)
-                    if (scale > 1f) {
-                        offset += pan
-                    } else {
+                detectTransformGestures { centroid, pan, zoom, _ ->
+                    val oldScale = scale
+                    val newScale = (scale * zoom).coerceIn(minScale, maxScale)
+
+                    val focalX = centroid.x
+                    val focalY = centroid.y
+
+                    val zoomAdjX = (focalX / oldScale - focalX / newScale) - pan.x
+                    val zoomAdjY = (focalY / oldScale - focalY / newScale) - pan.y
+                    val newOffset = offset + Offset(zoomAdjX, zoomAdjY)
+
+                    val vpW = size.width.toFloat()
+                    val vpH = size.height.toFloat()
+                    val maxOffX = ((newScale * vpW - vpW) / 2f).coerceAtLeast(0f)
+                    val maxOffY = ((newScale * vpH - vpH) / 2f).coerceAtLeast(0f)
+
+                    offset = Offset(
+                        newOffset.x.coerceIn(-maxOffX, maxOffX),
+                        newOffset.y.coerceIn(-maxOffY, maxOffY)
+                    )
+                    scale = newScale
+
+                    if (scale <= minScale) {
                         offset = Offset.Zero
                     }
                 }
