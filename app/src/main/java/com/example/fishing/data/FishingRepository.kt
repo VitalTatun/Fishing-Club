@@ -2,9 +2,13 @@ package com.example.fishing.data
 
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
+import com.example.fishing.model.ReportLikeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.update
 import java.util.UUID
 
 interface FishingRepository {
@@ -20,11 +24,16 @@ interface FishingRepository {
     suspend fun deleteReport(id: UUID): Result<Unit>
     suspend fun getPhotoSignedUrl(storagePath: String): String?
     fun isStoragePath(path: String): Boolean
+    suspend fun addLike(reportId: UUID): Result<Unit>
+    suspend fun removeLike(reportId: UUID): Result<Unit>
+    fun getLikeStates(userId: UUID): Flow<Map<UUID, ReportLikeState>>
+    suspend fun refreshLikes(userId: UUID)
 }
 
 class MockFishingRepository : FishingRepository {
     private val favoriteReports = mutableListOf<FishingReport>()
     private val reports = MockData.sampleReports.toMutableList()
+    private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = flow {
         delay(1000)
@@ -82,6 +91,28 @@ class MockFishingRepository : FishingRepository {
 
     override fun isStoragePath(path: String): Boolean {
         return !path.startsWith("http") && !path.startsWith("/")
+    }
+
+    override suspend fun addLike(reportId: UUID): Result<Unit> {
+        _likeStates.update { current ->
+            val prev = current[reportId]
+            current + (reportId to ReportLikeState(reportId, true, (prev?.likesCount ?: 0) + 1))
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun removeLike(reportId: UUID): Result<Unit> {
+        _likeStates.update { current ->
+            val prev = current[reportId]
+            current + (reportId to ReportLikeState(reportId, false, ((prev?.likesCount ?: 1) - 1).coerceAtLeast(0)))
+        }
+        return Result.success(Unit)
+    }
+
+    override fun getLikeStates(userId: UUID): Flow<Map<UUID, ReportLikeState>> = _likeStates.asStateFlow()
+
+    override suspend fun refreshLikes(userId: UUID) {
+        // Mock — no-op
     }
 
     private fun FishingReport.toMarkerDomain(): MarkerDomain {

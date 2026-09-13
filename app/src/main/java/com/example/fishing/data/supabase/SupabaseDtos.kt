@@ -1,6 +1,7 @@
 package com.example.fishing.data.supabase
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -37,7 +38,12 @@ data class FishingDto(
     @SerialName("is_public") val isPublic: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
-    @SerialName("fishing_fish") val fish: List<FishDto> = emptyList()
+    @SerialName("fishing_fish") val fish: List<FishDto> = emptyList(),
+    // Read-only mirror of the server counter. NEVER sent on writes: saveReport
+    // always leaves it at the default so @EncodeDefault omits it from upserts
+    // and an edit of an own report cannot reset the counter.
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("likes_count") val likesCount: Int = 0
 )
 
 @Serializable
@@ -65,6 +71,13 @@ data class PhotoDto(
 
 @Serializable
 data class FavoriteDto(
+    @Serializable(with = UuidSerializer::class) @SerialName("user_id") val userId: UUID,
+    @Serializable(with = UuidSerializer::class) @SerialName("fishing_id") val fishingId: UUID,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class LikeDto(
     @Serializable(with = UuidSerializer::class) @SerialName("user_id") val userId: UUID,
     @Serializable(with = UuidSerializer::class) @SerialName("fishing_id") val fishingId: UUID,
     @SerialName("created_at") val createdAt: String? = null
