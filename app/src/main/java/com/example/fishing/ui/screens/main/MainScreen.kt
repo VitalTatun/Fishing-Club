@@ -52,6 +52,8 @@ sealed class BottomNavItem(
 fun MainScreen(
     homeUiState: HomeUiState,
     favoriteReports: List<FishingReport> = emptyList(),
+    likeStates: Map<UUID, ReportLikeState> = emptyMap(),
+    onToggleLike: (FishingReport) -> Unit = {},
     mapMarkers: List<MarkerDomain> = emptyList(),
     isInitialLoading: Boolean = false,
     isRefreshing: Boolean = false,
@@ -79,6 +81,8 @@ fun MainScreen(
     onDeleteErrorDismiss: () -> Unit = {},
     favoriteErrorText: String? = null,
     onFavoriteErrorDismiss: () -> Unit = {},
+    likeErrorText: String? = null,
+    onLikeErrorDismiss: () -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -232,6 +236,20 @@ fun MainScreen(
                     Text(favoriteErrorText)
                 }
             }
+            if (likeErrorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 168.dp, start = 8.dp, end = 8.dp),
+                    action = {
+                        TextButton(onClick = onLikeErrorDismiss) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                ) {
+                    Text(likeErrorText)
+                }
+            }
             when (selectedTab) {
                 0 -> {
                     when (homeUiState) {
@@ -302,7 +320,9 @@ fun MainScreen(
                                             onDeleteReport = onDeleteReport,
                                             onToggleFavorite = { viewModel?.toggleFavorite(report) },
                                             isFavorite = favoriteReports.any { it.id == report.id },
-                                            currentUserId = currentUserId
+                                            currentUserId = currentUserId,
+                                            likeState = likeStates[report.id],
+                                            onToggleLike = { onToggleLike(report) }
                                         )
                                     }
                                 }
