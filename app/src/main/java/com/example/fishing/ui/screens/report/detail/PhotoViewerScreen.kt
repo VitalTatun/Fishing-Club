@@ -25,7 +25,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import com.example.fishing.R
-import kotlin.math.abs
 
 @Composable
 fun PhotoViewerOverlay(
@@ -87,9 +86,9 @@ fun ZoomableImage(model: String) {
                     val focalX = centroid.x
                     val focalY = centroid.y
 
-                    val zoomAdjX = (focalX / oldScale - focalX / newScale) - pan.x
-                    val zoomAdjY = (focalY / oldScale - focalY / newScale) - pan.y
-                    val newOffset = offset + Offset(zoomAdjX, zoomAdjY)
+                    val zoomAdjX = focalX / oldScale - focalX / newScale
+                    val zoomAdjY = focalY / oldScale - focalY / newScale
+                    val newOffset = offset + Offset(zoomAdjX + pan.x, zoomAdjY + pan.y)
 
                     val vpW = size.width.toFloat()
                     val vpH = size.height.toFloat()
