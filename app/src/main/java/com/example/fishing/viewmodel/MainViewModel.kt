@@ -368,8 +368,11 @@ class MainViewModel @Inject constructor(
         val userId = currentUserId ?: authRepository.currentUser()?.id
         if (userId == null) return
         currentUserId = userId
-        if (likesLoadJob?.isActive == true) return
 
+        // Cancel + relaunch (same as loadReports(force = true)): the collect
+        // child below never completes, so an isActive guard would block every
+        // later refresh, including pull-to-refresh. In-flight toggles survive
+        // because they run in viewModelScope, not in this job.
         likesLoadJob?.cancel()
         likesLoadJob = viewModelScope.launch {
             // Observe Room-confirmed states; network refresh runs concurrently
