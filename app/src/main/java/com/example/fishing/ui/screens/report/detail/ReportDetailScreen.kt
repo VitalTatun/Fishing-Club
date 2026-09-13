@@ -6,6 +6,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BorderColor
@@ -45,6 +47,10 @@ fun ReportDetailScreen(
     onDeleteErrorDismiss: () -> Unit = {},
     favoriteError: String? = null,
     onFavoriteErrorDismiss: () -> Unit = {},
+    likeState: ReportLikeState? = null,
+    onToggleLike: () -> Unit = {},
+    likeError: String? = null,
+    onLikeErrorDismiss: () -> Unit = {},
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -61,6 +67,13 @@ fun ReportDetailScreen(
         if (favoriteError != null) {
             snackbarHostState.showSnackbar(favoriteError)
             onFavoriteErrorDismiss()
+        }
+    }
+
+    LaunchedEffect(likeError) {
+        if (likeError != null) {
+            snackbarHostState.showSnackbar(likeError)
+            onLikeErrorDismiss()
         }
     }
 
@@ -118,6 +131,18 @@ fun ReportDetailScreen(
                     }
                 },
                 actions = {
+                    // Order: [ Like | Bookmark | More ]. No like action on own reports.
+                    if (likeState != null && !isOwnReport) {
+                        IconButton(onClick = onToggleLike) {
+                            Icon(
+                                imageVector = if (likeState.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = stringResource(
+                                    if (likeState.isLiked) R.string.unlike else R.string.like
+                                ),
+                                tint = if (likeState.isLiked) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
@@ -187,26 +212,57 @@ fun ReportDetailScreen(
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(report = report, onPhotoClick = onPhotoClick)
-            
-            // 2. Описание отчета
+
+            // 2. Счетчик лайков — только в body, не в TopAppBar.
+            if (likeState != null) {
+                ReportLikeCountRow(likesCount = likeState.likesCount)
+            }
+
+            // 3. Описание отчета
             ReportDescriptionSection(report = report)
 
-            // 3. Баннер публикации (если черновик)
+            // 4. Баннер публикации (если черновик)
             if (!report.isPublic) {
                 PublishBanner()
             }
 
-            // 4. Секция местоположения
+            // 5. Секция местоположения
             ReportLocationSection(
                 report = report,
                 onMapClick = {
                     onMapClick(GeoPoint(report.water.latitude, report.water.longitude))
                 }
             )
-            
-            // 5. Детальная информация в виде сетки
+
+            // 6. Детальная информация в виде сетки
             ReportInfoGrid(report = report)
         }
+    }
+}
+
+@Composable
+private fun ReportLikeCountRow(
+    likesCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.FavoriteBorder,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = likesCount.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

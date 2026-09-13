@@ -59,6 +59,7 @@ fun FishingNavHost(
     val reports by viewModel.sortedReports.collectAsState()
     val homeUiState by viewModel.homeUiState.collectAsState()
     val favoriteReports by viewModel.favoriteReports.collectAsState()
+    val likeStates by viewModel.likeStates.collectAsState()
     val mapMarkers by viewModel.mapMarkers.collectAsState()
     val isInitialLoading by viewModel.isInitialLoading.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -152,7 +153,11 @@ fun FishingNavHost(
                     deleteErrorText = viewModel.deleteReportError.collectAsState().value,
                     onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
                     favoriteErrorText = viewModel.favoriteError.collectAsState().value,
-                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
+                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
+                    likeStates = likeStates,
+                    onToggleLike = viewModel::toggleLike,
+                    likeErrorText = viewModel.likeError.collectAsState().value,
+                    onLikeErrorDismiss = { viewModel.clearLikeError() }
                 )
             }
 
@@ -184,7 +189,11 @@ fun FishingNavHost(
                     onToggleFavorite = viewModel::toggleFavorite,
                     favoriteError = viewModel.favoriteError.collectAsState().value,
                     onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
-                    currentUserId = currentUser?.id
+                    currentUserId = currentUser?.id,
+                    likeStates = likeStates,
+                    onToggleLike = viewModel::toggleLike,
+                    likeError = viewModel.likeError.collectAsState().value,
+                    onLikeErrorDismiss = { viewModel.clearLikeError() }
                 )
             }
 
@@ -405,8 +414,7 @@ fun FishingNavHost(
                                     report = state.report,
                                     onBackClick = { navController.popBackStack() },
                                     isFavorite = favoriteReports.any { it.id == state.report.id },
-                                    onToggleFavorite = { viewModel.toggleFavorite(state.report) },
-                                    onMapClick = { point ->
+                                    onToggleFavorite = { viewModel.toggleFavorite(state.report) },                                    onMapClick = { point ->
                                         viewModel.requestMapLocation(point)
                                         navController.navigate("full_map/${state.report.id}")
                                     },
@@ -419,7 +427,11 @@ fun FishingNavHost(
                                     deleteError = deleteReportError,
                                     onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
                                     favoriteError = viewModel.favoriteError.collectAsState().value,
-                                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
+                                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
+                                    likeState = likeStates[state.report.id],
+                                    onToggleLike = { viewModel.toggleLike(state.report) },
+                                    likeError = viewModel.likeError.collectAsState().value,
+                                    onLikeErrorDismiss = { viewModel.clearLikeError() }
                                 )
                             } else {
                                 ReportDetailLoadingScreen(

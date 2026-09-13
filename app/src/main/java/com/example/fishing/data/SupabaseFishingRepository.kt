@@ -1,10 +1,12 @@
 package com.example.fishing.data
 
 import com.example.fishing.data.local.dao.FavoriteReportDao
+import com.example.fishing.data.local.dao.LikeDao
 import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.entity.FavoriteReportEntity
+import com.example.fishing.data.local.entity.LikeEntity
 import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import com.example.fishing.data.supabase.*
@@ -14,10 +16,13 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CancellationException
 import androidx.room.withTransaction
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import java.io.File
@@ -39,6 +44,7 @@ class SupabaseFishingRepository @Inject constructor(
     private val markerDao: MarkerDao,
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
+    private val likeDao: LikeDao,
     private val database: AppDatabase
 ) : FishingRepository {
 
@@ -240,6 +246,9 @@ class SupabaseFishingRepository @Inject constructor(
             }
 
             val markerEntity = dto.toMarkerEntity(report.fish.map { it.name })
+            // Preserve the locally mirrored counter on re-save: the upsert DTO
+            // never carries likes_count (see FishingDto), so Room must not reset it.
+            val preservedLikesCount = reportDetailsDao.getByIdOneShot(report.id)?.likesCount ?: 0
             val detailsEntity = ReportDetailsEntity(
                 id = report.id,
                 userId = report.userId,
@@ -264,7 +273,8 @@ class SupabaseFishingRepository @Inject constructor(
                 baitsJson = json.encodeToString(baitDtos),
                 authorName = report.user.name,
                 authorAvatar = report.user.image,
-                createdAt = dto.createdAt
+                createdAt = dto.createdAt,
+                likesCount = preservedLikesCount
             )
 
             database.withTransaction {
@@ -329,6 +339,7 @@ class SupabaseFishingRepository @Inject constructor(
                 reportDetailsDao.deleteById(id)
                 markerDao.deleteById(id)
                 favoriteReportDao.deleteByReportId(id)
+                likeDao.deleteByReportId(id)
             }
 
             Result.success(Unit)
@@ -364,6 +375,87 @@ class SupabaseFishingRepository @Inject constructor(
                 reportDetailsDao.deleteById(reportId)
             }
             favoriteReportDao.delete(currentUser.id, reportId)
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun getLikeStates(userId: UUID): Flow<Map<UUID, ReportLikeState>> =
+        combine(likeDao.getLikedIds(userId), reportDetailsDao.getAll()) { likedIds, entities ->
+            val liked = likedIds.toSet()
+            entities.associate { it.id to ReportLikeState(it.id, it.id in liked, it.likesCount) }
+        }
+
+    override suspend fun refreshLikes(userId: UUID) {
+        try {
+            // Single batched query — never one request per report.
+            val likes = supabase.postgrest["likes"].select {
+                filter { eq("user_id", userId) }
+            }.decodeList<LikeDto>()
+            val entities = likes
+                .filter { it.userId == userId }
+                .map { LikeEntity(userId = it.userId, reportId = it.fishingId) }
+            database.withTransaction {
+                likeDao.deleteAllForUser(userId)
+                likeDao.insertAll(entities)
+            }
+            // Counters are not counted here: they arrive as fishing.likes_count
+            // inside the existing fishing selects (refreshHomeReports /
+            // refreshReportDetails) mapped to ReportDetailsEntity.likesCount.
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    override suspend fun addLike(reportId: UUID): Result<Unit> {
+        val currentUser = authRepository.currentUser()
+            ?: return Result.failure(IllegalStateException("Нет активной сессии"))
+        // Local pre-checks before the RPC (the RPC/RLS enforce authoritatively).
+        val cached = try {
+            reportDetailsDao.getByIdOneShot(reportId)
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+        if (cached != null) {
+            if (cached.userId == currentUser.id) {
+                return Result.failure(IllegalStateException("Cannot like own report"))
+            }
+            if (!cached.isPublic) {
+                return Result.failure(IllegalStateException("Cannot like private report"))
+            }
+        }
+        return try {
+            supabase.postgrest.rpc("like_report", buildJsonObject { put("fid", reportId.toString()) })
+            // Sync Room with the confirmed state (single transaction).
+            database.withTransaction {
+                likeDao.insertAll(listOf(LikeEntity(currentUser.id, reportId)))
+                reportDetailsDao.getByIdOneShot(reportId)?.let {
+                    reportDetailsDao.insert(it.copy(likesCount = it.likesCount + 1))
+                }
+            }
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun removeLike(reportId: UUID): Result<Unit> {
+        val currentUser = authRepository.currentUser()
+            ?: return Result.failure(IllegalStateException("Нет активной сессии"))
+        return try {
+            supabase.postgrest.rpc("unlike_report", buildJsonObject { put("fid", reportId.toString()) })
+            database.withTransaction {
+                likeDao.delete(currentUser.id, reportId)
+                reportDetailsDao.getByIdOneShot(reportId)?.let {
+                    reportDetailsDao.insert(it.copy(likesCount = (it.likesCount - 1).coerceAtLeast(0)))
+                }
+            }
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
@@ -539,7 +631,8 @@ class SupabaseFishingRepository @Inject constructor(
             baitsJson = json.encodeToString(baits),
             authorName = author?.name,
             authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl),
-            createdAt = createdAt
+            createdAt = createdAt,
+            likesCount = likesCount
         )
     }
 

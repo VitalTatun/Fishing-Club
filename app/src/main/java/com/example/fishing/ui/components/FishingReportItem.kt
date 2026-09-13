@@ -43,8 +43,12 @@ fun FishingReportItem(
     onToggleFavorite: () -> Unit = {},
     isFavorite: Boolean = false,
     currentUserId: UUID? = null,
+    likeState: ReportLikeState? = null,
+    onToggleLike: () -> Unit = {},
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    // Likes are a separate action from bookmarks; own reports never expose it.
+    val showLike = likeState != null && report.userId != currentUserId
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -103,6 +107,13 @@ fun FishingReportItem(
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (showLike) {
+                FishingReportLikeRow(
+                    likeState = likeState!!,
+                    onToggleLike = onToggleLike
                 )
             }
         }
@@ -277,6 +288,37 @@ private fun FishingReportDetails(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         overflow = TextOverflow.Ellipsis
     )
+}
+
+@Composable
+private fun FishingReportLikeRow(
+    likeState: ReportLikeState,
+    onToggleLike: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        IconButton(
+            onClick = onToggleLike,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = if (likeState.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                contentDescription = stringResource(
+                    if (likeState.isLiked) R.string.unlike else R.string.like
+                ),
+                tint = if (likeState.isLiked) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = likeState.likesCount.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable

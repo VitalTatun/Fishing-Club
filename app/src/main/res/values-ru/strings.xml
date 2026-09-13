@@ -60,6 +60,9 @@
     <string name="published">Опубликован</string>
     <string name="in_favorites">В избранном</string>
     <string name="favorites">Избранное</string>
+    <string name="like">Нравится</string>
+    <string name="unlike">Убрать лайк</string>
+    <string name="likes">Лайки</string>
     <string name="make_private">Сделать приватным</string>
     <string name="make_public">Сделать публичным</string>
     <string name="delete_report">Удалить отчет</string>

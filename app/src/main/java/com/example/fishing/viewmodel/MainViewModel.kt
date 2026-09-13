@@ -138,6 +138,16 @@ class MainViewModel @Inject constructor(
 
     private val favoriteOpsInFlight = mutableSetOf<UUID>()
 
+    private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
+    val likeStates: StateFlow<Map<UUID, ReportLikeState>> = _likeStates.asStateFlow()
+
+    private val _likeError = MutableStateFlow<String?>(null)
+    val likeError: StateFlow<String?> = _likeError.asStateFlow()
+
+    private val likeOpsInFlight = mutableSetOf<UUID>()
+    private val optimisticLikeOverlay = mutableMapOf<UUID, ReportLikeState>()
+    private var baseLikeStates: Map<UUID, ReportLikeState> = emptyMap()
+
     private val _deletedReportId = MutableStateFlow<UUID?>(null)
     val deletedReportId: StateFlow<UUID?> = _deletedReportId.asStateFlow()
 
@@ -159,6 +169,7 @@ class MainViewModel @Inject constructor(
     private var mapMarkersLoadJob: Job? = null
     private var reportDetailsJob: Job? = null
     private var deleteReportJob: Job? = null
+    private var likesLoadJob: Job? = null
     private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
     private var currentUserId: UUID? = null
@@ -172,6 +183,7 @@ class MainViewModel @Inject constructor(
                     _reportSortOrder.value = userPreferencesRepository.getSortOrder(authState.user.id)
                     loadReports(force = false)
                     loadMapMarkers(force = false)
+                    refreshLikes()
                 }
         }
         viewModelScope.launch {
@@ -188,10 +200,16 @@ class MainViewModel @Inject constructor(
         mapMarkersLoadJob?.cancel()
         reportDetailsJob?.cancel()
         deleteReportJob?.cancel()
+        likesLoadJob?.cancel()
         currentUserId = null
 
         _reports.value = emptyList()
         _favoriteReports.value = emptyList()
+        _likeStates.value = emptyMap()
+        baseLikeStates = emptyMap()
+        optimisticLikeOverlay.clear()
+        likeOpsInFlight.clear()
+        _likeError.value = null
         _mapMarkers.value = emptyList()
         _reportDetailUiState.value = ReportDetailUiState.Loading
         _error.value = null
@@ -230,6 +248,7 @@ class MainViewModel @Inject constructor(
     fun refresh() {
         loadReports(force = true)
         loadMapMarkers(force = true)
+        refreshLikes()
     }
 
     fun selectTab(index: Int) {
@@ -343,6 +362,110 @@ class MainViewModel @Inject constructor(
 
     fun clearFavoriteError() {
         _favoriteError.value = null
+    }
+
+    fun refreshLikes() {
+        val userId = currentUserId ?: authRepository.currentUser()?.id
+        if (userId == null) return
+        currentUserId = userId
+
+        // Cancel + relaunch (same as loadReports(force = true)): the collect
+        // child below never completes, so an isActive guard would block every
+        // later refresh, including pull-to-refresh. In-flight toggles survive
+        // because they run in viewModelScope, not in this job.
+        likesLoadJob?.cancel()
+        likesLoadJob = viewModelScope.launch {
+            // Observe Room-confirmed states; network refresh runs concurrently
+            // and its result lands in Room → the flow below re-emits.
+            launch {
+                try {
+                    repository.getLikeStates(userId).collect { base ->
+                        // Stale emission after logout/account switch must not restore state.
+                        if (currentUserId != userId) return@collect
+                        baseLikeStates = base
+                        _likeStates.value = base + activeLikeOverlay()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            // Reads are cache-first: a failed refresh keeps the existing states.
+            try {
+                repository.refreshLikes(userId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun toggleLike(report: FishingReport) {
+        val userId = currentUserId ?: authRepository.currentUser()?.id
+        if (userId == null) {
+            _likeError.value = "Нет активной сессии"
+            return
+        }
+        // Self-like is blocked locally: repository/RPC is never called.
+        if (report.userId == userId) return
+        // Double-tap guard: no queue, the second tap is ignored while in flight.
+        if (!likeOpsInFlight.add(report.id)) return
+
+        _likeError.value = null
+        val current = _likeStates.value[report.id]
+            ?: baseLikeStates[report.id]
+            ?: ReportLikeState(report.id)
+        val liking = !current.isLiked
+        val optimistic = current.copy(
+            isLiked = liking,
+            likesCount = (current.likesCount + if (liking) 1 else -1).coerceAtLeast(0)
+        )
+        // Optimistic state has priority over Room emits for the op duration.
+        optimisticLikeOverlay[report.id] = optimistic
+        _likeStates.value = baseLikeStates + activeLikeOverlay()
+
+        viewModelScope.launch {
+            try {
+                val result = if (liking) {
+                    repository.addLike(report.id)
+                } else {
+                    repository.removeLike(report.id)
+                }
+                // Late results after logout/account switch must not restore state.
+                if (currentUserId != userId) return@launch
+                result.onSuccess {
+                    // Keep the optimistic values as the confirmed state.
+                    optimisticLikeOverlay.remove(report.id)
+                    _likeStates.value = _likeStates.value + (report.id to optimistic)
+                }.onFailure { e ->
+                    optimisticLikeOverlay.remove(report.id)
+                    _likeStates.value = baseLikeStates + activeLikeOverlay()
+                    _likeError.value = likeErrorMessage(e)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (currentUserId != userId) return@launch
+                optimisticLikeOverlay.remove(report.id)
+                _likeStates.value = baseLikeStates + activeLikeOverlay()
+                _likeError.value = likeErrorMessage(e)
+            } finally {
+                likeOpsInFlight.remove(report.id)
+            }
+        }
+    }
+
+    private fun activeLikeOverlay(): Map<UUID, ReportLikeState> =
+        optimisticLikeOverlay.filterKeys { it in likeOpsInFlight }
+
+    private fun likeErrorMessage(e: Throwable): String {
+        return "Не удалось изменить лайк: ${e.message ?: "неизвестная ошибка"}"
+    }
+
+    fun clearLikeError() {
+        _likeError.value = null
     }
 
     fun loadReportDetails(id: UUID) {

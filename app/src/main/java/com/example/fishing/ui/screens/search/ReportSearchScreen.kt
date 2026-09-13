@@ -55,6 +55,10 @@ fun ReportSearchScreen(
     favoriteError: String? = null,
     onFavoriteErrorDismiss: () -> Unit = {},
     currentUserId: UUID? = null,
+    likeStates: Map<UUID, ReportLikeState> = emptyMap(),
+    onToggleLike: (FishingReport) -> Unit = {},
+    likeError: String? = null,
+    onLikeErrorDismiss: () -> Unit = {},
 ) {
     val focusRequester = remember { FocusRequester() }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -63,6 +67,13 @@ fun ReportSearchScreen(
         if (favoriteError != null) {
             snackbarHostState.showSnackbar(favoriteError)
             onFavoriteErrorDismiss()
+        }
+    }
+
+    LaunchedEffect(likeError) {
+        if (likeError != null) {
+            snackbarHostState.showSnackbar(likeError)
+            onLikeErrorDismiss()
         }
     }
 
@@ -230,7 +241,9 @@ fun ReportSearchScreen(
                                 onClick = { onReportClick(report) },
                                 onToggleFavorite = { onToggleFavorite(report) },
                                 isFavorite = favoriteReports.any { it.id == report.id },
-                                currentUserId = currentUserId
+                                currentUserId = currentUserId,
+                                likeState = likeStates[report.id],
+                                onToggleLike = { onToggleLike(report) }
                             )
                         }
                     }

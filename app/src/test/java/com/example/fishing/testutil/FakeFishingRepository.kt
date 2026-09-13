@@ -3,6 +3,7 @@ package com.example.fishing.testutil
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
+import com.example.fishing.model.ReportLikeState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +17,7 @@ class FakeFishingRepository : FishingRepository {
     private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
     private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
     private val _reportDetails = MutableStateFlow<FishingReport?>(null)
+    private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
 
     var homeReportsValue: List<FishingReport>
         get() = _homeReports.value
@@ -32,6 +34,10 @@ class FakeFishingRepository : FishingRepository {
     var reportDetailsValue: FishingReport?
         get() = _reportDetails.value
         set(value) { _reportDetails.value = value }
+
+    var likeStatesValue: Map<UUID, ReportLikeState>
+        get() = _likeStates.value
+        set(value) { _likeStates.value = value }
 
     var refreshHomeReportsCallCount = 0
     var refreshHomeReportsException: Exception? = null
@@ -53,6 +59,17 @@ class FakeFishingRepository : FishingRepository {
     var deleteReportCallCount = 0
     var deleteReportException: Exception? = null
     var deleteReportGate: CompletableDeferred<Unit>? = null
+
+    var addLikeCallCount = 0
+    var addLikeException: Exception? = null
+    var addLikeGate: CompletableDeferred<Unit>? = null
+
+    var removeLikeCallCount = 0
+    var removeLikeException: Exception? = null
+    var removeLikeGate: CompletableDeferred<Unit>? = null
+
+    var refreshLikesCallCount = 0
+    var refreshLikesException: Exception? = null
 
     var saveReportCallCount = 0
     var saveReportException: Exception? = null
@@ -116,4 +133,29 @@ class FakeFishingRepository : FishingRepository {
     override suspend fun getPhotoSignedUrl(storagePath: String): String? = storagePath
 
     override fun isStoragePath(path: String): Boolean = false
+
+    override suspend fun addLike(reportId: UUID): Result<Unit> {
+        addLikeCallCount++
+        addLikeGate?.await()
+        addLikeException?.let { return Result.failure(it) }
+        val prev = _likeStates.value[reportId]
+        _likeStates.value = _likeStates.value + (reportId to ReportLikeState(reportId, true, (prev?.likesCount ?: 0) + 1))
+        return Result.success(Unit)
+    }
+
+    override suspend fun removeLike(reportId: UUID): Result<Unit> {
+        removeLikeCallCount++
+        removeLikeGate?.await()
+        removeLikeException?.let { return Result.failure(it) }
+        val prev = _likeStates.value[reportId]
+        _likeStates.value = _likeStates.value + (reportId to ReportLikeState(reportId, false, ((prev?.likesCount ?: 1) - 1).coerceAtLeast(0)))
+        return Result.success(Unit)
+    }
+
+    override fun getLikeStates(userId: UUID): Flow<Map<UUID, ReportLikeState>> = _likeStates.asStateFlow()
+
+    override suspend fun refreshLikes(userId: UUID) {
+        refreshLikesCallCount++
+        refreshLikesException?.let { throw it }
+    }
 }
