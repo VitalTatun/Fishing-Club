@@ -3,6 +3,7 @@ package com.example.fishing
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MarkerDomain
+import com.example.fishing.model.ReportLikeState
 import com.example.fishing.model.ReportSortOrder
 import com.example.fishing.model.User
 import com.example.fishing.model.Water
@@ -767,5 +768,176 @@ class MainViewModelTest {
 
         assertEquals(HomeUiState.Empty, vm.homeUiState.value)
         job.cancel()
+    }
+
+    // --- Likes (P0) ---
+
+    private fun otherUserReport(id: UUID = UUID.randomUUID()): FishingReport {
+        return createReport(id = id, userId = UUID.randomUUID())
+    }
+
+    @Test
+    fun `like success applies optimistic state then confirms it`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = otherUserReport()
+        fakeFishingRepository.likeStatesValue = mapOf(report.id to ReportLikeState(report.id, false, 10))
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(ReportLikeState(report.id, false, 10), vm.likeStates.value[report.id])
+
+        vm.toggleLike(report)
+        // Optimistic state is applied synchronously, before the RPC completes.
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.addLikeCallCount)
+        assertEquals(0, fakeFishingRepository.removeLikeCallCount)
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+        assertNull(vm.likeError.value)
+    }
+
+    @Test
+    fun `unlike success decrements count`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = otherUserReport()
+        fakeFishingRepository.likeStatesValue = mapOf(report.id to ReportLikeState(report.id, true, 10))
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.toggleLike(report)
+        assertEquals(ReportLikeState(report.id, false, 9), vm.likeStates.value[report.id])
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.removeLikeCallCount)
+        assertEquals(0, fakeFishingRepository.addLikeCallCount)
+        assertEquals(ReportLikeState(report.id, false, 9), vm.likeStates.value[report.id])
+        assertNull(vm.likeError.value)
+    }
+
+    @Test
+    fun `like failure rolls back optimistic state and publishes error`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = otherUserReport()
+        fakeFishingRepository.likeStatesValue = mapOf(report.id to ReportLikeState(report.id, false, 10))
+        fakeFishingRepository.addLikeException = RuntimeException("Network error")
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.toggleLike(report)
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.addLikeCallCount)
+        assertEquals(ReportLikeState(report.id, false, 10), vm.likeStates.value[report.id])
+        assertNotNull(vm.likeError.value)
+        assertTrue(vm.likeError.value!!.contains("Network error"))
+
+        // Retry after clearing the failure must succeed and clear the error.
+        fakeFishingRepository.addLikeException = null
+        vm.toggleLike(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeFishingRepository.addLikeCallCount)
+        assertNull(vm.likeError.value)
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+    }
+
+    @Test
+    fun `duplicate like toggle while in-flight is ignored`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = otherUserReport()
+        fakeFishingRepository.likeStatesValue = mapOf(report.id to ReportLikeState(report.id, false, 10))
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val likeGate = CompletableDeferred<Unit>()
+        fakeFishingRepository.addLikeGate = likeGate
+
+        vm.toggleLike(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.addLikeCallCount)
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+
+        // Second tap while the first op is still in flight must not start another operation.
+        vm.toggleLike(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, fakeFishingRepository.addLikeCallCount)
+
+        likeGate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.addLikeCallCount)
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+    }
+
+    @Test
+    fun `self-like never calls repository`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val ownReport = createReport(userId = testUserId)
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.toggleLike(ownReport)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, fakeFishingRepository.addLikeCallCount)
+        assertEquals(0, fakeFishingRepository.removeLikeCallCount)
+        assertNull(vm.likeStates.value[ownReport.id])
+        assertNull(vm.likeError.value)
+    }
+
+    @Test
+    fun `logout clears like state`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = otherUserReport()
+        fakeFishingRepository.likeStatesValue = mapOf(report.id to ReportLikeState(report.id, true, 11))
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+
+        fakeAuthRepository.sessionUser = null
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.likeStates.value.isEmpty())
+        assertNull(vm.likeError.value)
+    }
+
+    @Test
+    fun `late like result after logout does not restore state`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = otherUserReport()
+        fakeFishingRepository.likeStatesValue = mapOf(report.id to ReportLikeState(report.id, false, 10))
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val likeGate = CompletableDeferred<Unit>()
+        fakeFishingRepository.addLikeGate = likeGate
+
+        vm.toggleLike(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+
+        // Log out while the RPC is still in flight.
+        fakeAuthRepository.sessionUser = null
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.likeStates.value.isEmpty())
+
+        likeGate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.addLikeCallCount)
+        assertTrue(vm.likeStates.value.isEmpty())
+        assertNull(vm.likeError.value)
     }
 }
