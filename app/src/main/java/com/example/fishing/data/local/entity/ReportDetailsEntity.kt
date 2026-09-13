@@ -30,5 +30,6 @@ data class ReportDetailsEntity(
     val baitsJson: String,
     val authorName: String?,
     val authorAvatar: String?,
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val likesCount: Int = 0
 )
