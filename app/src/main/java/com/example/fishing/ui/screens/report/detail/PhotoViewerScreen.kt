@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -56,8 +56,8 @@ fun PhotoViewerOverlay(
         IconButton(
             onClick = onDismiss,
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .navigationBarsPadding()
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
                 .padding(16.dp)
         ) {
             Icon(
