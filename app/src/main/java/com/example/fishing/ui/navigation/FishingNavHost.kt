@@ -123,9 +123,6 @@ fun FishingNavHost(
                     onReportClick = { report ->
                         navController.navigate("detail/${report.id}")
                     },
-                    onDeleteReport = { report ->
-                        viewModel.deleteReport(report.id)
-                    },
                     onSearchClick = {
                         if (selectedTab == 0) {
                             navController.navigate("report_list_search")
@@ -136,7 +133,6 @@ fun FishingNavHost(
                     userEmail = currentUser?.email,
                     userName = currentUser?.name,
                     userImage = currentUser?.image,
-                    currentUserId = currentUser?.id,
                     onLogout = {
                         coroutineScope.launch {
                             authRepository.logout()
@@ -155,7 +151,6 @@ fun FishingNavHost(
                     favoriteErrorText = viewModel.favoriteError.collectAsState().value,
                     onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
                     likeStates = likeStates,
-                    onToggleLike = viewModel::toggleLike,
                     likeErrorText = viewModel.likeError.collectAsState().value,
                     onLikeErrorDismiss = { viewModel.clearLikeError() }
                 )
@@ -189,11 +184,7 @@ fun FishingNavHost(
                     onToggleFavorite = viewModel::toggleFavorite,
                     favoriteError = viewModel.favoriteError.collectAsState().value,
                     onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
-                    currentUserId = currentUser?.id,
-                    likeStates = likeStates,
-                    onToggleLike = viewModel::toggleLike,
-                    likeError = viewModel.likeError.collectAsState().value,
-                    onLikeErrorDismiss = { viewModel.clearLikeError() }
+                    likeStates = likeStates
                 )
             }
 

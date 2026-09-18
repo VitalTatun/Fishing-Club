@@ -53,7 +53,6 @@ fun MainScreen(
     homeUiState: HomeUiState,
     favoriteReports: List<FishingReport> = emptyList(),
     likeStates: Map<UUID, ReportLikeState> = emptyMap(),
-    onToggleLike: (FishingReport) -> Unit = {},
     mapMarkers: List<MarkerDomain> = emptyList(),
     isInitialLoading: Boolean = false,
     isRefreshing: Boolean = false,
@@ -66,12 +65,10 @@ fun MainScreen(
     onTabSelected: (Int) -> Unit = {},
     onCreateReportClick: () -> Unit = {},
     onReportClick: (FishingReport) -> Unit,
-    onDeleteReport: (FishingReport) -> Unit = {},
     onSearchClick: () -> Unit = {},
     userEmail: String? = null,
     userName: String? = null,
     userImage: String? = null,
-    currentUserId: UUID? = null,
     onLogout: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onChangeHistoryClick: () -> Unit = {},
@@ -317,12 +314,9 @@ fun MainScreen(
                                         FishingReportItem(
                                             report = report,
                                             onClick = { onReportClick(report) },
-                                            onDeleteReport = onDeleteReport,
                                             onToggleFavorite = { viewModel?.toggleFavorite(report) },
                                             isFavorite = favoriteReports.any { it.id == report.id },
-                                            currentUserId = currentUserId,
-                                            likeState = likeStates[report.id],
-                                            onToggleLike = { onToggleLike(report) }
+                                            likeState = likeStates[report.id]
                                         )
                                     }
                                 }

@@ -1,7 +1,6 @@
 package com.example.fishing.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -21,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,38 +39,10 @@ fun FishingReportItem(
     report: FishingReport,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
-    onDeleteReport: (FishingReport) -> Unit = {},
     onToggleFavorite: () -> Unit = {},
     isFavorite: Boolean = false,
-    currentUserId: UUID? = null,
     likeState: ReportLikeState? = null,
-    onToggleLike: () -> Unit = {},
 ) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    // Likes are a separate action from bookmarks; own reports never expose it.
-    val showLike = likeState != null && report.userId != currentUserId
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.delete_report)) },
-            text = { Text(stringResource(R.string.delete_report_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    onDeleteReport(report)
-                }) {
-                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -81,24 +53,13 @@ fun FishingReportItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            FishingReportHeader(
-                user = report.user,
-                date = report.publishedAt ?: report.fishingStartAt?.let { java.util.Date.from(it) } ?: java.util.Date(),
-                onDeleteClick = { showDeleteDialog = true },
-                showDeleteOption = report.userId == currentUserId
-            )
 
-            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                FishingReportTitle(
-                    report = report,
-                    isFavorite = isFavorite,
-                    onToggleFavorite = onToggleFavorite
-                )
-                FishingReportDetails(report = report)
-            }
+            FishingReportInfo(
+                report = report
+            )
 
             if (report.comment.isNotBlank()) {
                 Text(
@@ -106,20 +67,26 @@ fun FishingReportItem(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 4,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
 
-            if (showLike) {
-                FishingReportLikeRow(
-                    likeState = likeState!!,
-                    onToggleLike = onToggleLike
-                )
+            if (report.photos.isNotEmpty()) {
+                FishingReportPhotos(photos = report.photos)
             }
+
+            FishingReportHeader(
+                user = report.user,
+                date = report.publishedAt ?: report.fishingStartAt?.let { java.util.Date.from(it) } ?: java.util.Date(),
+                isFavorite = isFavorite,
+                onToggleFavorite = onToggleFavorite,
+                likeState = likeState
+            )
         }
-        if (report.photos.isNotEmpty()) {
-            FishingReportPhotos(photos = report.photos)
-        }
+
+
+
     }
 }
 
@@ -127,16 +94,17 @@ fun FishingReportItem(
 private fun FishingReportHeader(
     user: User,
     date: Date,
-    onDeleteClick: () -> Unit,
-    showDeleteOption: Boolean,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    likeState: ReportLikeState? = null,
     modifier: Modifier = Modifier
 ) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
-    var showMenu by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -182,45 +150,41 @@ private fun FishingReportHeader(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (showDeleteOption) {
-                Box {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null
-                            ) { showMenu = true }
-                    )
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.delete)) },
-                            onClick = {
-                                showMenu = false
-                                onDeleteClick()
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Delete, contentDescription = null)
-                            }
-                        )
-                    }
-                }
+            if (likeState != null) {
+                Icon(
+                    painter = painterResource(id = if (likeState.isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = likeState.likesCount.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                    contentDescription = stringResource(R.string.favorites),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun FishingReportTitle(
+private fun FishingReportInfo(
     report: FishingReport,
-    isFavorite: Boolean,
-    onToggleFavorite: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val fishFallback = stringResource(R.string.fish_fallback)
@@ -228,95 +192,49 @@ private fun FishingReportTitle(
     val fishName = report.fish.firstOrNull()?.name ?: fishFallback
     val title = "$methodName • $fishName"
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        if (report.type == FishingType.HAUL) {
-            Surface(
-                color = FishingTheme.colors.trophyYellow,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.trophy),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = FishingTheme.colors.textOnTrophy
-                )
-            }
-        }
-
-        IconButton(
-            onClick = onToggleFavorite,
-            modifier = Modifier.size(32.dp)
-        ) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                contentDescription = stringResource(R.string.favorites),
-                tint = if (isFavorite) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun FishingReportDetails(
-    report: FishingReport,
-    modifier: Modifier = Modifier
-) {
     val details = listOfNotNull(
         report.water.waterName.takeIf { it.isNotBlank() },
         stringResource(R.string.paid_water).takeIf { report.water.isPaid },
         stringResource(if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat)
     ).joinToString(" • ")
 
-    Text(
-        text = details,
-        modifier = modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        overflow = TextOverflow.Ellipsis
-    )
-}
-
-@Composable
-private fun FishingReportLikeRow(
-    likeState: ReportLikeState,
-    onToggleLike: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        IconButton(
-            onClick = onToggleLike,
-            modifier = Modifier.size(32.dp)
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = if (likeState.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                contentDescription = stringResource(
-                    if (likeState.isLiked) R.string.unlike else R.string.like
-                ),
-                tint = if (likeState.isLiked) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
+
+            if (report.type == FishingType.HAUL) {
+                Surface(
+                    color = FishingTheme.colors.trophyYellow,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.trophy),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = FishingTheme.colors.textOnTrophy
+                    )
+                }
+            }
         }
+
         Text(
-            text = likeState.likesCount.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = details,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -331,6 +249,7 @@ private fun FishingReportPhotos(
         modifier = Modifier
             .fillMaxWidth()
             .height(230.dp)
+            .padding(horizontal = 8.dp)
     ) {
         HorizontalPager(
             state = pagerState,
@@ -406,7 +325,7 @@ fun FishingReportItemPreview() {
             FishingReportItem(
                 report = sampleReport,
                 isFavorite = true,
-                currentUserId = sampleUserId
+                likeState = ReportLikeState(reportId = sampleReport.id, likesCount = 12, isLiked = true)
             )
         }
     }
