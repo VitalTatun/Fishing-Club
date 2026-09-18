@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.ThumbUpOffAlt
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.Delete
@@ -131,18 +133,6 @@ fun ReportDetailScreen(
                     }
                 },
                 actions = {
-                    // Order: [ Like | Bookmark | More ]. No like action on own reports.
-                    if (likeState != null && !isOwnReport) {
-                        IconButton(onClick = onToggleLike) {
-                            Icon(
-                                imageVector = if (likeState.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = stringResource(
-                                    if (likeState.isLiked) R.string.unlike else R.string.like
-                                ),
-                                tint = if (likeState.isLiked) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
@@ -211,12 +201,13 @@ fun ReportDetailScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
-            ReportHeader(report = report, onPhotoClick = onPhotoClick)
-
-            // 2. Счетчик лайков — только в body, не в TopAppBar.
-            if (likeState != null) {
-                ReportLikeCountRow(likesCount = likeState.likesCount)
-            }
+            ReportHeader(
+                report = report,
+                likesCount = likeState?.likesCount,
+                isLiked = likeState?.isLiked ?: false,
+                onToggleLike = if (!isOwnReport) onToggleLike else null,
+                onPhotoClick = onPhotoClick
+            )
 
             // 3. Описание отчета
             ReportDescriptionSection(report = report)
@@ -240,31 +231,7 @@ fun ReportDetailScreen(
     }
 }
 
-@Composable
-private fun ReportLikeCountRow(
-    likesCount: Int,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.FavoriteBorder,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = likesCount.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

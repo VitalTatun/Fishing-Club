@@ -383,6 +383,11 @@ class MainViewModel @Inject constructor(
                         // Stale emission after logout/account switch must not restore state.
                         if (currentUserId != userId) return@collect
                         baseLikeStates = base
+                        // Clean up optimistic overlay for IDs that have now matched the base state
+                        // and are no longer in flight. This prevents the "new -> old -> new" flicker.
+                        optimisticLikeOverlay.entries.removeAll { (id, state) ->
+                            id !in likeOpsInFlight && base[id]?.isLiked == state.isLiked
+                        }
                         _likeStates.value = base + activeLikeOverlay()
                     }
                 } catch (e: CancellationException) {
@@ -435,11 +440,7 @@ class MainViewModel @Inject constructor(
                 }
                 // Late results after logout/account switch must not restore state.
                 if (currentUserId != userId) return@launch
-                result.onSuccess {
-                    // Keep the optimistic values as the confirmed state.
-                    optimisticLikeOverlay.remove(report.id)
-                    _likeStates.value = _likeStates.value + (report.id to optimistic)
-                }.onFailure { e ->
+                result.onFailure { e ->
                     optimisticLikeOverlay.remove(report.id)
                     _likeStates.value = baseLikeStates + activeLikeOverlay()
                     _likeError.value = likeErrorMessage(e)
@@ -453,12 +454,16 @@ class MainViewModel @Inject constructor(
                 _likeError.value = likeErrorMessage(e)
             } finally {
                 likeOpsInFlight.remove(report.id)
+                // We don't remove from optimisticLikeOverlay here immediately
+                // to allow the Room collector to see the matching state first.
+                // But we must trigger a refresh to reflect the flight status change.
+                _likeStates.value = baseLikeStates + activeLikeOverlay()
             }
         }
     }
 
     private fun activeLikeOverlay(): Map<UUID, ReportLikeState> =
-        optimisticLikeOverlay.filterKeys { it in likeOpsInFlight }
+        optimisticLikeOverlay.toMap()
 
     private fun likeErrorMessage(e: Throwable): String {
         return "Не удалось изменить лайк: ${e.message ?: "неизвестная ошибка"}"

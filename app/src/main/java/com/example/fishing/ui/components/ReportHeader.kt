@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.ThumbUpOffAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -16,7 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,22 +40,27 @@ import java.util.*
 fun ReportHeader(
     report: FishingReport,
     modifier: Modifier = Modifier,
+    likesCount: Int? = null,
+    isLiked: Boolean = false,
+    onToggleLike: (() -> Unit)? = null,
     onPhotoClick: (Int) -> Unit = {}
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        UserInfoBlock(
+            user = report.user,
+            date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date(),
+            modifier = Modifier.padding(horizontal = 16.dp),
+            likesCount = likesCount,
+            isLiked = isLiked,
+            onToggleLike = onToggleLike
+        )
         ReportPhotoCarousel(
             photos = report.photos,
             showTrophyBadge = report.type == FishingType.HAUL,
             onPhotoClick = onPhotoClick
-        )
-        
-        UserInfoBlock(
-            user = report.user,
-            date = report.publishedAt ?: report.fishingStartAt?.let { java.util.Date.from(it) } ?: java.util.Date(),
-            modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
 }
@@ -132,7 +142,10 @@ fun ReportPhotoCarousel(
 fun UserInfoBlock(
     user: User,
     date: Date,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    likesCount: Int? = null,
+    isLiked: Boolean = false,
+    onToggleLike: (() -> Unit)? = null
 ) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
 
@@ -188,6 +201,49 @@ fun UserInfoBlock(
                 overflow = TextOverflow.Ellipsis
             )
         }
+
+        if (likesCount != null) {
+            ReportLikeCount(
+                likesCount = likesCount,
+                isLiked = isLiked,
+                onToggleLike = onToggleLike
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReportLikeCount(
+    likesCount: Int,
+    isLiked: Boolean,
+    onToggleLike: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        IconButton(
+            onClick = {
+                onToggleLike?.invoke()
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            },
+            enabled = onToggleLike != null
+        ) {
+            Icon(
+                painter = painterResource(id = if (isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+        Text(
+            text = likesCount.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
     }
 }
 
@@ -213,6 +269,11 @@ fun ReportHeaderPreview() {
             fishingFromTheShore = true,
             isPublic = false
         )
-        ReportHeader(report = sampleReport, modifier = Modifier.padding(vertical = 16.dp))
+        ReportHeader(
+            report = sampleReport,
+            likesCount = 12,
+            isLiked = true,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
     }
 }
