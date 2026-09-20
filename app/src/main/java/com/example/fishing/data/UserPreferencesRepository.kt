@@ -2,6 +2,7 @@ package com.example.fishing.data
 
 import android.content.Context
 import com.example.fishing.model.ReportSortOrder
+import com.example.fishing.model.ReportDisplayMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
 import javax.inject.Inject
@@ -16,6 +17,7 @@ open class UserPreferencesRepository @Inject constructor(
 
     companion object {
         private const val KEY_SORT_ORDER = "report_sort_order"
+        private const val KEY_DISPLAY_MODE = "report_display_mode"
     }
 
     override fun getSortOrder(userId: UUID?): ReportSortOrder {
@@ -31,5 +33,20 @@ open class UserPreferencesRepository @Inject constructor(
     override fun setSortOrder(userId: UUID, order: ReportSortOrder) {
         val key = "${KEY_SORT_ORDER}_$userId"
         prefs.edit().putString(key, order.name).apply()
+    }
+
+    override fun getDisplayMode(userId: UUID?): ReportDisplayMode {
+        val key = if (userId != null) "${KEY_DISPLAY_MODE}_$userId" else KEY_DISPLAY_MODE
+        val name = prefs.getString(key, ReportDisplayMode.CARD.name)
+        return try {
+            ReportDisplayMode.valueOf(name ?: ReportDisplayMode.CARD.name)
+        } catch (e: Exception) {
+            ReportDisplayMode.CARD
+        }
+    }
+
+    override fun setDisplayMode(userId: UUID, mode: ReportDisplayMode) {
+        val key = "${KEY_DISPLAY_MODE}_$userId"
+        prefs.edit().putString(key, mode.name).apply()
     }
 }

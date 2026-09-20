@@ -63,6 +63,9 @@ class MainViewModel @Inject constructor(
     private val _reportSortOrder = MutableStateFlow(userPreferencesRepository.getSortOrder())
     val reportSortOrder: StateFlow<ReportSortOrder> = _reportSortOrder.asStateFlow()
 
+    private val _reportDisplayMode = MutableStateFlow(userPreferencesRepository.getDisplayMode())
+    val reportDisplayMode: StateFlow<ReportDisplayMode> = _reportDisplayMode.asStateFlow()
+
     val sortedReports: StateFlow<List<FishingReport>> = combine(
         reports,
         reportSortOrder
@@ -181,6 +184,7 @@ class MainViewModel @Inject constructor(
                 .collect { authState ->
                     currentUserId = authState.user.id
                     _reportSortOrder.value = userPreferencesRepository.getSortOrder(authState.user.id)
+                    _reportDisplayMode.value = userPreferencesRepository.getDisplayMode(authState.user.id)
                     loadReports(force = false)
                     loadMapMarkers(force = false)
                     refreshLikes()
@@ -224,6 +228,7 @@ class MainViewModel @Inject constructor(
         _mapIsLoading.value = true
         _mapIsRefreshing.value = false
         _mapRefreshError.value = null
+        _reportDisplayMode.value = ReportDisplayMode.CARD
 
         searchQuery = ""
         searchSelectedDate = null
@@ -259,6 +264,11 @@ class MainViewModel @Inject constructor(
     fun setSortOrder(order: ReportSortOrder) {
         _reportSortOrder.value = order
         currentUserId?.let { userPreferencesRepository.setSortOrder(it, order) }
+    }
+
+    fun setDisplayMode(mode: ReportDisplayMode) {
+        _reportDisplayMode.value = mode
+        currentUserId?.let { userPreferencesRepository.setDisplayMode(it, mode) }
     }
 
     fun requestMapLocation(point: GeoPoint?) {

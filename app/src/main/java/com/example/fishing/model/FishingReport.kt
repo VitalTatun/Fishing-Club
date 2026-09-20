@@ -79,3 +79,8 @@ enum class ReportSortOrder {
     BY_PUBLISH_DATE,
     BY_FISHING_TIME
 }
+
+enum class ReportDisplayMode {
+    CARD,
+    LIST
+}

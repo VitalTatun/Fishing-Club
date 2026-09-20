@@ -17,6 +17,7 @@ import com.example.fishing.model.*
 import com.example.fishing.ui.screens.main.MainScreen
 import com.example.fishing.ui.screens.profile.ChangeHistoryScreen
 import com.example.fishing.ui.screens.profile.EditProfileScreen
+import com.example.fishing.ui.screens.profile.AppearanceScreen
 import com.example.fishing.ui.screens.report.create.*
 import com.example.fishing.ui.screens.report.detail.PhotoViewerOverlay
 import com.example.fishing.ui.screens.report.detail.ReportDetailLoadingScreen
@@ -67,6 +68,7 @@ fun FishingNavHost(
     val mapIsRefreshing by viewModel.mapIsRefreshing.collectAsState()
     val mapErrorMessage by viewModel.mapRefreshError.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
+    val reportDisplayMode by viewModel.reportDisplayMode.collectAsState()
 
     val isAuthenticated = authState is AuthState.Authenticated
     val currentUser = (authState as? AuthState.Authenticated)?.user
@@ -144,6 +146,10 @@ fun FishingNavHost(
                     onChangeHistoryClick = {
                         navController.navigate("change_history")
                     },
+                    onAppearanceClick = {
+                        navController.navigate("appearance")
+                    },
+                    reportDisplayMode = reportDisplayMode,
                     errorText = viewModel.error.collectAsState().value,
                     onErrorDismiss = { viewModel.refresh() },
                     deleteErrorText = viewModel.deleteReportError.collectAsState().value,
@@ -534,6 +540,14 @@ fun FishingNavHost(
                     onResetSaveSuccess = { editProfileViewModel.resetSuccess() },
                     onChangePasswordClick = { /* TODO: Implement */ },
                     onDeleteAccountClick = { /* TODO: Implement */ }
+                )
+            }
+
+            composable("appearance") {
+                AppearanceScreen(
+                    currentMode = reportDisplayMode,
+                    onModeSelected = { mode -> viewModel.setDisplayMode(mode) },
+                    onBackClick = { navController.popBackStack() }
                 )
             }
         }

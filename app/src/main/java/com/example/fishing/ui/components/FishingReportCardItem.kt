@@ -1,0 +1,329 @@
+package com.example.fishing.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.fishing.R
+import com.example.fishing.model.*
+import com.example.fishing.ui.theme.FishingTheme
+import java.text.SimpleDateFormat
+import java.util.*
+
+@Composable
+fun FishingReportCardItem(
+    report: FishingReport,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+    onToggleFavorite: () -> Unit = {},
+    isFavorite: Boolean = false,
+    likeState: ReportLikeState? = null,
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+
+            FishingReportInfo(
+                report = report
+            )
+
+            if (report.comment.isNotBlank()) {
+                Text(
+                    text = report.comment,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            if (report.photos.isNotEmpty()) {
+                FishingReportPhotos(photos = report.photos)
+            }
+
+            FishingReportHeader(
+                user = report.user,
+                date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date(),
+                isFavorite = isFavorite,
+                onToggleFavorite = onToggleFavorite,
+                likeState = likeState
+            )
+        }
+    }
+}
+
+@Composable
+private fun FishingReportHeader(
+    user: User,
+    date: Date,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    modifier: Modifier = Modifier,
+    likeState: ReportLikeState? = null,
+) {
+    val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            if (user.image.isNotBlank()) {
+                AsyncImage(
+                    model = user.image,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = user.name.ifBlank { stringResource(R.string.fisherman) },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = dateFormatter.format(date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (likeState != null) {
+                Icon(
+                    painter = painterResource(id = if (likeState.isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = likeState.likesCount.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                    contentDescription = stringResource(R.string.favorites),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FishingReportInfo(
+    report: FishingReport,
+    modifier: Modifier = Modifier
+) {
+    val fishFallback = stringResource(R.string.fish_fallback)
+    val methodName = stringResource(report.fishingMethod.labelRes)
+    val fishName = report.fish.firstOrNull()?.name ?: fishFallback
+    val title = "$methodName • $fishName"
+
+    val details = listOfNotNull(
+        report.water.waterName.takeIf { it.isNotBlank() },
+        stringResource(R.string.paid_water).takeIf { report.water.isPaid },
+        stringResource(if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat)
+    ).joinToString(" • ")
+
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (report.type == FishingType.HAUL) {
+                Surface(
+                    color = FishingTheme.colors.trophyYellow,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.trophy),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = FishingTheme.colors.textOnTrophy
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = details,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun FishingReportPhotos(
+    photos: List<FishingPhoto>,
+) {
+    val pagerState = rememberPagerState { photos.size }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(230.dp)
+            .padding(horizontal = 8.dp)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            pageSpacing = 8.dp
+        ) { index ->
+            AsyncImage(
+                model = photos[index].url,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        if (photos.size > 1) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 8.dp),
+                color = Color.Black.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(30.dp)
+            ) {
+                Text(
+                    text = "${pagerState.currentPage + 1}/${photos.size}",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FishingReportCardItemPreview() {
+    val sampleUser = User(name = "Иван", image = "", email = "ivan@example.com")
+    val sampleWater = Water(waterName = "Минское море", latitude = 55.0, longitude = 60.0, isPaid = true)
+    val calendar = Calendar.getInstance().apply {
+        set(2023, Calendar.AUGUST, 22)
+    }
+    val sampleUserId = UUID.randomUUID()
+    val sampleReport = FishingReport(
+        id = UUID.randomUUID(),
+        userId = sampleUserId,
+        type = FishingType.HAUL,
+        name = "Смеркалось...",
+        water = sampleWater,
+        photos = listOf(
+            FishingPhoto(url = "https://picsum.photos/800/400?random=1"),
+            FishingPhoto(url = "https://picsum.photos/800/400?random=2")
+        ),
+        fishingStartAt = calendar.time.toInstant(),
+        fishingEndAt = calendar.time.toInstant().plusSeconds(3600 * 3),
+        weight = 2.5,
+        fish = listOf(Fish(id = UUID.randomUUID(), name = "Окунь", count = 5)),
+        fishingMethod = FishingMethod.SPINNING,
+        bait = listOf(Bait.WOBBLER),
+        comment = "Прекрасное утро. В этот раз разведал неглубокую часть водохранилища и поймал парочку красивых рыб!",
+        user = sampleUser,
+        fishingFromTheShore = true,
+        isPublic = false
+    )
+    Box(modifier = Modifier
+        .background(MaterialTheme.colorScheme.background)
+        .padding(16.dp)) {
+        FishingTheme {
+            FishingReportCardItem(
+                report = sampleReport,
+                isFavorite = true,
+                likeState = ReportLikeState(reportId = sampleReport.id, likesCount = 12, isLiked = true)
+            )
+        }
+    }
+}

@@ -29,7 +29,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.*
-import com.example.fishing.ui.components.FishingReportItem
+import com.example.fishing.ui.components.FishingReportCardItem
+import com.example.fishing.ui.components.FishingReportListItem
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.HomeUiState
@@ -72,6 +73,8 @@ fun MainScreen(
     onLogout: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onChangeHistoryClick: () -> Unit = {},
+    onAppearanceClick: () -> Unit = {},
+    reportDisplayMode: ReportDisplayMode = ReportDisplayMode.CARD,
     errorText: String? = null,
     onErrorDismiss: () -> Unit = {},
     deleteErrorText: String? = null,
@@ -304,20 +307,36 @@ fun MainScreen(
                             ) {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    contentPadding = if (reportDisplayMode == ReportDisplayMode.CARD) {
+                                        PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                                    } else {
+                                        PaddingValues(vertical = 8.dp)
+                                    },
+                                    verticalArrangement = Arrangement.spacedBy(
+                                        if (reportDisplayMode == ReportDisplayMode.LIST)  0.dp else 16.dp
+                                    )
                                 ) {
                                     itemsIndexed(
                                         items = homeUiState.reports,
                                         key = { _, report -> report.id }
                                     ) { index, report ->
-                                        FishingReportItem(
-                                            report = report,
-                                            onClick = { onReportClick(report) },
-                                            onToggleFavorite = { viewModel?.toggleFavorite(report) },
-                                            isFavorite = favoriteReports.any { it.id == report.id },
-                                            likeState = likeStates[report.id]
-                                        )
+                                        if (reportDisplayMode == ReportDisplayMode.CARD) {
+                                            FishingReportCardItem(
+                                                report = report,
+                                                onClick = { onReportClick(report) },
+                                                onToggleFavorite = { viewModel?.toggleFavorite(report) },
+                                                isFavorite = favoriteReports.any { it.id == report.id },
+                                                likeState = likeStates[report.id]
+                                            )
+                                        } else {
+                                            FishingReportListItem(
+                                                report = report,
+                                                onClick = { onReportClick(report) },
+                                                onToggleFavorite = { viewModel?.toggleFavorite(report) },
+                                                isFavorite = favoriteReports.any { it.id == report.id },
+                                                likeState = likeStates[report.id]
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -366,7 +385,8 @@ fun MainScreen(
                         avatarUrl = userImage,
                         onEditClick = onEditProfileClick,
                         onLogoutClick = onLogout,
-                        onChangeHistoryClick = onChangeHistoryClick
+                        onChangeHistoryClick = onChangeHistoryClick,
+                        onAppearanceClick = onAppearanceClick
                     )
                 }
             }

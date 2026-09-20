@@ -34,7 +34,8 @@ fun ProfileScreen(
     avatarUrl: String? = null,
     onEditClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    onChangeHistoryClick: () -> Unit = {}
+    onChangeHistoryClick: () -> Unit = {},
+    onAppearanceClick: () -> Unit = {}
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -79,6 +80,12 @@ fun ProfileScreen(
         val context = LocalContext.current
         val versionName = remember { AppUtils.getVersionName(context) }
         
+        ProfileListItem(
+            label = "Оформление",
+            value = "Выбор варианта отображения отчетов",
+            onClick = onAppearanceClick
+        )
+
         ProfileListItem(
             label = "Версия приложения",
             value = versionName,

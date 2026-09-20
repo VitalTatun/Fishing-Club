@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingFilterChips
-import com.example.fishing.ui.components.FishingReportItem
+import com.example.fishing.ui.components.FishingReportCardItem
 import com.example.fishing.ui.theme.FishingTheme
 import java.util.Calendar
 import java.util.UUID
@@ -225,7 +225,7 @@ fun ReportSearchScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(filteredReports, key = { it.id }) { report ->
-                            FishingReportItem(
+                            FishingReportCardItem(
                                 report = report,
                                 onClick = { onReportClick(report) },
                                 onToggleFavorite = { onToggleFavorite(report) },
