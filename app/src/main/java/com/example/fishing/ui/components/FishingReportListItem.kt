@@ -10,7 +10,10 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.carousel.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.fishing.R
 import com.example.fishing.model.*
+import com.example.fishing.ui.screens.report.detail.PhotoViewerOverlay
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,10 +40,12 @@ fun FishingReportListItem(
     report: FishingReport,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    onPhotoClick: ((Int) -> Unit)? = null,
     onToggleFavorite: () -> Unit = {},
     isFavorite: Boolean = false,
     likeState: ReportLikeState? = null,
 ) {
+    var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
     val date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date()
 
@@ -86,8 +92,7 @@ fun FishingReportListItem(
                         text = title,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Medium,
-                            fontSize = 16.sp,
-                            color = Color(0xFF1A1B20)
+                            color = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
@@ -105,8 +110,6 @@ fun FishingReportListItem(
                                     text = stringResource(R.string.trophy),
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = FontWeight.Medium,
-                                        fontSize = 12.sp,
-                                        lineHeight = 14.sp,
                                         color = Color(0xFF50250A)
                                     )
                                 )
@@ -118,10 +121,8 @@ fun FishingReportListItem(
                 Text(
                     text = details,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 12.sp,
-                        color = Color(0xFF44474F)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
-                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -134,31 +135,50 @@ fun FishingReportListItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp)
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 8.dp)
                         .clip(RoundedCornerShape(24.dp))
-                        .background(Color(0xFFECE6F0)),
+                        .background(Color(0xFFECE6F0))
+                        .clickable {
+                            if (onPhotoClick != null) {
+                                onPhotoClick(0)
+                            } else {
+                                selectedPhotoIndex = 0
+                            }
+                        },
                     contentScale = ContentScale.Crop
                 )
             } else if (report.photos.size > 1) {
                 val carouselState = rememberCarouselState { report.photos.size }
-                HorizontalMultiBrowseCarousel(
-                    state = carouselState,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(220.dp),
-                    preferredItemWidth = 330.dp,
-                    itemSpacing = 8.dp,
-                    contentPadding = PaddingValues(horizontal = 16.dp)
-                ) { index ->
-                    AsyncImage(
-                        model = report.photos[index].url,
-                        contentDescription = null,
+                        .padding(horizontal = 8.dp)
+                ) {
+                    HorizontalMultiBrowseCarousel(
+                        state = carouselState,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .maskClip(RoundedCornerShape(24.dp))
-                            .background(Color(0xFFECE6F0)),
-                        contentScale = ContentScale.Crop
-                    )
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        preferredItemWidth = 330.dp,
+                        itemSpacing = 8.dp,
+                    ) { index ->
+                        AsyncImage(
+                            model = report.photos[index].url,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .maskClip(RoundedCornerShape(24.dp))
+                                .background(Color(0xFFECE6F0))
+                                .clickable {
+                                    if (onPhotoClick != null) {
+                                        onPhotoClick(index)
+                                    } else {
+                                        selectedPhotoIndex = index
+                                    }
+                                },
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
 
@@ -166,10 +186,7 @@ fun FishingReportListItem(
             if (report.comment.isNotBlank()) {
                 Text(
                     text = report.comment,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 14.sp,
-                        color = Color(0xFF1A1B20)
-                    ),
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 16.dp)
@@ -215,8 +232,7 @@ fun FishingReportListItem(
                         text = report.user.name.ifBlank { stringResource(R.string.fisherman) },
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp,
-                            color = Color(0xFF1A1B20)
+                            color = MaterialTheme.colorScheme.onSurface
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -224,8 +240,7 @@ fun FishingReportListItem(
                     Text(
                         text = dateFormatter.format(date),
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 12.sp,
-                            color = Color(0xFF44474F)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -248,15 +263,14 @@ fun FishingReportListItem(
                             Icon(
                                 painter = painterResource(id = if (likeState.isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
                                 contentDescription = null,
-                                tint = Color(0xFF44474F),
-                                modifier = Modifier.size(20.dp)
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
                             Text(
                                 text = likeState.likesCount.toString(),
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.Medium,
                                     fontSize = 14.sp,
-                                    color = Color(0xFF44474F)
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             )
                         }
@@ -265,18 +279,26 @@ fun FishingReportListItem(
                     // Bookmark
                     IconButton(
                         onClick = onToggleFavorite,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(30.dp)
                     ) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                             contentDescription = null,
-                            tint = if (isFavorite) Color(0xFF3F4759) else Color(0xFF44474F),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
         }
+    }
+
+    if (selectedPhotoIndex != null) {
+        PhotoViewerOverlay(
+            photos = report.photos.map { it.url },
+            initialIndex = selectedPhotoIndex!!,
+            onDismiss = { selectedPhotoIndex = null }
+        )
     }
 }
 }

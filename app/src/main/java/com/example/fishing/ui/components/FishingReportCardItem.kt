@@ -1,6 +1,7 @@
 package com.example.fishing.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.fishing.R
 import com.example.fishing.model.*
+import com.example.fishing.ui.screens.report.detail.PhotoViewerOverlay
 import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
 import java.util.*
@@ -239,7 +241,9 @@ private fun FishingReportInfo(
 @Composable
 private fun FishingReportPhotos(
     photos: List<FishingPhoto>,
+    onPhotoClick: ((Int) -> Unit)? = null
 ) {
+    var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
     val pagerState = rememberPagerState { photos.size }
 
     Box(
@@ -258,7 +262,14 @@ private fun FishingReportPhotos(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(16.dp)),
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable {
+                        if (onPhotoClick != null) {
+                            onPhotoClick(index)
+                        } else {
+                            selectedPhotoIndex = index
+                        }
+                    },
                 contentScale = ContentScale.Crop
             )
         }
@@ -282,6 +293,14 @@ private fun FishingReportPhotos(
                 )
             }
         }
+    }
+
+    if (selectedPhotoIndex != null) {
+        PhotoViewerOverlay(
+            photos = photos.map { it.url },
+            initialIndex = selectedPhotoIndex!!,
+            onDismiss = { selectedPhotoIndex = null }
+        )
     }
 }
 

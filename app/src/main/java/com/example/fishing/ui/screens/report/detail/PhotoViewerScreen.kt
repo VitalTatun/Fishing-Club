@@ -26,6 +26,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import com.example.fishing.R
@@ -36,36 +38,44 @@ fun PhotoViewerOverlay(
     initialIndex: Int = 0,
     onDismiss: () -> Unit
 ) {
-    BackHandler { onDismiss() }
-
-    val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { photos.size })
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            pageSpacing = 16.dp
-        ) { page ->
-            ZoomableImage(model = photos[page])
-        }
+        BackHandler { onDismiss() }
 
-        IconButton(
-            onClick = onDismiss,
+        val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { photos.size })
+
+        Box(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .statusBarsPadding()
-                .padding(16.dp)
+                .fillMaxSize()
+                .background(Color.Black)
         ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.close),
-                tint = Color.White,
-                modifier = Modifier.size(28.dp)
-            )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                pageSpacing = 16.dp
+            ) { page ->
+                ZoomableImage(model = photos[page])
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.close),
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
