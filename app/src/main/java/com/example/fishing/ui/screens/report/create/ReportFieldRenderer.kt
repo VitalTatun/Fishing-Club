@@ -72,7 +72,6 @@ internal fun ReportFieldRenderer(
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = when (field.fieldId) {
                                 "date_time" -> Modifier.clickable { onTimePickerClick("start") }
@@ -84,7 +83,7 @@ internal fun ReportFieldRenderer(
                 },
                 modifier = Modifier
                     .then(
-                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight") {
+                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight" || field.fieldId == "date_time_end") {
                             Modifier.padding(start = 40.dp)
                         } else {
                             Modifier

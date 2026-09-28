@@ -105,16 +105,14 @@ class CreateReportViewModel @Inject constructor(
         val dateTimeItems = mutableListOf<ReportField>(
             ReportField.ListItemField(
                 fieldId = "date_time",
-                overline = context.getString(R.string.start),
-                title = formStartDate.ifEmpty { context.getString(R.string.select_date) },
+                title = formStartDate.ifEmpty { context.getString(R.string.start) },
                 leadingIcon = Icons.Default.Schedule,
                 trailingText = formStartTime.ifEmpty { context.getString(R.string.select_time) }
             ),
             ReportField.ListItemField(
                 fieldId = "date_time_end",
-                overline = context.getString(R.string.end),
-                title = formEndDate.ifEmpty { context.getString(R.string.select_date) },
-                leadingIcon = Icons.Default.Schedule,
+                title = formEndDate.ifEmpty { context.getString(R.string.end) },
+                leadingIcon = null,
                 trailingText = formEndTime.ifEmpty { context.getString(R.string.select_time) }
             ),
             ReportField.ToggleField(

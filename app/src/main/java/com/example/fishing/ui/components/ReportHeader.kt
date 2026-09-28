@@ -49,6 +49,11 @@ fun ReportHeader(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        ReportPhotoCarousel(
+            photos = report.photos,
+            showTrophyBadge = report.type == FishingType.HAUL,
+            onPhotoClick = onPhotoClick
+        )
         UserInfoBlock(
             user = report.user,
             date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date(),
@@ -56,11 +61,6 @@ fun ReportHeader(
             likesCount = likesCount,
             isLiked = isLiked,
             onToggleLike = onToggleLike
-        )
-        ReportPhotoCarousel(
-            photos = report.photos,
-            showTrophyBadge = report.type == FishingType.HAUL,
-            onPhotoClick = onPhotoClick
         )
     }
 }

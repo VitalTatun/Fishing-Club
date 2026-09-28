@@ -331,7 +331,6 @@ fun CreateReportScreen(
         }
     ) { paddingValues ->
         val formConfig = viewModel.formConfig
-        
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
