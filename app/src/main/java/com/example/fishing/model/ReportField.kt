@@ -12,6 +12,7 @@ sealed class ReportField(val id: String) {
         val leadingIcon: ImageVector? = null,
         val trailingText: String? = null,
         val isRequired: Boolean = false,
+        val isError: Boolean = false,
         val onClick: () -> Unit = {},
         val onTrailingTextClick: (() -> Unit)? = null
     ) : ReportField(fieldId)

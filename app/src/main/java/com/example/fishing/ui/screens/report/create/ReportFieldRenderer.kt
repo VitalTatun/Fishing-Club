@@ -11,12 +11,14 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
@@ -50,6 +52,7 @@ internal fun ReportFieldRenderer(
                 headlineContent = {
                     Text(
                         text = field.title + if (field.isRequired) " *" else "",
+                        style = MaterialTheme.typography.bodyLarge,
                         modifier = when (field.fieldId) {
                             "date_time" -> Modifier.clickable { onDatePickerClick("start") }
                             "date_time_end" -> Modifier.clickable { onDatePickerClick("end") }
@@ -57,13 +60,18 @@ internal fun ReportFieldRenderer(
                         }
                     )
                 },
-                supportingContent = field.supportingText?.let { { Text(it) } },
+                supportingContent = field.supportingText?.let { {
+                    Text(
+                        text = it,
+                        color = if (field.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } },
                 leadingContent = field.leadingIcon?.let {
                     {
                         Icon(
                             imageVector = it,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (field.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -81,9 +89,12 @@ internal fun ReportFieldRenderer(
                         )
                     }
                 },
+                colors = ListItemDefaults.colors(
+                    containerColor = if (field.isError) Color(0xFFFFEDEB) else MaterialTheme.colorScheme.surface
+                ),
                 modifier = Modifier
                     .then(
-                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight" || field.fieldId == "date_time_end") {
+                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight" || (field.fieldId == "date_time_end" && !field.isError)) {
                             Modifier.padding(start = 40.dp)
                         } else {
                             Modifier

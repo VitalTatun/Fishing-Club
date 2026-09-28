@@ -475,6 +475,6 @@ class CreateReportViewModelTest {
         val config = vm.formConfig
 
         val dateTimeSection = config.first { it.id == "date_time" }
-        assertTrue(dateTimeSection.items.filterIsInstance<ReportField.ErrorField>().isNotEmpty())
+        assertTrue(dateTimeSection.items.filterIsInstance<ReportField.ListItemField>().any { it.isError })
     }
 }
