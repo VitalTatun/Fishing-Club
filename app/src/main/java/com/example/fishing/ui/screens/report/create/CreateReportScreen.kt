@@ -116,14 +116,17 @@ fun CreateReportScreen(
     val context = LocalContext.current
 
     val currentTime = Calendar.getInstance()
+    val endTimeCalendar = (currentTime.clone() as Calendar).apply {
+        add(Calendar.HOUR_OF_DAY, 1)
+    }
     val startTimePickerState = rememberTimePickerState(
         initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
         initialMinute = currentTime.get(Calendar.MINUTE),
         is24Hour = true,
     )
     val endTimePickerState = rememberTimePickerState(
-        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
-        initialMinute = currentTime.get(Calendar.MINUTE),
+        initialHour = endTimeCalendar.get(Calendar.HOUR_OF_DAY),
+        initialMinute = endTimeCalendar.get(Calendar.MINUTE),
         is24Hour = true,
     )
 

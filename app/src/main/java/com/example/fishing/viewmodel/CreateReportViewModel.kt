@@ -80,6 +80,7 @@ class CreateReportViewModel @Inject constructor(
         get() = saveState == CreateReportSaveState.Saving
 
     init {
+        setDefaultDateTimeValues()
         viewModelScope.launch {
             authRepository.authState.collect { state ->
                 if (state == com.example.fishing.model.AuthState.Unauthenticated) {
@@ -273,11 +274,7 @@ class CreateReportViewModel @Inject constructor(
                 formSelectedBaits.isNotEmpty() ||
                 formPhotos.isNotEmpty() ||
                 formComment.isNotBlank() ||
-                formWeight > 0f ||
-                formStartDate.isNotBlank() ||
-                formStartTime.isNotBlank() ||
-                formEndDate.isNotBlank() ||
-                formEndTime.isNotBlank()
+                formWeight > 0f
 
     fun fishingStartAt(): Instant? {
         return combineStart()
@@ -392,10 +389,7 @@ class CreateReportViewModel @Inject constructor(
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
         formPhotos = emptyList()
-        formStartDate = ""
-        formStartTime = ""
-        formEndDate = ""
-        formEndTime = ""
+        setDefaultDateTimeValues()
         formFishingFromShore = true
         formIsPublic = true
         formIsPaidWater = false
@@ -406,6 +400,20 @@ class CreateReportViewModel @Inject constructor(
         formMood = 3
         formComment = ""
         formLocation = null
+    }
+
+    private fun setDefaultDateTimeValues() {
+        val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
+        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val endCal = Calendar.getInstance()
+        val startCal = (endCal.clone() as Calendar).apply {
+            add(Calendar.HOUR_OF_DAY, -1)
+        }
+
+        formStartDate = dateFormatter.format(startCal.time)
+        formStartTime = timeFormatter.format(startCal.time)
+        formEndDate = dateFormatter.format(endCal.time)
+        formEndTime = timeFormatter.format(endCal.time)
     }
 
     private fun cleanupTempPhotos() {

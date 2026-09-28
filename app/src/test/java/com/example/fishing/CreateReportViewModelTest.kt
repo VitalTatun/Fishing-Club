@@ -470,6 +470,8 @@ class CreateReportViewModelTest {
     @Test
     fun `form config shows date time errors when dates missing`() = runTest {
         val vm = createViewModel()
+        vm.formStartDate = ""
+        vm.formEndDate = ""
         val config = vm.formConfig
 
         val dateTimeSection = config.first { it.id == "date_time" }
