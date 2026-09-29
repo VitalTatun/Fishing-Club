@@ -5,28 +5,21 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Phishing
-import androidx.compose.material.icons.filled.PublishedWithChanges
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SetMeal
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.ReportField
+import com.example.fishing.ui.components.FishingListItem
 import com.example.fishing.viewmodel.CreateReportViewModel
 
 @Composable
@@ -47,84 +40,46 @@ internal fun ReportFieldRenderer(
 ) {
     when (field) {
         is ReportField.ListItemField -> {
-            ListItem(
-                overlineContent = field.overline?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
-                headlineContent = {
-                    Text(
-                        text = field.title + if (field.isRequired) " *" else "",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = when (field.fieldId) {
-                            "date_time" -> Modifier.clickable { onDatePickerClick("start") }
-                            "date_time_end" -> Modifier.clickable { onDatePickerClick("end") }
-                            else -> Modifier
-                        }
-                    )
+            FishingListItem(
+                overlineText = field.overline,
+                title = field.title,
+                isRequired = field.isRequired,
+                supportingText = field.supportingText,
+                leadingIcon = field.leadingIcon,
+                trailingText = field.trailingText,
+                isError = field.isError,
+                onRowClick = when (field.fieldId) {
+                    "water_body" -> { { onNavigateToWaterEdit() } }
+                    "add_water_name", "water_name" -> { { onNavigateToWaterNameEdit() } }
+                    "method" -> { { onNavigateToMethodAndBaitEdit() } }
+                    "comment" -> { { onNavigateToCommentEdit() } }
+                    else -> null
                 },
-                supportingContent = field.supportingText?.let { {
-                    Text(
-                        text = it,
-                        color = if (field.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } },
-                leadingContent = field.leadingIcon?.let {
-                    {
-                        Icon(
-                            imageVector = it,
-                            contentDescription = null,
-                            tint = if (field.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                onTitleClick = when (field.fieldId) {
+                    "date_time" -> { { onDatePickerClick("start") } }
+                    "date_time_end" -> { { onDatePickerClick("end") } }
+                    else -> null
+                },
+                onTrailingTextClick = when (field.fieldId) {
+                    "date_time" -> { { onTimePickerClick("start") } }
+                    "date_time_end" -> { { onTimePickerClick("end") } }
+                    else -> null
+                },
+                modifier = Modifier.then(
+                    if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight" || (field.fieldId == "date_time_end" && !field.isError)) {
+                        Modifier.padding(start = 40.dp)
+                    } else {
+                        Modifier
                     }
-                },
-                trailingContent = field.trailingText?.let {
-                    {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = when (field.fieldId) {
-                                "date_time" -> Modifier.clickable { onTimePickerClick("start") }
-                                "date_time_end" -> Modifier.clickable { onTimePickerClick("end") }
-                                else -> Modifier
-                            }
-                        )
-                    }
-                },
-                colors = ListItemDefaults.colors(
-                    containerColor = if (field.isError) Color(0xFFFFEDEB) else MaterialTheme.colorScheme.surface
-                ),
-                modifier = Modifier
-                    .then(
-                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight" || (field.fieldId == "date_time_end" && !field.isError)) {
-                            Modifier.padding(start = 40.dp)
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .then(
-                        when (field.fieldId) {
-                            "water_body" -> Modifier.clickable { onNavigateToWaterEdit() }
-                            "add_water_name", "water_name" -> Modifier.clickable { onNavigateToWaterNameEdit() }
-                            "method" -> Modifier.clickable { onNavigateToMethodAndBaitEdit() }
-                            "comment" -> Modifier.clickable { onNavigateToCommentEdit() }
-                            else -> Modifier
-                        }
-                    )
+                )
             )
         }
 
         is ReportField.ToggleField -> {
-            ListItem(
-                headlineContent = { Text(field.title) },
-                supportingContent = field.supportingText?.let { { Text(it) } },
-                leadingContent = field.leadingIcon?.let {
-                    {
-                        Icon(
-                            imageVector = it,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            FishingListItem(
+                title = field.title,
+                supportingText = field.supportingText,
+                leadingIcon = field.leadingIcon,
                 trailingContent = {
                     Switch(
                         checked = field.checked,
@@ -155,17 +110,11 @@ internal fun ReportFieldRenderer(
                         stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat)
                     val paidText =
                         if (viewModel.formIsPaidWater) " • ${stringResource(R.string.paid)}" else ""
-                    ListItem(
-                        headlineContent = { Text("Детали") },
-                        supportingContent = if (!isDetailsExpanded) {
-                            { Text("$shoreText$paidText") }
-                        } else null,
-                        modifier = Modifier
-                            .padding(start = 40.dp)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { onDetailsExpandClick() }
+                    FishingListItem(
+                        title = "Детали",
+                        supportingText = if (!isDetailsExpanded) "$shoreText$paidText" else null,
+                        onRowClick = { onDetailsExpandClick() },
+                        modifier = Modifier.padding(start = 40.dp)
                     )
                 }
 
@@ -178,19 +127,12 @@ internal fun ReportFieldRenderer(
         }
 
         is ReportField.PhotoPicker -> {
-            ListItem(
-                headlineContent = {
-                    Text(text = stringResource(R.string.photos) + if (field.isRequired) " *" else "")
-                },
-                supportingContent = { Text(stringResource(R.string.photos_subtitle)) },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Default.AddPhotoAlternate,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                modifier = Modifier.clickable { onPhotoPickerClick() }
+            FishingListItem(
+                title = stringResource(R.string.photos),
+                isRequired = field.isRequired,
+                supportingText = stringResource(R.string.photos_subtitle),
+                leadingIcon = Icons.Default.AddPhotoAlternate,
+                onRowClick = { onPhotoPickerClick() }
             )
 
             if (viewModel.formPhotos.isNotEmpty()) {
@@ -224,45 +166,22 @@ internal fun ReportFieldRenderer(
         is ReportField.FishList -> {
             val hasCatch = viewModel.formSelectedFish.isNotEmpty()
             val firstFish = viewModel.formSelectedFish.firstOrNull()
-            ListItem(
-                headlineContent = {
-                    Text(
-                        text = (if (hasCatch && firstFish != null) firstFish.name
-                        else stringResource(R.string.catch_label)) + if (field.isRequired) " *" else ""
-                    )
-                },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Default.SetMeal,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingContent = if (hasCatch && firstFish != null) {
-                    {
-                        Text(
-                            text = stringResource(R.string.fish_count_short, firstFish.count),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+            FishingListItem(
+                title = (if (hasCatch && firstFish != null) firstFish.name
+                else stringResource(R.string.catch_label)),
+                isRequired = field.isRequired,
+                leadingIcon = Icons.Default.SetMeal,
+                trailingText = if (hasCatch && firstFish != null) {
+                    stringResource(R.string.fish_count_short, firstFish.count)
                 } else null,
-                modifier = Modifier.clickable { onNavigateToCatchEdit() }
+                onRowClick = { onNavigateToCatchEdit() }
             )
 
             if (viewModel.formSelectedFish.size > 1) {
                 viewModel.formSelectedFish.drop(1).forEach { fish ->
-                    ListItem(
-                        headlineContent = { Text(fish.name) },
-                        trailingContent = {
-                            Text(
-                                text = stringResource(R.string.fish_count_short, fish.count),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        },
+                    FishingListItem(
+                        title = fish.name,
+                        trailingText = stringResource(R.string.fish_count_short, fish.count),
                         modifier = Modifier.padding(start = 40.dp)
                     )
                 }
@@ -276,10 +195,8 @@ internal fun WaterDetailsItems(
     viewModel: CreateReportViewModel,
     haptic: HapticFeedback
 ) {
-    ListItem(
-        headlineContent = {
-            Text(stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat))
-        },
+    FishingListItem(
+        title = stringResource(if (viewModel.formFishingFromShore) R.string.fishing_from_shore else R.string.fishing_from_boat),
         trailingContent = {
             Switch(
                 checked = viewModel.formFishingFromShore,
@@ -291,8 +208,8 @@ internal fun WaterDetailsItems(
         },
         modifier = Modifier.padding(start = 40.dp)
     )
-    ListItem(
-        headlineContent = { Text(stringResource(R.string.paid_water)) },
+    FishingListItem(
+        title = stringResource(R.string.paid_water),
         trailingContent = {
             Switch(
                 checked = viewModel.formIsPaidWater,

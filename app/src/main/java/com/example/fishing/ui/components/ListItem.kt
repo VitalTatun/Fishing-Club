@@ -1,5 +1,6 @@
 package com.example.fishing.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,46 +37,48 @@ import com.example.fishing.ui.theme.FishingTheme
 fun FishingListItem(
     title: String,
     modifier: Modifier = Modifier,
+    overlineText: String? = null,
     trailingText: String? = null,
     supportingText: String? = null,
     leadingIcon: ImageVector? = null,
     isRequired: Boolean = false,
+    isError: Boolean = false,
+    containerColor: Color? = null,
     onRowClick: (() -> Unit)? = null,
     onTitleClick: (() -> Unit)? = null,
     onTrailingTextClick: (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
 
 ) {
-
-
+    val actualContainerColor = containerColor ?: if (isError) Color(0xFFFFEDEB) else Color.Transparent
+    val contentColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(actualContainerColor)
             .height(IntrinsicSize.Min)
             .defaultMinSize(minHeight = 48.dp)
             .then(
                 if (onRowClick != null) Modifier.clickable(onClick = onRowClick) else Modifier
             )
-            .padding(start = 20.dp, end = 16.dp),
+            .padding(start = 16.dp, end = 16.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(20.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Иконка слева
-
-        Box(
-            modifier = Modifier
-                .width(24.dp)
+        if (leadingIcon != null) {
+            Box(
+                modifier = Modifier
+                    .width(24.dp)
                 .heightIn(max = 68.dp)
-                .fillMaxHeight()
-                .padding(vertical = 12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (leadingIcon != null) {
+                .fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = leadingIcon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = contentColor
                 )
             }
         }
@@ -87,6 +91,13 @@ fun FishingListItem(
                 .padding(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
         ) {
+            if (overlineText != null) {
+                Text(
+                    text = overlineText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor
+                )
+            }
             val hasData = supportingText != null || trailingText != null || trailingContent != null
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -105,6 +116,7 @@ fun FishingListItem(
                         text = trailingText,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
+                        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.then(
                             if (onTrailingTextClick != null) Modifier.clickable(onClick = onTrailingTextClick) else Modifier
                         )
@@ -115,7 +127,7 @@ fun FishingListItem(
                 Text(
                     text = supportingText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = contentColor
                 )
             }
         }
@@ -138,8 +150,35 @@ fun FishingListItem(
 @Composable
 private fun FishingListItemPreview() {
     FishingTheme {
-        Column {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Text(
+                text = "Стандартный",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
             FishingListItem(
+                title = "Простой заголовок"
+            )
+
+            Text(
+                text = "С Overline и Supporting",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            FishingListItem(
+                overlineText = "НАДПИСЬ СВЕРХУ",
+                title = "Заголовок пункта",
+                supportingText = "Подробное описание или подсказка",
+                trailingText = "Значение"
+            )
+
+            Text(
+                text = "С иконкой и Switch",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            FishingListItem(
+                overlineText = "ВРЕМЯ РЫБАЛКИ",
                 title = "С иконкой",
                 trailingText = "Значение",
                 supportingText = "Дополнительное описание",
@@ -148,10 +187,30 @@ private fun FishingListItemPreview() {
                     Switch(checked = true, onCheckedChange = { })
                 }
             )
+
+            Text(
+                text = "Обязательное поле (Required)",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
             FishingListItem(
-                title = "Без иконки (отступ сохранен)",
-                trailingText = "Значение",
-                supportingText = "Текст выровнен по вертикали с элементом выше"
+                title = "Водоем",
+                isRequired = true,
+                supportingText = "Выберите водоем из списка"
+            )
+
+            Text(
+                text = "Состояние ошибки (Error)",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            FishingListItem(
+                overlineText = "ВЕС УЛОВА",
+                title = "Общий вес",
+                trailingText = "0 кг",
+                supportingText = "Укажите вес улова",
+                leadingIcon = Icons.Default.Star,
+                isError = true
             )
         }
     }

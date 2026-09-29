@@ -30,7 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
+import com.example.fishing.ui.components.FishingListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -263,18 +263,18 @@ fun CreateReportScreen(
             title = { Text(stringResource(R.string.add_photo)) },
             text = {
                 Column {
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.camera)) },
-                        leadingContent = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
-                        modifier = Modifier.clickable {
+                    FishingListItem(
+                        title = stringResource(R.string.camera),
+                        leadingIcon = Icons.Default.CameraAlt,
+                        onRowClick = {
                             showPhotoSourceDialog = false
                             openCamera()
                         }
                     )
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.gallery)) },
-                        leadingContent = { Icon(Icons.Default.PhotoLibrary, contentDescription = null) },
-                        modifier = Modifier.clickable {
+                    FishingListItem(
+                        title = stringResource(R.string.gallery),
+                        leadingIcon = Icons.Default.PhotoLibrary,
+                        onRowClick = {
                             showPhotoSourceDialog = false
                             photoPicker.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
