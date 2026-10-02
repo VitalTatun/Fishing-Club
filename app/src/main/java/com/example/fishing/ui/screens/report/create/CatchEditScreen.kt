@@ -56,6 +56,8 @@ import com.example.fishing.model.Fish
 import com.example.fishing.ui.theme.FishingTheme
 import java.util.UUID
 
+private const val MAX_TOTAL_WEIGHT_KG = 70f
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CatchEditScreen(
@@ -67,11 +69,16 @@ fun CatchEditScreen(
     isTrophy: Boolean = false
 ) {
     var fishNameInput by remember { mutableStateOf("") }
-    var weightInput by remember { mutableStateOf(if (initialWeight > 0f) initialWeight.toString() else "") }
+    var weightInput by remember {
+        mutableStateOf(initialWeight.coerceAtMost(MAX_TOTAL_WEIGHT_KG).takeIf { initialWeight > 0f }?.toString() ?: "")
+    }
     var isDuplicateError by remember { mutableStateOf(false) }
     val editableFish = remember(fishList) {
         mutableStateListOf<Fish>().also { it.addAll(fishList) }
     }
+
+    val enteredWeight = weightInput.toFloatOrNull()
+    val isWeightTooHigh = enteredWeight != null && enteredWeight > MAX_TOTAL_WEIGHT_KG
 
     fun addFishToList(name: String) {
         if (isTrophy && editableFish.isNotEmpty()) {
@@ -123,10 +130,10 @@ fun CatchEditScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val weight = weightInput.toFloatOrNull() ?: 0f
+                            val weight = enteredWeight ?: 0f
                             onSaveClick(editableFish.toList(), weight)
                         },
-                        enabled = editableFish.isNotEmpty()
+                        enabled = editableFish.isNotEmpty() && !isWeightTooHigh
                     ) {
                         Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
@@ -191,12 +198,36 @@ fun CatchEditScreen(
                 value = weightInput,
                 onValueChange = { newValue ->
                     if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,1}$"))) {
-                        weightInput = newValue
+                        if ((newValue.toFloatOrNull() ?: 0f) <= MAX_TOTAL_WEIGHT_KG) {
+                            weightInput = newValue
+                        }
                     }
                 },
                 label = { Text(stringResource(R.string.total_weight)) },
                 suffix = { Text(stringResource(R.string.kg)) },
                 singleLine = true,
+                isError = isWeightTooHigh,
+                supportingText = if (isWeightTooHigh) {
+                    {
+                        Text(
+                            stringResource(
+                                R.string.weight_limit_error,
+                                MAX_TOTAL_WEIGHT_KG.formatMaxWeight(),
+                                stringResource(R.string.kg)
+                            )
+                        )
+                    }
+                } else {
+                    {
+                        Text(
+                            stringResource(
+                                R.string.weight_limit_hint,
+                                MAX_TOTAL_WEIGHT_KG.formatMaxWeight(),
+                                stringResource(R.string.kg)
+                            )
+                        )
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -306,6 +337,9 @@ fun CatchEditScreen(
         }
     }
 }
+
+private fun Float.formatMaxWeight(): String =
+    if (this % 1f == 0f) toInt().toString() else toString()
 
 @Composable
 private fun FishQuantityRow(

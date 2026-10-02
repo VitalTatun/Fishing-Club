@@ -133,6 +133,8 @@
     <string name="fish_name_label">Название рыбы</string>
     <string name="caught_fish">Пойманная рыба</string>
     <string name="already_in_list">Уже есть в списке</string>
+    <string name="weight_limit_hint">Максимум %1$s %2$s</string>
+    <string name="weight_limit_error">Общий вес не может превышать %1$s %2$s</string>
     <string name="fish_suggestion_title">Рыба, которую вы уже указывали в отчетах</string>
     <string name="trophy_one_fish_info">Вы выбрали тип рыбалки «Трофей». Для данного типа доступна только одна рыба, и соответственно один вид.</string>
     <string name="decrease">Уменьшить</string>
