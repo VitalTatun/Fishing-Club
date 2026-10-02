@@ -8,7 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.carousel.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,7 +37,6 @@ import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FishingReportListItem(
     report: FishingReport,
@@ -45,6 +47,7 @@ fun FishingReportListItem(
     onToggleLike: (() -> Unit)? = null,
 ) {
     var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
+    val haptic = LocalHapticFeedback.current
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
     val date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date()
 
@@ -126,7 +129,7 @@ fun FishingReportListItem(
                 )
             }
 
-            // 3. PHOTO DISPLAY (Single or Carousel)
+            // 3. PHOTO DISPLAY (Single or Horizontal Scroll)
             if (report.photos.size == 1) {
                 AsyncImage(
                     model = report.photos[0].url,
@@ -135,7 +138,7 @@ fun FishingReportListItem(
                         .fillMaxWidth()
                         .height(220.dp)
                         .padding(horizontal = 8.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFFECE6F0))
                         .clickable {
                             if (onPhotoClick != null) {
@@ -147,26 +150,21 @@ fun FishingReportListItem(
                     contentScale = ContentScale.Crop
                 )
             } else if (report.photos.size > 1) {
-                val carouselState = rememberCarouselState { report.photos.size }
-                Box(
+                LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp)
+                        .height(220.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    HorizontalMultiBrowseCarousel(
-                        state = carouselState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        preferredItemWidth = 330.dp,
-                        itemSpacing = 8.dp,
-                    ) { index ->
+                    itemsIndexed(report.photos) { index, photo ->
                         AsyncImage(
-                            model = report.photos[index].url,
+                            model = photo.url,
                             contentDescription = null,
                             modifier = Modifier
-                                .fillMaxSize()
-                                .maskClip(RoundedCornerShape(24.dp))
+                                .width(360.dp)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(Color(0xFFECE6F0))
                                 .clickable {
                                     if (onPhotoClick != null) {
@@ -252,7 +250,12 @@ fun FishingReportListItem(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
                             .then(
-                                if (onToggleLike != null) Modifier.clickable(onClick = onToggleLike) else Modifier
+                                if (onToggleLike != null) {
+                                    Modifier.clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                        onToggleLike()
+                                    }
+                                } else Modifier
                             ),
                         shape = RoundedCornerShape(16.dp),
                     ) {
