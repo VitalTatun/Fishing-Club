@@ -20,13 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.R
 import com.example.fishing.model.*
@@ -45,9 +42,7 @@ fun ReportLocationSection(
     onMapClick: () -> Unit = {}
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Map
@@ -55,6 +50,7 @@ fun ReportLocationSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
+                .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(16.dp))
         ) {
             val inPreview = LocalInspectionMode.current
@@ -149,69 +145,45 @@ fun ReportLocationSection(
             )
         }
 
-        // Name and Coordinates Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = report.water.waterName.ifBlank { stringResource(R.string.not_specified) },
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp),
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        // Water info as list item
+        val shoreText = stringResource(
+            if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat
+        )
+        val overlineText = if (report.water.isPaid) {
+            "${stringResource(R.string.paid_water)} • $shoreText"
+        } else {
+            shoreText
+        }
 
-            val clipboard = LocalClipboard.current
-            val scope = rememberCoroutineScope()
-            
-            IconButton(
-                onClick = {
-                    scope.launch {
-                        clipboard.setClipEntry(
-                            ClipEntry(
-                                ClipData.newPlainText(
-                                    "Coordinates",
-                                    "${report.water.latitude}, ${report.water.longitude}"
+        val clipboard = LocalClipboard.current
+        val scope = rememberCoroutineScope()
+
+        FishingListItem(
+            overlineText = overlineText,
+            title = report.water.waterName.ifBlank { stringResource(R.string.not_specified) },
+            supportingText = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
+            trailingContent = {
+                FilledTonalIconButton(
+                    onClick = {
+                        scope.launch {
+                            clipboard.setClipEntry(
+                                ClipEntry(
+                                    ClipData.newPlainText(
+                                        "Coordinates",
+                                        "${report.water.latitude}, ${report.water.longitude}"
+                                    )
                                 )
                             )
-                        )
+                        }
                     }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = stringResource(R.string.copy_coordinates)
+                    )
                 }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ContentCopy,
-                    contentDescription = stringResource(R.string.copy_coordinates),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
             }
-        }
-
-        // Badges
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (report.water.isPaid) {
-                FishingBadge(
-                    text = stringResource(R.string.paid)
-                )
-            }
-            FishingBadge(
-                text = stringResource(
-                    if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat
-                )
-            )
-        }
+        )
     }
 }
 
