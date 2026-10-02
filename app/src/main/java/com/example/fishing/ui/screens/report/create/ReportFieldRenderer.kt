@@ -1,12 +1,20 @@
 package com.example.fishing.ui.screens.report.create
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +30,7 @@ import com.example.fishing.model.ReportField
 import com.example.fishing.ui.components.FishingListItem
 import com.example.fishing.viewmodel.CreateReportViewModel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ReportFieldRenderer(
     field: ReportField,
@@ -40,39 +49,58 @@ internal fun ReportFieldRenderer(
 ) {
     when (field) {
         is ReportField.ListItemField -> {
-            FishingListItem(
-                overlineText = field.overline,
-                title = field.title,
-                isRequired = field.isRequired,
-                supportingText = field.supportingText,
-                leadingIcon = field.leadingIcon,
-                trailingText = field.trailingText,
-                isError = field.isError,
-                onRowClick = when (field.fieldId) {
-                    "water_body" -> { { onNavigateToWaterEdit() } }
-                    "add_water_name", "water_name" -> { { onNavigateToWaterNameEdit() } }
-                    "method" -> { { onNavigateToMethodAndBaitEdit() } }
-                    "comment" -> { { onNavigateToCommentEdit() } }
-                    else -> null
-                },
-                onTitleClick = when (field.fieldId) {
-                    "date_time" -> { { onDatePickerClick("start") } }
-                    "date_time_end" -> { { onDatePickerClick("end") } }
-                    else -> null
-                },
-                onTrailingTextClick = when (field.fieldId) {
-                    "date_time" -> { { onTimePickerClick("start") } }
-                    "date_time_end" -> { { onTimePickerClick("end") } }
-                    else -> null
-                },
-                modifier = Modifier.then(
-                    if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "weight" || (field.fieldId == "date_time_end" && !field.isError)) {
-                        Modifier.padding(start = 40.dp)
-                    } else {
-                        Modifier
-                    }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                FishingListItem(
+                    overlineText = field.overline,
+                    title = field.title,
+                    isRequired = field.isRequired,
+                    supportingText = field.supportingText,
+                    leadingIcon = field.leadingIcon,
+                    trailingText = field.trailingText,
+                    isError = field.isError,
+                    onRowClick = when {
+                        field.fieldId == "water_body" -> { { onNavigateToWaterEdit() } }
+                        field.fieldId == "add_water_name" || field.fieldId == "water_name" -> { { onNavigateToWaterNameEdit() } }
+                        field.fieldId == "method" || field.fieldId == "fishing_method" || field.fieldId == "baits" -> { { onNavigateToMethodAndBaitEdit() } }
+                        field.fieldId == "catch" || field.fieldId == "weight" -> { { onNavigateToCatchEdit() } }
+                        field.fieldId == "comment" -> { { onNavigateToCommentEdit() } }
+                        else -> null
+                    },
+                    onTitleClick = when (field.fieldId) {
+                        "date_time" -> { { onDatePickerClick("start") } }
+                        "date_time_end" -> { { onDatePickerClick("end") } }
+                        else -> null
+                    },
+                    onTrailingTextClick = when (field.fieldId) {
+                        "date_time" -> { { onTimePickerClick("start") } }
+                        "date_time_end" -> { { onTimePickerClick("end") } }
+                        else -> null
+                    },
+                    modifier = Modifier.then(
+                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "fishing_method" || field.fieldId == "weight" || (field.fieldId == "date_time_end" && !field.isError)) {
+                            Modifier.padding(start = 40.dp)
+                        } else {
+                            Modifier
+                        }
+                    )
                 )
-            )
+
+                if (field.fieldId == "catch" && viewModel.formSelectedFish.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 56.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        viewModel.formSelectedFish.forEach { fish ->
+                            CatchFishChip(
+                                text = "${fish.name} ${stringResource(R.string.fish_count_short, fish.count)}"
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         is ReportField.ToggleField -> {
@@ -162,31 +190,26 @@ internal fun ReportFieldRenderer(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
             )
         }
+    }
+}
 
-        is ReportField.FishList -> {
-            val hasCatch = viewModel.formSelectedFish.isNotEmpty()
-            val firstFish = viewModel.formSelectedFish.firstOrNull()
-            FishingListItem(
-                title = (if (hasCatch && firstFish != null) firstFish.name
-                else stringResource(R.string.catch_label)),
-                isRequired = field.isRequired,
-                leadingIcon = Icons.Default.SetMeal,
-                trailingText = if (hasCatch && firstFish != null) {
-                    stringResource(R.string.fish_count_short, firstFish.count)
-                } else null,
-                onRowClick = { onNavigateToCatchEdit() }
-            )
-
-            if (viewModel.formSelectedFish.size > 1) {
-                viewModel.formSelectedFish.drop(1).forEach { fish ->
-                    FishingListItem(
-                        title = fish.name,
-                        trailingText = stringResource(R.string.fish_count_short, fish.count),
-                        modifier = Modifier.padding(start = 40.dp)
-                    )
-                }
-            }
-        }
+@Composable
+internal fun CatchFishChip(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }
 

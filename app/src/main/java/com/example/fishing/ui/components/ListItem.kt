@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.ui.theme.FishingTheme
@@ -101,8 +102,8 @@ fun FishingListItem(
             val hasData = supportingText != null || trailingText != null || trailingContent != null
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
             ) {
                 Text(
                     text = if (isRequired && !hasData) "$title *" else title,
@@ -117,9 +118,12 @@ fun FishingListItem(
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.then(
-                            if (onTrailingTextClick != null) Modifier.clickable(onClick = onTrailingTextClick) else Modifier
-                        )
+                        textAlign = TextAlign.End,
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(
+                                if (onTrailingTextClick != null) Modifier.clickable(onClick = onTrailingTextClick) else Modifier
+                            )
                     )
                 }
             }

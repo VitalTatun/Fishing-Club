@@ -37,10 +37,6 @@ sealed class ReportField(val id: String) {
 
     object MapPreview : ReportField("map")
 
-    data class FishList(
-        val isRequired: Boolean = false
-    ) : ReportField("fish_list")
-
     data class ErrorField(
         val text: String
     ) : ReportField("error")

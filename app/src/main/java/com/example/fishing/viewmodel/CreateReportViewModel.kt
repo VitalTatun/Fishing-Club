@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phishing
 import androidx.compose.material.icons.filled.PublishedWithChanges
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -214,22 +215,31 @@ class CreateReportViewModel @Inject constructor(
         // Method Section
         val methodItems = mutableListOf<ReportField>()
         val hasMethod = formSelectedMethod != FishingMethod.NONE
+        val hasBaits = formSelectedBaits.isNotEmpty()
         methodItems.add(
             ReportField.ListItemField(
                 fieldId = "method",
-                overline = if (hasMethod) context.getString(R.string.fishing_method) else null,
-                title = if (hasMethod) context.getString(formSelectedMethod.labelRes) else context.getString(R.string.method_and_bait),
+                title = context.getString(R.string.method_and_bait),
                 leadingIcon = Icons.Default.Phishing,
-                isRequired = !hasMethod
+                isRequired = !hasMethod || !hasBaits
             )
         )
-        if (formSelectedBaits.isNotEmpty()) {
+        if (hasMethod) {
+            methodItems.add(
+                ReportField.ListItemField(
+                    fieldId = "fishing_method",
+                    title = context.getString(R.string.fishing_method),
+                    trailingText = context.getString(formSelectedMethod.labelRes)
+                )
+            )
+        }
+        if (hasBaits) {
             val baitsText = formSelectedBaits.joinToString(", ") { context.getString(it.labelRes) }
             methodItems.add(
                 ReportField.ListItemField(
                     fieldId = "baits",
-                    overline = context.getString(R.string.bait),
-                    title = baitsText
+                    title = context.getString(R.string.bait),
+                    trailingText = baitsText
                 )
             )
         }
@@ -238,13 +248,20 @@ class CreateReportViewModel @Inject constructor(
         // Catch Section
         val catchItems = mutableListOf<ReportField>()
         val hasCatch = formSelectedFish.isNotEmpty()
-        catchItems.add(ReportField.FishList(isRequired = !hasCatch))
-        if (formWeight > 0f) {
+        catchItems.add(
+            ReportField.ListItemField(
+                fieldId = "catch",
+                title = context.getString(R.string.catch_label),
+                leadingIcon = Icons.Default.SetMeal,
+                isRequired = !hasCatch
+            )
+        )
+        if (hasCatch && formWeight > 0f) {
             catchItems.add(
                 ReportField.ListItemField(
                     fieldId = "weight",
-                    overline = context.getString(R.string.total_weight),
-                    title = "$formWeight ${context.getString(R.string.kg)}"
+                    title = context.getString(R.string.total_weight),
+                    trailingText = "$formWeight ${context.getString(R.string.kg)}"
                 )
             )
         }
