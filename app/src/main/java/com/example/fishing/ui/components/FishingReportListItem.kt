@@ -41,9 +41,8 @@ fun FishingReportListItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onPhotoClick: ((Int) -> Unit)? = null,
-    onToggleFavorite: () -> Unit = {},
-    isFavorite: Boolean = false,
     likeState: ReportLikeState? = null,
+    onToggleLike: (() -> Unit)? = null,
 ) {
     var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
@@ -248,22 +247,25 @@ fun FishingReportListItem(
                 }
 
                 // 5.3 ENGAGEMENT ACTIONS
-                Row(
-                    modifier = Modifier.width(91.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    // Like area (width ~71dp in Figma total)
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                if (likeState != null) {
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .then(
+                                if (onToggleLike != null) Modifier.clickable(onClick = onToggleLike) else Modifier
+                            ),
+                        shape = RoundedCornerShape(16.dp),
                     ) {
-                        if (likeState != null) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
                             Icon(
                                 painter = painterResource(id = if (likeState.isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(20.dp)
                             )
                             Text(
                                 text = likeState.likesCount.toString(),
@@ -274,19 +276,6 @@ fun FishingReportListItem(
                                 )
                             )
                         }
-                    }
-
-                    // Bookmark
-                    IconButton(
-                        onClick = onToggleFavorite,
-                        modifier = Modifier.size(30.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(20.dp)
-                        )
                     }
                 }
             }
@@ -336,7 +325,6 @@ fun FishingReportListItemPreview() {
     FishingTheme {
         FishingReportListItem(
             report = sampleReport,
-            isFavorite = true,
             likeState = ReportLikeState(reportId = sampleReport.id, likesCount = 1, isLiked = false)
         )
     }

@@ -332,9 +332,8 @@ fun MainScreen(
                                             FishingReportListItem(
                                                 report = report,
                                                 onClick = { onReportClick(report) },
-                                                onToggleFavorite = { viewModel?.toggleFavorite(report) },
-                                                isFavorite = favoriteReports.any { it.id == report.id },
-                                                likeState = likeStates[report.id]
+                                                likeState = likeStates[report.id],
+                                                onToggleLike = { viewModel?.toggleLike(report) }
                                             )
                                         }
                                     }
