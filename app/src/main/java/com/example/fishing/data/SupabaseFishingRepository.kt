@@ -16,7 +16,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CancellationException
 import androidx.room.withTransaction
@@ -384,10 +384,12 @@ class SupabaseFishingRepository @Inject constructor(
     }
 
     override fun getLikeStates(userId: UUID): Flow<Map<UUID, ReportLikeState>> =
-        combine(likeDao.getLikedIds(userId), reportDetailsDao.getAll()) { likedIds, entities ->
-            val liked = likedIds.toSet()
-            entities.associate { it.id to ReportLikeState(it.id, it.id in liked, it.likesCount) }
-        }
+        // Single atomic query so isLiked and likesCount always come from the
+        // same snapshot. Combining two separate Room flows emitted an
+        // intermediate (new isLiked, stale likesCount) that flickered the count.
+        reportDetailsDao.getLikeStates(userId)
+            .map { rows -> rows.associate { it.id to ReportLikeState(it.id, it.isLiked, it.likesCount) } }
+            .distinctUntilChanged()
 
     override suspend fun refreshLikes(userId: UUID) {
         try {
@@ -420,13 +422,8 @@ class SupabaseFishingRepository @Inject constructor(
         } catch (e: Exception) {
             return Result.failure(e)
         }
-        if (cached != null) {
-            if (cached.userId == currentUser.id) {
-                return Result.failure(IllegalStateException("Cannot like own report"))
-            }
-            if (!cached.isPublic) {
-                return Result.failure(IllegalStateException("Cannot like private report"))
-            }
+        if (cached != null && cached.userId != currentUser.id && !cached.isPublic) {
+            return Result.failure(IllegalStateException("Cannot like private report"))
         }
         return try {
             supabase.postgrest.rpc("like_report", buildJsonObject { put("fid", reportId.toString()) })

@@ -879,7 +879,7 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `self-like never calls repository`() = runTest {
+    fun `self-like calls repository and likes own report`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         val ownReport = createReport(userId = testUserId)
 
@@ -889,9 +889,9 @@ class MainViewModelTest {
         vm.toggleLike(ownReport)
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(0, fakeFishingRepository.addLikeCallCount)
+        assertEquals(1, fakeFishingRepository.addLikeCallCount)
         assertEquals(0, fakeFishingRepository.removeLikeCallCount)
-        assertNull(vm.likeStates.value[ownReport.id])
+        assertEquals(ReportLikeState(ownReport.id, true, 1), vm.likeStates.value[ownReport.id])
         assertNull(vm.likeError.value)
     }
 

@@ -205,7 +205,7 @@ fun ReportDetailScreen(
                 report = report,
                 likesCount = likeState?.likesCount,
                 isLiked = likeState?.isLiked ?: false,
-                onToggleLike = if (!isOwnReport) onToggleLike else null,
+                onToggleLike = onToggleLike,
                 onPhotoClick = onPhotoClick
             )
 

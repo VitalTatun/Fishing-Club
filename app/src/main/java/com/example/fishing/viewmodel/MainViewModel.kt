@@ -423,8 +423,6 @@ class MainViewModel @Inject constructor(
             _likeError.value = "Нет активной сессии"
             return
         }
-        // Self-like is blocked locally: repository/RPC is never called.
-        if (report.userId == userId) return
         // Double-tap guard: no queue, the second tap is ignored while in flight.
         if (!likeOpsInFlight.add(report.id)) return
 

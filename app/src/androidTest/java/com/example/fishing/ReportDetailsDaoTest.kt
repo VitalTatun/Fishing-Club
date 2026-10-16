@@ -1,12 +1,15 @@
 package com.example.fishing
 
 import androidx.room.Room
+import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.dao.FavoriteReportDao
+import com.example.fishing.data.local.dao.LikeDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.entity.FavoriteReportEntity
+import com.example.fishing.data.local.entity.LikeEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -23,6 +26,7 @@ class ReportDetailsDaoTest {
     private lateinit var database: AppDatabase
     private lateinit var reportDetailsDao: ReportDetailsDao
     private lateinit var favoriteReportDao: FavoriteReportDao
+    private lateinit var likeDao: LikeDao
 
     private val userAId = UUID.randomUUID()
     private val userBId = UUID.randomUUID()
@@ -64,6 +68,7 @@ class ReportDetailsDaoTest {
         ).build()
         reportDetailsDao = database.reportDetailsDao()
         favoriteReportDao = database.favoriteDao()
+        likeDao = database.likeDao()
     }
 
     @After
@@ -153,6 +158,37 @@ class ReportDetailsDaoTest {
         val favsA = reportDetailsDao.getFavorites(userAId).first()
         assertEquals(1, favsA.size)
         assertEquals(reportB.id, favsA[0].id)
+    }
+
+    @Test
+    fun `getLikeStates combines isLiked and likesCount per user`() = runTest {
+        val reportId = UUID.randomUUID()
+        reportDetailsDao.insert(createReportEntity(id = reportId, userId = userBId).copy(likesCount = 10))
+        likeDao.insertAll(listOf(LikeEntity(userId = userAId, reportId = reportId)))
+
+        val forA = reportDetailsDao.getLikeStates(userAId).first().single()
+        val forB = reportDetailsDao.getLikeStates(userBId).first().single()
+
+        assertEquals(reportId, forA.id)
+        assertTrue(forA.isLiked)
+        assertEquals(10, forA.likesCount)
+        assertFalse(forB.isLiked)
+        assertEquals(10, forB.likesCount)
+    }
+
+    @Test
+    fun `getLikeStates emits liked flag and count from one snapshot`() = runTest {
+        val reportId = UUID.randomUUID()
+        reportDetailsDao.insert(createReportEntity(id = reportId, userId = userBId).copy(likesCount = 3))
+
+        database.withTransaction {
+            likeDao.insertAll(listOf(LikeEntity(userId = userBId, reportId = reportId)))
+            reportDetailsDao.insert(createReportEntity(id = reportId, userId = userBId).copy(likesCount = 4))
+        }
+
+        val row = reportDetailsDao.getLikeStates(userBId).first().single()
+        assertTrue(row.isLiked)
+        assertEquals(4, row.likesCount)
     }
 
     @Test

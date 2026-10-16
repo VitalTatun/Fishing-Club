@@ -20,6 +20,15 @@ interface ReportDetailsDao {
     fun getAll(): Flow<List<ReportDetailsEntity>>
 
     @Query("""
+        SELECT report_details.id AS id,
+               report_details.likesCount AS likesCount,
+               CASE WHEN likes.reportId IS NOT NULL THEN 1 ELSE 0 END AS isLiked
+        FROM report_details
+        LEFT JOIN likes ON likes.reportId = report_details.id AND likes.userId = :userId
+    """)
+    fun getLikeStates(userId: UUID): Flow<List<ReportLikeRow>>
+
+    @Query("""
         SELECT report_details.* FROM report_details
         LEFT JOIN favorites ON favorites.reportId = report_details.id
             AND favorites.userId = :userId
@@ -51,3 +60,9 @@ interface ReportDetailsDao {
     @Query("DELETE FROM report_details WHERE userId = :userId")
     suspend fun deleteByUserId(userId: UUID)
 }
+
+data class ReportLikeRow(
+    val id: UUID,
+    val likesCount: Int,
+    val isLiked: Boolean
+)
