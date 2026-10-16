@@ -1,6 +1,7 @@
 package com.example.fishing.testutil
 
 import com.example.fishing.data.FishingRepository
+import com.example.fishing.data.HomeRefreshResult
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
@@ -42,6 +43,13 @@ class FakeFishingRepository : FishingRepository {
     var refreshHomeReportsCallCount = 0
     var refreshHomeReportsException: Exception? = null
     var refreshHomeReportsGate: CompletableDeferred<Unit>? = null
+    var refreshHomeReportsHasMore = false
+    var refreshHomeReportsLoadedCount = 0
+
+    var loadMoreHomeReportsCallCount = 0
+    var loadMoreHomeReportsException: Exception? = null
+    var loadMoreHomeReportsGate: CompletableDeferred<Unit>? = null
+    var loadMoreHomeReportsHasMore = false
 
     var refreshMapMarkersCallCount = 0
     var refreshMapMarkersException: Exception? = null
@@ -84,10 +92,21 @@ class FakeFishingRepository : FishingRepository {
 
     override fun getReportDetails(id: UUID): Flow<FishingReport?> = _reportDetails.asStateFlow()
 
-    override suspend fun refreshHomeReports(userId: UUID) {
+    override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
         refreshHomeReportsCallCount++
         refreshHomeReportsGate?.await()
         refreshHomeReportsException?.let { throw it }
+        return HomeRefreshResult(
+            hasMore = refreshHomeReportsHasMore,
+            loadedCount = refreshHomeReportsLoadedCount
+        )
+    }
+
+    override suspend fun loadMoreHomeReports(userId: UUID): Boolean {
+        loadMoreHomeReportsCallCount++
+        loadMoreHomeReportsGate?.await()
+        loadMoreHomeReportsException?.let { throw it }
+        return loadMoreHomeReportsHasMore
     }
 
     override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {

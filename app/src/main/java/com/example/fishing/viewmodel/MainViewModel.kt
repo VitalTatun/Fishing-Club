@@ -98,6 +98,12 @@ class MainViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
+    private val _hasMoreReports = MutableStateFlow(false)
+    val hasMoreReports: StateFlow<Boolean> = _hasMoreReports.asStateFlow()
+
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
@@ -176,15 +182,21 @@ class MainViewModel @Inject constructor(
     private val signedPhotoUrlCache = mutableMapOf<String, String>()
 
     private var currentUserId: UUID? = null
+    // Remembers which user the home state was already loaded for, so repeated
+    // Authenticated emissions (e.g. token refreshes) don't restart every load.
+    private var loadedForUserId: UUID? = null
 
     init {
         viewModelScope.launch {
             authRepository.authState
                 .filterIsInstance<AuthState.Authenticated>()
                 .collect { authState ->
-                    currentUserId = authState.user.id
-                    _reportSortOrder.value = userPreferencesRepository.getSortOrder(authState.user.id)
-                    _reportDisplayMode.value = userPreferencesRepository.getDisplayMode(authState.user.id)
+                    val userId = authState.user.id
+                    if (userId == loadedForUserId) return@collect
+                    loadedForUserId = userId
+                    currentUserId = userId
+                    _reportSortOrder.value = userPreferencesRepository.getSortOrder(userId)
+                    _reportDisplayMode.value = userPreferencesRepository.getDisplayMode(userId)
                     loadReports(force = false)
                     loadMapMarkers(force = false)
                     refreshLikes()
@@ -206,6 +218,7 @@ class MainViewModel @Inject constructor(
         deleteReportJob?.cancel()
         likesLoadJob?.cancel()
         currentUserId = null
+        loadedForUserId = null
 
         _reports.value = emptyList()
         _favoriteReports.value = emptyList()
@@ -224,6 +237,8 @@ class MainViewModel @Inject constructor(
         _deletedReportId.value = null
         _isInitialLoading.value = true
         _isRefreshing.value = false
+        _isLoadingMore.value = false
+        _hasMoreReports.value = false
         _selectedTab.value = 0
         _mapIsLoading.value = true
         _mapIsRefreshing.value = false
@@ -557,6 +572,11 @@ class MainViewModel @Inject constructor(
                                 photos = resolvePhotoUrls(report.photos)
                             )
                         }
+                        // Cached data is enough to leave the full-screen loading
+                        // state; the network refresh keeps running quietly below.
+                        if (reports.isNotEmpty()) {
+                            _isInitialLoading.value = false
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -579,15 +599,40 @@ class MainViewModel @Inject constructor(
             }
             // Refresh from network → saves to Room → Flow auto-updates UI
             try {
-                repository.refreshHomeReports(userId)
+                val result = repository.refreshHomeReports(userId)
+                _hasMoreReports.value = result.hasMore
+                // A genuinely empty snapshot will never produce a Room emission,
+                // so resolve the loader here; otherwise we wait for Room to deliver
+                // the freshly written reports to avoid flashing the Empty state.
+                if (result.loadedCount == 0) {
+                    _isInitialLoading.value = false
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 e.printStackTrace()
                 _error.value = "Ошибка загрузки: ${e.message ?: "неизвестная"}"
-            } finally {
                 _isInitialLoading.value = false
+            } finally {
                 _isRefreshing.value = false
+            }
+        }
+    }
+
+    fun loadMoreReports() {
+        if (_isLoadingMore.value || !_hasMoreReports.value) return
+        val userId = currentUserId ?: authRepository.currentUser()?.id ?: return
+
+        _isLoadingMore.value = true
+        viewModelScope.launch {
+            try {
+                _hasMoreReports.value = repository.loadMoreHomeReports(userId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoadingMore.value = false
             }
         }
     }

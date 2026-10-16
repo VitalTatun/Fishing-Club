@@ -751,6 +751,61 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `cached reports bypass initial loading before network completes`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.homeReportsValue = listOf(report)
+        val gate = CompletableDeferred<Unit>()
+        fakeFishingRepository.refreshHomeReportsGate = gate
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        // Cache is present, so the full-screen loader is already gone even
+        // though the network refresh is still blocked by the gate.
+        assertFalse(vm.isInitialLoading.value)
+        assertTrue(vm.homeUiState.value is HomeUiState.Success)
+        assertEquals(listOf(report), (vm.homeUiState.value as HomeUiState.Success).reports)
+
+        gate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(vm.isInitialLoading.value)
+        assertTrue(vm.homeUiState.value is HomeUiState.Success)
+        job.cancel()
+    }
+
+    @Test
+    fun `does not flash Empty before the cache delivers reports`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.homeReportsValue = emptyList()
+        // The network page has data, but Room has not emitted it yet.
+        fakeFishingRepository.refreshHomeReportsLoadedCount = 1
+        val gate = CompletableDeferred<Unit>()
+        fakeFishingRepository.refreshHomeReportsGate = gate
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(HomeUiState.Loading, vm.homeUiState.value)
+
+        gate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        // Network reported data but the cache is still empty → keep loading, no Empty flash.
+        assertEquals(HomeUiState.Loading, vm.homeUiState.value)
+
+        fakeFishingRepository.homeReportsValue = listOf(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.homeUiState.value is HomeUiState.Success)
+        job.cancel()
+    }
+
+    @Test
     fun `initial loading is Loading until first refresh completed when empty`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         fakeFishingRepository.homeReportsValue = emptyList()
@@ -768,6 +823,94 @@ class MainViewModelTest {
 
         assertEquals(HomeUiState.Empty, vm.homeUiState.value)
         job.cancel()
+    }
+
+    // --- Pagination ---
+
+    @Test
+    fun `refresh propagates hasMore flag from repository`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.refreshHomeReportsHasMore = true
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.hasMoreReports.value)
+    }
+
+    @Test
+    fun `load more fetches next page and clears loading state`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.refreshHomeReportsHasMore = true
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.hasMoreReports.value)
+
+        fakeFishingRepository.loadMoreHomeReportsHasMore = false
+        vm.loadMoreReports()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.loadMoreHomeReportsCallCount)
+        assertFalse(vm.isLoadingMore.value)
+        assertFalse(vm.hasMoreReports.value)
+    }
+
+    @Test
+    fun `load more is skipped when there is no next page`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.refreshHomeReportsHasMore = false
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse(vm.hasMoreReports.value)
+
+        vm.loadMoreReports()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, fakeFishingRepository.loadMoreHomeReportsCallCount)
+    }
+
+    @Test
+    fun `duplicate load more while in flight is ignored`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.refreshHomeReportsHasMore = true
+        val gate = CompletableDeferred<Unit>()
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        fakeFishingRepository.loadMoreHomeReportsHasMore = true
+        fakeFishingRepository.loadMoreHomeReportsGate = gate
+
+        vm.loadMoreReports()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.isLoadingMore.value)
+        assertEquals(1, fakeFishingRepository.loadMoreHomeReportsCallCount)
+
+        vm.loadMoreReports()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, fakeFishingRepository.loadMoreHomeReportsCallCount)
+
+        gate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertFalse(vm.isLoadingMore.value)
+    }
+
+    @Test
+    fun `logout resets pagination state`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.refreshHomeReportsHasMore = true
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.hasMoreReports.value)
+
+        fakeAuthRepository.sessionUser = null
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(vm.hasMoreReports.value)
+        assertFalse(vm.isLoadingMore.value)
     }
 
     // --- Likes (P0) ---

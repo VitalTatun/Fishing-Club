@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import java.io.File
 import java.util.UUID
@@ -49,7 +50,10 @@ class SupabaseAuthRepository @Inject constructor(
                 is SessionStatus.Authenticated -> {
                     val user = currentUser() ?: cachedUser
                     if (user != null) {
-                        syncProfile(user)
+                        // Fire-and-forget: the profile upsert is best-effort and
+                        // must not block emitting Authenticated (which gates the
+                        // whole UI behind the loading spinner).
+                        scope.launch { syncProfile(user) }
                         AuthState.Authenticated(user)
                     } else {
                         AuthState.Unauthenticated

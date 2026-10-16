@@ -11,12 +11,29 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import java.util.UUID
 
+/**
+ * Outcome of the first home page refresh. [loadedCount] is the number of reports
+ * (own + bookmarked) written to the cache, so the UI can tell "genuinely empty"
+ * apart from "the cache has not caught up with the network yet".
+ */
+data class HomeRefreshResult(
+    val hasMore: Boolean,
+    val loadedCount: Int
+) {
+    companion object {
+        val Empty = HomeRefreshResult(hasMore = false, loadedCount = 0)
+    }
+}
+
 interface FishingRepository {
     fun getHomeReports(userId: UUID): Flow<List<FishingReport>>
     fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>>
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
-    suspend fun refreshHomeReports(userId: UUID)
+    /** Loads the first page of home reports, replacing the cache. */
+    suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult
+    /** Appends the next page of home reports. Returns whether more pages exist. */
+    suspend fun loadMoreHomeReports(userId: UUID): Boolean
     suspend fun refreshMapMarkers(): Result<List<MarkerDomain>>
     suspend fun addFavorite(report: FishingReport): Result<Unit>
     suspend fun removeFavorite(reportId: UUID): Result<Unit>
@@ -65,9 +82,12 @@ class MockFishingRepository : FishingRepository {
         return Result.success(Unit)
     }
 
-    override suspend fun refreshHomeReports(userId: UUID) {
-        // Mock — no-op
+    override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
+        // Mock — no-op, single page
+        return HomeRefreshResult(hasMore = false, loadedCount = (reports + favoriteReports).size)
     }
+
+    override suspend fun loadMoreHomeReports(userId: UUID): Boolean = false
 
     override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
         return Result.success(reports.map { it.toMarkerDomain() })

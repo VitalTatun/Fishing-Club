@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import androidx.room.withTransaction
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -50,6 +52,15 @@ class SupabaseFishingRepository @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    // Pagination cursor for the home feed. `homeLoadedOwnCount` counts only the
+    // current user's own reports already cached (bookmarks are always loaded whole).
+    private var homeLoadedOwnCount = 0
+    private var homeHasMore = false
+
+    private companion object {
+        const val PAGE_SIZE = 20
+    }
+
     private val datePatterns = listOf(
         "yyyy-MM-dd'T'HH:mm:ssXXX",
         "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
@@ -66,51 +77,126 @@ class SupabaseFishingRepository @Inject constructor(
             entities.map { it.toDomain() }
         }
 
-    override suspend fun refreshHomeReports(userId: UUID) {
+    override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
         try {
-            val fishings = supabase.postgrest["fishing"].select {
-                filter { eq("user_id", userId) }
-                order("fishing_start_at", Order.DESCENDING)
-            }.decodeList<FishingDto>()
-
-            val fish = supabase.postgrest["fishing_fish"].select().decodeList<FishDto>()
-            val baits = supabase.postgrest["fishing_baits"].select().decodeList<BaitDto>()
-            val photos = supabase.postgrest["fishing_photos"].select {
-                order("sort_order", Order.ASCENDING)
-            }.decodeList<PhotoDto>()
-            val profiles = supabase.postgrest["profiles"].select().decodeList<ProfileDto>()
-
-            val fishByFishing = fish.groupBy { it.fishingId }
-            val baitsByFishing = baits.groupBy { it.fishingId }
-            val photosByFishing = photos.groupBy { it.fishingId }
-            val profilesById = profiles.associateBy { it.id }
-
-            val entities = fishings.map { dto ->
-                dto.toReportDetailsEntity(
-                    fish = fishByFishing[dto.id] ?: emptyList(),
-                    baits = baitsByFishing[dto.id] ?: emptyList(),
-                    photos = photosByFishing[dto.id] ?: emptyList(),
-                    author = profilesById[dto.userId]
-                )
-            }
-            val favoriteLinks = supabase.postgrest["favorites"].select {
-                filter { eq("user_id", userId) }
-            }.decodeList<FavoriteDto>()
-                .map { FavoriteReportEntity(userId = userId, reportId = it.fishingId) }
-
-            val favoriteEntities = favoriteLinks
-                .mapNotNull { fetchReportDetails(it.reportId) }
+            // First page of own reports + all bookmarks replace the cache.
+            val (ownEntities, hasMore) = fetchReportPage(userId, offset = 0, limit = PAGE_SIZE)
+            val (favoriteEntities, favoriteLinks) = fetchFavoriteEntities(userId)
 
             database.withTransaction {
                 // The home cache is one coherent snapshot: own reports plus bookmarked reports.
                 reportDetailsDao.deleteAll()
-                reportDetailsDao.insertAll((entities + favoriteEntities).distinctBy { it.id })
+                reportDetailsDao.insertAll((ownEntities + favoriteEntities).distinctBy { it.id })
                 favoriteReportDao.deleteAllForUser(userId)
                 favoriteReportDao.insertAll(favoriteLinks)
             }
+            homeLoadedOwnCount = ownEntities.size
+            homeHasMore = hasMore
+            return HomeRefreshResult(
+                hasMore = hasMore,
+                loadedCount = (ownEntities + favoriteEntities).distinctBy { it.id }.size
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             throw e
+        }
+    }
+
+    override suspend fun loadMoreHomeReports(userId: UUID): Boolean {
+        if (!homeHasMore) return false
+        val (entities, hasMore) = fetchReportPage(userId, offset = homeLoadedOwnCount, limit = PAGE_SIZE)
+        database.withTransaction {
+            reportDetailsDao.insertAll(entities)
+        }
+        homeLoadedOwnCount += entities.size
+        homeHasMore = hasMore
+        return hasMore
+    }
+
+    /**
+     * Loads one page of the given user's reports (ordered by fishing time, newest first)
+     * together with only the child rows that belong to that page. One extra row is
+     * requested to detect whether a further page exists.
+     */
+    private suspend fun fetchReportPage(
+        userId: UUID,
+        offset: Int,
+        limit: Int
+    ): Pair<List<ReportDetailsEntity>, Boolean> {
+        val fetched = supabase.postgrest["fishing"].select {
+            filter { eq("user_id", userId) }
+            order("fishing_start_at", Order.DESCENDING)
+            range(offset.toLong(), (offset + limit).toLong())
+        }.decodeList<FishingDto>()
+
+        val hasMore = fetched.size > limit
+        val page = if (hasMore) fetched.take(limit) else fetched
+        if (page.isEmpty()) return emptyList<ReportDetailsEntity>() to false
+        return buildReportEntities(page, page.map { it.id }) to hasMore
+    }
+
+    private suspend fun fetchFavoriteEntities(
+        userId: UUID
+    ): Pair<List<ReportDetailsEntity>, List<FavoriteReportEntity>> {
+        val favoriteLinks = supabase.postgrest["favorites"].select {
+            filter { eq("user_id", userId) }
+        }.decodeList<FavoriteDto>()
+            .map { FavoriteReportEntity(userId = userId, reportId = it.fishingId) }
+
+        val ids = favoriteLinks.map { it.reportId }
+        if (ids.isEmpty()) return emptyList<ReportDetailsEntity>() to favoriteLinks
+
+        val fishings = supabase.postgrest["fishing"].select {
+            filter { isIn("id", ids) }
+            order("fishing_start_at", Order.DESCENDING)
+        }.decodeList<FishingDto>()
+
+        return buildReportEntities(fishings, ids) to favoriteLinks
+    }
+
+    /**
+     * Resolves child rows only for the given report ids so the payload scales with the
+     * page size instead of the whole database. All four child queries run concurrently.
+     */
+    private suspend fun buildReportEntities(
+        fishings: List<FishingDto>,
+        fishingIds: List<UUID>
+    ): List<ReportDetailsEntity> = coroutineScope {
+        val fishDeferred = async {
+            supabase.postgrest["fishing_fish"].select {
+                filter { isIn("fishing_id", fishingIds) }
+            }.decodeList<FishDto>()
+        }
+        val baitsDeferred = async {
+            supabase.postgrest["fishing_baits"].select {
+                filter { isIn("fishing_id", fishingIds) }
+            }.decodeList<BaitDto>()
+        }
+        val photosDeferred = async {
+            supabase.postgrest["fishing_photos"].select {
+                filter { isIn("fishing_id", fishingIds) }
+                order("sort_order", Order.ASCENDING)
+            }.decodeList<PhotoDto>()
+        }
+        val profilesDeferred = async {
+            val authorIds = fishings.map { it.userId }
+            supabase.postgrest["profiles"].select {
+                filter { isIn("id", authorIds) }
+            }.decodeList<ProfileDto>()
+        }
+
+        val fishByFishing = fishDeferred.await().groupBy { it.fishingId }
+        val baitsByFishing = baitsDeferred.await().groupBy { it.fishingId }
+        val photosByFishing = photosDeferred.await().groupBy { it.fishingId }
+        val profilesById = profilesDeferred.await().associateBy { it.id }
+
+        fishings.map { dto ->
+            dto.toReportDetailsEntity(
+                fish = fishByFishing[dto.id] ?: emptyList(),
+                baits = baitsByFishing[dto.id] ?: emptyList(),
+                photos = photosByFishing[dto.id] ?: emptyList(),
+                author = profilesById[dto.userId]
+            )
         }
     }
 

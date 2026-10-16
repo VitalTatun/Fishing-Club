@@ -48,6 +48,8 @@ sealed class BottomNavItem(
     object Profile : BottomNavItem(R.string.tab_profile, Icons.Filled.Person, Icons.Outlined.Person)
 }
 
+private const val PREFETCH_THRESHOLD = 3
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -57,6 +59,8 @@ fun MainScreen(
     mapMarkers: List<MarkerDomain> = emptyList(),
     isInitialLoading: Boolean = false,
     isRefreshing: Boolean = false,
+    isLoadingMore: Boolean = false,
+    hasMoreReports: Boolean = false,
     mapIsLoading: Boolean = false,
     mapIsRefreshing: Boolean = false,
     mapErrorMessage: String? = null,
@@ -67,6 +71,7 @@ fun MainScreen(
     onCreateReportClick: () -> Unit = {},
     onReportClick: (FishingReport) -> Unit,
     onSearchClick: () -> Unit = {},
+    onLoadMore: () -> Unit = {},
     userEmail: String? = null,
     userName: String? = null,
     userImage: String? = null,
@@ -320,6 +325,12 @@ fun MainScreen(
                                         items = homeUiState.reports,
                                         key = { _, report -> report.id }
                                     ) { index, report ->
+                                        // Prefetch the next page once the user nears the end.
+                                        if (hasMoreReports &&
+                                            index >= homeUiState.reports.size - PREFETCH_THRESHOLD
+                                        ) {
+                                            LaunchedEffect(index) { onLoadMore() }
+                                        }
                                         if (reportDisplayMode == ReportDisplayMode.CARD) {
                                             FishingReportCardItem(
                                                 report = report,
@@ -335,6 +346,20 @@ fun MainScreen(
                                                 likeState = likeStates[report.id],
                                                 onToggleLike = { viewModel?.toggleLike(report) }
                                             )
+                                        }
+                                    }
+                                    if (isLoadingMore) {
+                                        item {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
