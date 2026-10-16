@@ -13,7 +13,7 @@ import org.junit.runner.RunWith
 
 /**
  * Regression: on-device DB created at version 9 (with legacy `fishingTime` column) must
- * migrate to version 10 without Room rejecting the schema. Before the fix Room threw
+ * migrate to the current version without Room rejecting the schema. Before the fix Room threw
  * `IllegalStateException: Migration didn't properly handle: markers` because the
  * migration added `fishingStartAt`/`fishingEndAt` but never dropped `fishingTime`,
  * so the migrated table had an unexpected extra column.
@@ -70,11 +70,11 @@ class Migration_9_10_Test {
     @Test
     fun migratingFromV9ToV10_succeeds_preservesData_andDropsLegacyColumn() {
         val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
-            .addMigrations(AppDatabase.MIGRATION_9_10)
+            .addMigrations(AppDatabase.MIGRATION_9_10, AppDatabase.MIGRATION_10_11)
             .build()
 
         db.openHelper.writableDatabase.use { sqlite ->
-            check(sqlite.version == 10) { "expected user_version 10, was ${sqlite.version}" }
+            check(sqlite.version == 11) { "expected user_version 11, was ${sqlite.version}" }
 
             sqlite.query("PRAGMA table_info(markers)").use { cursor ->
                 val columns = buildSet { while (cursor.moveToNext()) add(cursor.getString(1)) }
