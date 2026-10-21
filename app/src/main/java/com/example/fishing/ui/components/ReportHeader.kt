@@ -1,5 +1,6 @@
 package com.example.fishing.ui.components
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -245,13 +246,25 @@ private fun ReportLikeCount(
             tint = if (isLiked) Color(0xFFFF383C) else MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.size(20.dp)
         )
-        if (likesCount > 0) {
-            Text(
-                text = likesCount.toString(),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
+        AnimatedContent(
+            targetState = likesCount,
+            transitionSpec = {
+                if (targetState > initialState) {
+                    (slideInVertically { it } + fadeIn()).togetherWith(slideOutVertically { -it } + fadeOut())
+                } else {
+                    (slideInVertically { -it } + fadeIn()).togetherWith(slideOutVertically { it } + fadeOut())
+                }
+            },
+            label = "likesCount"
+        ) { count ->
+            if (count > 0) {
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
         }
     }
 }
