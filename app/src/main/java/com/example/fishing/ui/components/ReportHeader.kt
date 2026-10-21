@@ -2,6 +2,7 @@ package com.example.fishing.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -220,30 +221,38 @@ private fun ReportLikeCount(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .then(
+                if (onToggleLike != null) {
+                    Modifier.clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {
+                        onToggleLike()
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                } else Modifier
+            )
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(0.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        IconButton(
-            onClick = {
-                onToggleLike?.invoke()
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            },
-            enabled = onToggleLike != null
-        ) {
-            Icon(
-                painter = painterResource(id = if (isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer
+        Icon(
+            painter = painterResource(id = if (isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
+            contentDescription = null,
+            tint = if (isLiked) Color(0xFFFF383C) else MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.size(20.dp)
+        )
+        if (likesCount > 0) {
+            Text(
+                text = likesCount.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
         }
-        Text(
-            text = likesCount.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
     }
 }
 

@@ -55,7 +55,6 @@ private const val PREFETCH_THRESHOLD = 3
 fun MainScreen(
     homeUiState: HomeUiState,
     favoriteReports: List<FishingReport> = emptyList(),
-    likeStates: Map<UUID, ReportLikeState> = emptyMap(),
     mapMarkers: List<MarkerDomain> = emptyList(),
     isInitialLoading: Boolean = false,
     isRefreshing: Boolean = false,
@@ -334,17 +333,12 @@ fun MainScreen(
                                         if (reportDisplayMode == ReportDisplayMode.CARD) {
                                             FishingReportCardItem(
                                                 report = report,
-                                                onClick = { onReportClick(report) },
-                                                onToggleFavorite = { viewModel?.toggleFavorite(report) },
-                                                isFavorite = favoriteReports.any { it.id == report.id },
-                                                likeState = likeStates[report.id]
+                                                onClick = { onReportClick(report) }
                                             )
                                         } else {
                                             FishingReportListItem(
                                                 report = report,
-                                                onClick = { onReportClick(report) },
-                                                likeState = likeStates[report.id],
-                                                onToggleLike = { viewModel?.toggleLike(report) }
+                                                onClick = { onReportClick(report) }
                                             )
                                         }
                                     }

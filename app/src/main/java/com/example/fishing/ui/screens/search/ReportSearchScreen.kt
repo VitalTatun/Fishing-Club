@@ -51,10 +51,8 @@ fun ReportSearchScreen(
     onMethodChange: (FishingMethod?) -> Unit,
     onReportClick: (FishingReport) -> Unit,
     onBack: () -> Unit,
-    onToggleFavorite: (FishingReport) -> Unit = {},
     favoriteError: String? = null,
     onFavoriteErrorDismiss: () -> Unit = {},
-    likeStates: Map<UUID, ReportLikeState> = emptyMap(),
 ) {
     val focusRequester = remember { FocusRequester() }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -227,10 +225,7 @@ fun ReportSearchScreen(
                         items(filteredReports, key = { it.id }) { report ->
                             FishingReportCardItem(
                                 report = report,
-                                onClick = { onReportClick(report) },
-                                onToggleFavorite = { onToggleFavorite(report) },
-                                isFavorite = favoriteReports.any { it.id == report.id },
-                                likeState = likeStates[report.id]
+                                onClick = { onReportClick(report) }
                             )
                         }
                     }

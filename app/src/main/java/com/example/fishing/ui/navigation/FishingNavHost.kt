@@ -161,7 +161,6 @@ fun FishingNavHost(
                     onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
                     favoriteErrorText = viewModel.favoriteError.collectAsState().value,
                     onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
-                    likeStates = likeStates,
                     likeErrorText = viewModel.likeError.collectAsState().value,
                     onLikeErrorDismiss = { viewModel.clearLikeError() }
                 )
@@ -192,10 +191,8 @@ fun FishingNavHost(
                         navController.navigate("detail/${report.id}")
                     },
                     onBack = { navController.popBackStack() },
-                    onToggleFavorite = viewModel::toggleFavorite,
                     favoriteError = viewModel.favoriteError.collectAsState().value,
-                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
-                    likeStates = likeStates
+                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
                 )
             }
 

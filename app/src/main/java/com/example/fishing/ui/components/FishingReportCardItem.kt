@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,9 +39,6 @@ fun FishingReportCardItem(
     report: FishingReport,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
-    onToggleFavorite: () -> Unit = {},
-    isFavorite: Boolean = false,
-    likeState: ReportLikeState? = null,
 ) {
     Card(
         onClick = onClick,
@@ -79,10 +75,7 @@ fun FishingReportCardItem(
 
             FishingReportHeader(
                 user = report.user,
-                date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date(),
-                isFavorite = isFavorite,
-                onToggleFavorite = onToggleFavorite,
-                likeState = likeState
+                date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date()
             )
         }
     }
@@ -92,10 +85,7 @@ fun FishingReportCardItem(
 private fun FishingReportHeader(
     user: User,
     date: Date,
-    isFavorite: Boolean,
-    onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
-    likeState: ReportLikeState? = null,
 ) {
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
 
@@ -145,38 +135,6 @@ private fun FishingReportHeader(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (likeState != null) {
-                Icon(
-                    painter = painterResource(id = if (likeState.isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = likeState.likesCount.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-
-            IconButton(
-                onClick = onToggleFavorite,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                    contentDescription = stringResource(R.string.favorites),
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
         }
     }
 }
@@ -339,9 +297,7 @@ fun FishingReportCardItemPreview() {
         .padding(16.dp)) {
         FishingTheme {
             FishingReportCardItem(
-                report = sampleReport,
-                isFavorite = true,
-                likeState = ReportLikeState(reportId = sampleReport.id, likesCount = 12, isLiked = true)
+                report = sampleReport
             )
         }
     }

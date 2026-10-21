@@ -19,10 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,11 +40,8 @@ fun FishingReportListItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onPhotoClick: ((Int) -> Unit)? = null,
-    likeState: ReportLikeState? = null,
-    onToggleLike: (() -> Unit)? = null,
 ) {
     var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
-    val haptic = LocalHapticFeedback.current
     val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
     val date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date()
 
@@ -190,7 +184,7 @@ fun FishingReportListItem(
                 )
             }
 
-            // 5. AUTHOR AND ACTIONS
+            // 5. AUTHOR
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -243,44 +237,6 @@ fun FishingReportListItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-
-                // 5.3 ENGAGEMENT ACTIONS
-                if (likeState != null) {
-                    Surface(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .then(
-                                if (onToggleLike != null) {
-                                    Modifier.clickable {
-                                        haptic.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                                        onToggleLike()
-                                    }
-                                } else Modifier
-                            ),
-                        shape = RoundedCornerShape(16.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(id = if (likeState.isLiked) R.drawable.thumb_up_20px_2 else R.drawable.thumb_up_20px),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = likeState.likesCount.toString(),
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            )
-                        }
-                    }
-                }
             }
         }
     }
@@ -327,8 +283,7 @@ fun FishingReportListItemPreview() {
     )
     FishingTheme {
         FishingReportListItem(
-            report = sampleReport,
-            likeState = ReportLikeState(reportId = sampleReport.id, likesCount = 1, isLiked = false)
+            report = sampleReport
         )
     }
 }
