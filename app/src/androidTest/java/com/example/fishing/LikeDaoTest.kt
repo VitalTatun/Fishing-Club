@@ -117,6 +117,22 @@ class LikeDaoTest {
     }
 
     @Test
+    fun `deleteNotIn keeps listed ids for the user only`() = runTest {
+        likeDao.insertAll(
+            listOf(
+                LikeEntity(userAId, report1Id),
+                LikeEntity(userAId, report2Id),
+                LikeEntity(userBId, report2Id)
+            )
+        )
+
+        likeDao.deleteNotIn(userAId, listOf(report1Id))
+
+        assertEquals(listOf(report1Id), likeDao.getLikedIds(userAId).first())
+        assertEquals(listOf(report2Id), likeDao.getLikedIds(userBId).first())
+    }
+
+    @Test
     fun `getLikedIds is empty for unknown user`() = runTest {
         likeDao.insertAll(listOf(LikeEntity(userAId, report1Id)))
 

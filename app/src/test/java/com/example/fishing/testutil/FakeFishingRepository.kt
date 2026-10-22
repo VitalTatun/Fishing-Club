@@ -157,8 +157,13 @@ class FakeFishingRepository : FishingRepository {
         addLikeCallCount++
         addLikeGate?.await()
         addLikeException?.let { return Result.failure(it) }
-        val prev = _likeStates.value[reportId]
-        _likeStates.value = _likeStates.value + (reportId to ReportLikeState(reportId, true, (prev?.likesCount ?: 0) + 1))
+        val prev = _likeStates.value[reportId] ?: ReportLikeState(reportId)
+        if (!prev.isLiked) {
+            _likeStates.value = _likeStates.value + (reportId to prev.copy(
+                isLiked = true,
+                likesCount = prev.likesCount + 1
+            ))
+        }
         return Result.success(Unit)
     }
 
@@ -166,8 +171,13 @@ class FakeFishingRepository : FishingRepository {
         removeLikeCallCount++
         removeLikeGate?.await()
         removeLikeException?.let { return Result.failure(it) }
-        val prev = _likeStates.value[reportId]
-        _likeStates.value = _likeStates.value + (reportId to ReportLikeState(reportId, false, ((prev?.likesCount ?: 1) - 1).coerceAtLeast(0)))
+        val prev = _likeStates.value[reportId] ?: ReportLikeState(reportId, isLiked = true, likesCount = 1)
+        if (prev.isLiked) {
+            _likeStates.value = _likeStates.value + (reportId to prev.copy(
+                isLiked = false,
+                likesCount = (prev.likesCount - 1).coerceAtLeast(0)
+            ))
+        }
         return Result.success(Unit)
     }
 

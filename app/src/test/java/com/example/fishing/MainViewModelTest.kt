@@ -942,6 +942,33 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `optimistic count follows a newer base count while in flight`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = otherUserReport()
+        fakeFishingRepository.likeStatesValue = mapOf(report.id to ReportLikeState(report.id, false, 10))
+        val gate = CompletableDeferred<Unit>()
+        fakeFishingRepository.addLikeGate = gate
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.toggleLike(report)
+        assertEquals(ReportLikeState(report.id, true, 11), vm.likeStates.value[report.id])
+
+        // Another like landed while this request was still in flight.
+        fakeFishingRepository.likeStatesValue =
+            mapOf(report.id to ReportLikeState(report.id, false, 25))
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(ReportLikeState(report.id, true, 26), vm.likeStates.value[report.id])
+
+        gate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(ReportLikeState(report.id, true, 26), vm.likeStates.value[report.id])
+    }
+
+    @Test
     fun `unlike success decrements count`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         val report = otherUserReport()

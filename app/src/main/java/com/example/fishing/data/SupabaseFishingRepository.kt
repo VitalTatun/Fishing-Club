@@ -36,6 +36,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -56,6 +58,12 @@ class SupabaseFishingRepository @Inject constructor(
     // current user's own reports already cached (bookmarks are always loaded whole).
     private var homeLoadedOwnCount = 0
     private var homeHasMore = false
+
+    // Like mutations are versioned so a slow refresh that fetched likesCount
+    // before the mutation cannot overwrite the authoritative value afterwards.
+    private val likeMutationSeq = AtomicLong(0)
+    private val likeMutationVersions = ConcurrentHashMap<UUID, Long>()
+    private val likeOpsInFlight = ConcurrentHashMap.newKeySet<UUID>()
 
     private companion object {
         const val PAGE_SIZE = 20
@@ -79,14 +87,17 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
         try {
+            val likesSnapshotSeq = likeMutationSeq.get()
             // First page of own reports + all bookmarks replace the cache.
             val (ownEntities, hasMore) = fetchReportPage(userId, offset = 0, limit = PAGE_SIZE)
             val (favoriteEntities, favoriteLinks) = fetchFavoriteEntities(userId)
+            val fetchedEntities = (ownEntities + favoriteEntities).distinctBy { it.id }
 
             database.withTransaction {
                 // The home cache is one coherent snapshot: own reports plus bookmarked reports.
+                val entities = preserveRecentLikes(fetchedEntities, likesSnapshotSeq)
                 reportDetailsDao.deleteAll()
-                reportDetailsDao.insertAll((ownEntities + favoriteEntities).distinctBy { it.id })
+                reportDetailsDao.insertAll(entities)
                 favoriteReportDao.deleteAllForUser(userId)
                 favoriteReportDao.insertAll(favoriteLinks)
             }
@@ -104,9 +115,10 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun loadMoreHomeReports(userId: UUID): Boolean {
         if (!homeHasMore) return false
+        val likesSnapshotSeq = likeMutationSeq.get()
         val (entities, hasMore) = fetchReportPage(userId, offset = homeLoadedOwnCount, limit = PAGE_SIZE)
         database.withTransaction {
-            reportDetailsDao.insertAll(entities)
+            reportDetailsDao.insertAll(preserveRecentLikes(entities, likesSnapshotSeq))
         }
         homeLoadedOwnCount += entities.size
         homeHasMore = hasMore
@@ -250,6 +262,7 @@ class SupabaseFishingRepository @Inject constructor(
 
     suspend fun refreshReportDetails(id: UUID): Boolean {
         if (authRepository.currentUser() == null) return false
+        val likesSnapshotSeq = likeMutationSeq.get()
 
         val fishing = supabase.postgrest["fishing"].select {
             filter { eq("id", id) }
@@ -272,7 +285,9 @@ class SupabaseFishingRepository @Inject constructor(
         }.decodeList<ProfileDto>().firstOrNull()
 
         val entity = fishing.toReportDetailsEntity(fish, baits, photos, author)
-        reportDetailsDao.insert(entity)
+        database.withTransaction {
+            reportDetailsDao.insert(preserveRecentLikes(listOf(entity), likesSnapshotSeq).single())
+        }
         return true
     }
 
@@ -332,9 +347,6 @@ class SupabaseFishingRepository @Inject constructor(
             }
 
             val markerEntity = dto.toMarkerEntity(report.fish.map { it.name })
-            // Preserve the locally mirrored counter on re-save: the upsert DTO
-            // never carries likes_count (see FishingDto), so Room must not reset it.
-            val preservedLikesCount = reportDetailsDao.getByIdOneShot(report.id)?.likesCount ?: 0
             val detailsEntity = ReportDetailsEntity(
                 id = report.id,
                 userId = report.userId,
@@ -359,12 +371,15 @@ class SupabaseFishingRepository @Inject constructor(
                 baitsJson = json.encodeToString(baitDtos),
                 authorName = report.user.name,
                 authorAvatar = report.user.image,
-                createdAt = dto.createdAt,
-                likesCount = preservedLikesCount
+                createdAt = dto.createdAt
             )
 
             database.withTransaction {
-                reportDetailsDao.insert(detailsEntity)
+                // The upsert DTO never carries likes_count (see FishingDto), so the
+                // locally mirrored counter must be read inside the transaction to
+                // avoid clobbering a like that landed while this save was running.
+                val preservedLikesCount = reportDetailsDao.getByIdOneShot(report.id)?.likesCount ?: 0
+                reportDetailsDao.insert(detailsEntity.copy(likesCount = preservedLikesCount))
                 if (dto.isPublic || dto.userId == authRepository.currentUser()?.id) {
                     markerDao.insertAll(listOf(markerEntity))
                 }
@@ -479,6 +494,7 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun refreshLikes(userId: UUID) {
         try {
+            val likesSnapshotSeq = likeMutationSeq.get()
             // Single batched query — never one request per report.
             val likes = supabase.postgrest["likes"].select {
                 filter { eq("user_id", userId) }
@@ -486,9 +502,22 @@ class SupabaseFishingRepository @Inject constructor(
             val entities = likes
                 .filter { it.userId == userId }
                 .map { LikeEntity(userId = it.userId, reportId = it.fishingId) }
+            // Never drop a local like that was written by an operation which
+            // started after this network snapshot was taken.
+            val protectedIds = buildSet {
+                entities.forEach { add(it.reportId) }
+                addAll(likeOpsInFlight)
+                likeMutationVersions.forEach { (id, version) ->
+                    if (version > likesSnapshotSeq) add(id)
+                }
+            }
             database.withTransaction {
-                likeDao.deleteAllForUser(userId)
                 likeDao.insertAll(entities)
+                if (protectedIds.isEmpty()) {
+                    likeDao.deleteAllForUser(userId)
+                } else {
+                    likeDao.deleteNotIn(userId, protectedIds.toList())
+                }
             }
             // Counters are not counted here: they arrive as fishing.likes_count
             // inside the existing fishing selects (refreshHomeReports /
@@ -511,41 +540,69 @@ class SupabaseFishingRepository @Inject constructor(
         if (cached != null && cached.userId != currentUser.id && !cached.isPublic) {
             return Result.failure(IllegalStateException("Cannot like private report"))
         }
-        return try {
-            supabase.postgrest.rpc("like_report", buildJsonObject { put("fid", reportId.toString()) })
-            // Sync Room with the confirmed state (single transaction).
-            database.withTransaction {
-                likeDao.insertAll(listOf(LikeEntity(currentUser.id, reportId)))
-                reportDetailsDao.getByIdOneShot(reportId)?.let {
-                    reportDetailsDao.insert(it.copy(likesCount = it.likesCount + 1))
-                }
-            }
-            Result.success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return mutateLike(reportId, currentUser.id, "like_report")
     }
 
     override suspend fun removeLike(reportId: UUID): Result<Unit> {
         val currentUser = authRepository.currentUser()
             ?: return Result.failure(IllegalStateException("Нет активной сессии"))
+        return mutateLike(reportId, currentUser.id, "unlike_report")
+    }
+
+    private suspend fun mutateLike(reportId: UUID, userId: UUID, rpcName: String): Result<Unit> {
+        likeOpsInFlight.add(reportId)
         return try {
-            supabase.postgrest.rpc("unlike_report", buildJsonObject { put("fid", reportId.toString()) })
+            // The RPC returns the authoritative {liked, likes_count}. Writing that
+            // value instead of a blind +1/-1 keeps Room in sync even when the RPC
+            // is a no-op or the local membership cache was stale.
+            val state = supabase.postgrest.rpc(
+                rpcName,
+                buildJsonObject { put("fid", reportId.toString()) }
+            ).decodeList<LikeStateDto>().firstOrNull()
+                ?: return Result.failure(IllegalStateException("Unexpected like response"))
+
+            likeMutationVersions[reportId] = likeMutationSeq.incrementAndGet()
             database.withTransaction {
-                likeDao.delete(currentUser.id, reportId)
-                reportDetailsDao.getByIdOneShot(reportId)?.let {
-                    reportDetailsDao.insert(it.copy(likesCount = (it.likesCount - 1).coerceAtLeast(0)))
+                if (state.liked) {
+                    likeDao.insertAll(listOf(LikeEntity(userId, reportId)))
+                } else {
+                    likeDao.delete(userId, reportId)
                 }
+                reportDetailsDao.updateLikesCount(reportId, state.likesCount)
             }
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Result.failure(e)
+        } finally {
+            likeOpsInFlight.remove(reportId)
         }
     }
+
+    private suspend fun preserveRecentLikes(
+        entities: List<ReportDetailsEntity>,
+        likesSnapshotSeq: Long
+    ): List<ReportDetailsEntity> {
+        if (entities.isEmpty()) return entities
+        val changedIds = entities.map { it.id }.filter { id ->
+            likeOpsInFlight.contains(id) || likeVersion(id) > likesSnapshotSeq
+        }
+        if (changedIds.isEmpty()) return entities
+
+        val existingCounts = reportDetailsDao.getLikesCounts(changedIds)
+            .associate { it.id to it.likesCount }
+        val changed = changedIds.toHashSet()
+        return entities.map { entity ->
+            if (entity.id in changed) {
+                existingCounts[entity.id]?.let { entity.copy(likesCount = it) } ?: entity
+            } else {
+                entity
+            }
+        }
+    }
+
+    private fun likeVersion(id: UUID): Long = likeMutationVersions[id] ?: 0L
 
     private suspend fun fetchReportDetails(fishingId: UUID): ReportDetailsEntity? {
         val fishing = supabase.postgrest["fishing"].select {

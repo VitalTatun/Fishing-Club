@@ -154,7 +154,8 @@ class MainViewModel @Inject constructor(
     val likeError: StateFlow<String?> = _likeError.asStateFlow()
 
     private val likeOpsInFlight = mutableSetOf<UUID>()
-    private val optimisticLikeOverlay = mutableMapOf<UUID, ReportLikeState>()
+    private data class LikeOverlay(val liked: Boolean, val fallbackCount: Int)
+    private val optimisticLikeOverlay = mutableMapOf<UUID, LikeOverlay>()
     private var baseLikeStates: Map<UUID, ReportLikeState> = emptyMap()
 
     private val _deletedReportId = MutableStateFlow<UUID?>(null)
@@ -408,12 +409,7 @@ class MainViewModel @Inject constructor(
                         // Stale emission after logout/account switch must not restore state.
                         if (currentUserId != userId) return@collect
                         baseLikeStates = base
-                        // Clean up optimistic overlay for IDs that have now matched the base state
-                        // and are no longer in flight. This prevents the "new -> old -> new" flicker.
-                        optimisticLikeOverlay.entries.removeAll { (id, state) ->
-                            id !in likeOpsInFlight && base[id]?.isLiked == state.isLiked
-                        }
-                        _likeStates.value = base + activeLikeOverlay()
+                        _likeStates.value = applyLikeOverlay(base)
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -446,13 +442,11 @@ class MainViewModel @Inject constructor(
             ?: baseLikeStates[report.id]
             ?: ReportLikeState(report.id)
         val liking = !current.isLiked
-        val optimistic = current.copy(
-            isLiked = liking,
-            likesCount = (current.likesCount + if (liking) 1 else -1).coerceAtLeast(0)
-        )
-        // Optimistic state has priority over Room emits for the op duration.
-        optimisticLikeOverlay[report.id] = optimistic
-        _likeStates.value = baseLikeStates + activeLikeOverlay()
+        // The overlay stores intent only; the displayed count is derived from
+        // the latest Room-confirmed count so a newer authoritative snapshot is
+        // never masked by a stale absolute value.
+        optimisticLikeOverlay[report.id] = LikeOverlay(liking, current.likesCount)
+        _likeStates.value = applyLikeOverlay(baseLikeStates)
 
         viewModelScope.launch {
             try {
@@ -465,7 +459,7 @@ class MainViewModel @Inject constructor(
                 if (currentUserId != userId) return@launch
                 result.onFailure { e ->
                     optimisticLikeOverlay.remove(report.id)
-                    _likeStates.value = baseLikeStates + activeLikeOverlay()
+                    _likeStates.value = applyLikeOverlay(baseLikeStates)
                     _likeError.value = likeErrorMessage(e)
                 }
             } catch (e: CancellationException) {
@@ -473,20 +467,43 @@ class MainViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (currentUserId != userId) return@launch
                 optimisticLikeOverlay.remove(report.id)
-                _likeStates.value = baseLikeStates + activeLikeOverlay()
+                _likeStates.value = applyLikeOverlay(baseLikeStates)
                 _likeError.value = likeErrorMessage(e)
             } finally {
                 likeOpsInFlight.remove(report.id)
-                // We don't remove from optimisticLikeOverlay here immediately
-                // to allow the Room collector to see the matching state first.
-                // But we must trigger a refresh to reflect the flight status change.
-                _likeStates.value = baseLikeStates + activeLikeOverlay()
+                _likeStates.value = applyLikeOverlay(baseLikeStates)
             }
         }
     }
 
-    private fun activeLikeOverlay(): Map<UUID, ReportLikeState> =
-        optimisticLikeOverlay.toMap()
+    private fun applyLikeOverlay(base: Map<UUID, ReportLikeState>): Map<UUID, ReportLikeState> {
+        if (optimisticLikeOverlay.isEmpty()) return base
+        val result = base.toMutableMap()
+        val confirmed = mutableListOf<UUID>()
+        optimisticLikeOverlay.forEach { (id, overlay) ->
+            val current = base[id]
+            when {
+                current == null -> {
+                    result[id] = ReportLikeState(
+                        reportId = id,
+                        isLiked = overlay.liked,
+                        likesCount = (overlay.fallbackCount + if (overlay.liked) 1 else -1)
+                            .coerceAtLeast(0)
+                    )
+                }
+                current.isLiked == overlay.liked -> confirmed += id
+                else -> {
+                    result[id] = current.copy(
+                        isLiked = overlay.liked,
+                        likesCount = (current.likesCount + if (overlay.liked) 1 else -1)
+                            .coerceAtLeast(0)
+                    )
+                }
+            }
+        }
+        confirmed.forEach(optimisticLikeOverlay::remove)
+        return result
+    }
 
     private fun likeErrorMessage(e: Throwable): String {
         return "Не удалось изменить лайк: ${e.message ?: "неизвестная ошибка"}"

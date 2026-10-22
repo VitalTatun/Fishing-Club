@@ -115,16 +115,22 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun addLike(reportId: UUID): Result<Unit> {
         _likeStates.update { current ->
-            val prev = current[reportId]
-            current + (reportId to ReportLikeState(reportId, true, (prev?.likesCount ?: 0) + 1))
+            val prev = current[reportId] ?: ReportLikeState(reportId)
+            if (prev.isLiked) current else current + (reportId to prev.copy(
+                isLiked = true,
+                likesCount = prev.likesCount + 1
+            ))
         }
         return Result.success(Unit)
     }
 
     override suspend fun removeLike(reportId: UUID): Result<Unit> {
         _likeStates.update { current ->
-            val prev = current[reportId]
-            current + (reportId to ReportLikeState(reportId, false, ((prev?.likesCount ?: 1) - 1).coerceAtLeast(0)))
+            val prev = current[reportId] ?: ReportLikeState(reportId, isLiked = true, likesCount = 1)
+            if (!prev.isLiked) current else current + (reportId to prev.copy(
+                isLiked = false,
+                likesCount = (prev.likesCount - 1).coerceAtLeast(0)
+            ))
         }
         return Result.success(Unit)
     }

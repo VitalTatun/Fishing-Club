@@ -203,6 +203,35 @@ class ReportDetailsDaoTest {
     }
 
     @Test
+    fun `updateLikesCount updates only the counter`() = runTest {
+        val id = UUID.randomUUID()
+        reportDetailsDao.insert(createReportEntity(id = id, userId = userAId).copy(likesCount = 3))
+
+        reportDetailsDao.updateLikesCount(id, 42)
+
+        val fetched = reportDetailsDao.getByIdOneShot(id)
+        assertEquals(42, fetched?.likesCount)
+        assertEquals("Test Report", fetched?.name)
+    }
+
+    @Test
+    fun `getLikesCounts returns only requested reports`() = runTest {
+        val idA = UUID.randomUUID()
+        val idB = UUID.randomUUID()
+        reportDetailsDao.insertAll(
+            listOf(
+                createReportEntity(id = idA, userId = userAId).copy(likesCount = 5),
+                createReportEntity(id = idB, userId = userAId).copy(likesCount = 9)
+            )
+        )
+
+        val counts = reportDetailsDao.getLikesCounts(listOf(idA))
+            .associate { it.id to it.likesCount }
+
+        assertEquals(mapOf(idA to 5), counts)
+    }
+
+    @Test
     fun `logout deleteAll clears all report details including foreign favorited ones`() = runTest {
         val reportOwn = createReportEntity(id = UUID.randomUUID(), userId = userAId)
         val reportForeign = createReportEntity(id = UUID.randomUUID(), userId = userBId)

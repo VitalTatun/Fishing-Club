@@ -84,6 +84,12 @@ data class LikeDto(
 )
 
 @Serializable
+data class LikeStateDto(
+    val liked: Boolean,
+    @SerialName("likes_count") val likesCount: Int
+)
+
+@Serializable
 data class ProfileDto(
     @Serializable(with = UuidSerializer::class) val id: UUID,
     val name: String? = null,

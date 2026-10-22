@@ -59,10 +59,21 @@ interface ReportDetailsDao {
 
     @Query("DELETE FROM report_details WHERE userId = :userId")
     suspend fun deleteByUserId(userId: UUID)
+
+    @Query("UPDATE report_details SET likesCount = :likesCount WHERE id = :id")
+    suspend fun updateLikesCount(id: UUID, likesCount: Int)
+
+    @Query("SELECT id, likesCount FROM report_details WHERE id IN (:ids)")
+    suspend fun getLikesCounts(ids: List<UUID>): List<ReportLikesCountRow>
 }
 
 data class ReportLikeRow(
     val id: UUID,
     val likesCount: Int,
     val isLiked: Boolean
+)
+
+data class ReportLikesCountRow(
+    val id: UUID,
+    val likesCount: Int
 )

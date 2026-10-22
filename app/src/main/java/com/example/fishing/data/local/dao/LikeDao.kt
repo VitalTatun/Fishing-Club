@@ -22,6 +22,9 @@ interface LikeDao {
     @Query("DELETE FROM likes WHERE userId = :userId")
     suspend fun deleteAllForUser(userId: UUID)
 
+    @Query("DELETE FROM likes WHERE userId = :userId AND reportId NOT IN (:reportIds)")
+    suspend fun deleteNotIn(userId: UUID, reportIds: List<UUID>)
+
     @Query("DELETE FROM likes")
     suspend fun deleteAll()
 
