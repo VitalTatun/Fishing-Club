@@ -21,6 +21,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -98,8 +99,10 @@ fun MainScreen(
     val currentSortOrder by viewModel?.reportSortOrder?.collectAsState() ?: remember { mutableStateOf(ReportSortOrder.BY_FISHING_TIME) }
     
     var showSortMenu by remember { mutableStateOf(false) }
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
@@ -111,6 +114,7 @@ fun MainScreen(
                         },
                     )
                 },
+                scrollBehavior = scrollBehavior,
                 actions = {
                     if (selectedTab == 0) {
                         Box {
