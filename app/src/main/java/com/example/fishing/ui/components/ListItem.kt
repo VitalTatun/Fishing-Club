@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,7 @@ fun FishingListItem(
     isRequired: Boolean = false,
     isError: Boolean = false,
     containerColor: Color? = null,
+    titleStyle: TextStyle? = null,
     fontSize: TextUnit = TextUnit.Unspecified,
     fontWeight: FontWeight? = null,
     onRowClick: (() -> Unit)? = null,
@@ -109,10 +111,10 @@ fun FishingListItem(
             ) {
                 Text(
                     text = if (isRequired && !hasData) "$title *" else title,
-                    style = MaterialTheme.typography.bodyLarge.let { style ->
+                    style = titleStyle ?: MaterialTheme.typography.bodyLarge.let { style ->
                         if (fontSize != TextUnit.Unspecified) style.copy(fontSize = fontSize) else style
                     },
-                    fontWeight = fontWeight,
+                    fontWeight = if (titleStyle == null) fontWeight else null,
                     modifier = Modifier.then(
                         if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier
                     )

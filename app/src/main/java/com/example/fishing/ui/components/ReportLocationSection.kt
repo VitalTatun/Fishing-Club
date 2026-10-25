@@ -24,8 +24,6 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.fishing.R
 import com.example.fishing.model.*
@@ -36,6 +34,8 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.util.*
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun ReportLocationSection(
@@ -163,8 +163,10 @@ fun ReportLocationSection(
         FishingListItem(
             overlineText = overlineText,
             title = report.water.waterName.ifBlank { stringResource(R.string.not_specified) },
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
+            titleStyle = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            ),
             supportingText = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
             trailingContent = {
                 FilledTonalIconButton(
