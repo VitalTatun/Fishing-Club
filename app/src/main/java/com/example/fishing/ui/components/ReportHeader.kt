@@ -5,8 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -76,36 +76,52 @@ fun ReportPhotoCarousel(
 ) {
     if (photos.isEmpty()) return
 
-    val pagerState = rememberPagerState { photos.size }
-
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(230.dp)
-            .padding(horizontal = 16.dp)
     ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp)),
-            pageSpacing = 8.dp
-        ) { index ->
+        if (photos.size == 1) {
             AsyncImage(
-                model = photos[index].url,
+                model = photos[0].url,
                 contentDescription = null,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { onPhotoClick(index) },
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .padding(horizontal = 8.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFECE6F0))
+                    .clickable { onPhotoClick(0) },
                 contentScale = ContentScale.Crop
             )
+        } else if (photos.size > 1) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                itemsIndexed(photos) { index, photo ->
+                    AsyncImage(
+                        model = photo.url,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .width(360.dp)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFECE6F0))
+                            .clickable { onPhotoClick(index) },
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
         }
 
         if (showTrophyBadge) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(top = 14.dp, start = 14.dp),
+                    .padding(top = 14.dp, start = 22.dp),
                 color = FishingTheme.colors.trophyYellow,
                 shape = RoundedCornerShape(22.dp)
             ) {
@@ -115,25 +131,6 @@ fun ReportPhotoCarousel(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = FishingTheme.colors.textOnTrophy
-                )
-            }
-        }
-
-        if (photos.size > 1) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 14.dp, end = 14.dp),
-                color = Color.Black.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = "${pagerState.currentPage + 1}/${photos.size}",
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp
                 )
             }
         }
