@@ -262,7 +262,7 @@ fun MainScreen(
                                     contentPadding = if (reportDisplayMode == ReportDisplayMode.CARD) {
                                         PaddingValues(horizontal = 8.dp, vertical = 8.dp)
                                     } else {
-                                        PaddingValues(vertical = 8.dp)
+                                        PaddingValues(vertical = 0.dp)
                                     },
                                     verticalArrangement = Arrangement.spacedBy(
                                         if (reportDisplayMode == ReportDisplayMode.LIST)  0.dp else 16.dp
