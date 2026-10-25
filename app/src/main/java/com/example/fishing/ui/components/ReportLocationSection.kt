@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -151,20 +152,14 @@ fun ReportLocationSection(
         val shoreText = stringResource(
             if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat
         )
-        val overlineText = if (report.water.isPaid) {
-            "${stringResource(R.string.paid_water)} • $shoreText"
-        } else {
-            shoreText
-        }
+        val isPaidWater = report.water.isPaid
 
         val clipboard = LocalClipboard.current
         val scope = rememberCoroutineScope()
 
         FishingListItem(
-            overlineText = overlineText,
             title = report.water.waterName.ifBlank { stringResource(R.string.not_specified) },
             titleStyle = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             ),
             supportingText = "${"%.5f".format(report.water.latitude)} - ${"%.5f".format(report.water.longitude)}",
@@ -190,6 +185,22 @@ fun ReportLocationSection(
                 }
             }
         )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isPaidWater) {
+                FishingBadge(
+                    text = stringResource(R.string.paid)
+                )
+            }
+            FishingBadge(
+                text = shoreText
+            )
+        }
     }
 }
 
