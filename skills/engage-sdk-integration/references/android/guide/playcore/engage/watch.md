@@ -17,7 +17,34 @@ existing Google surfaces.
 > [!NOTE]
 > **Note:** Check the [TV integration guide](https://developer.android.com/guide/playcore/engage/tv) to learn more about the Continue Watching experience on Google TV.
 
+## Category support and surfaces
+
+Engage SDK surface eligibility is based on your app's content category. Use the
+following table to determine your eligibility for specific surfaces:
+
+| Status | Content category or use case | Supported surfaces |
+|---|---|---|
+| **Supported** (Eligible on all surfaces) | - Movies \& TV streaming - Live TV / Sports - On demand video clips - Sports videos - Drama Shorts - Video podcasts | - Collections - Entertainment Space - Play Store Apps tab - Play Store You tab - Play Store store listing page |
+| **Partially supported** (Eligible on some surfaces) | - Video clips from news apps | - Collections - Entertainment Space |
+| **Not supported** | - Remote controls - Video downloaders, players, and editors - Movie \& TV reviews - Movie tickets - TV guides - Video calls \& chatrooms |   |
+
+
+## Android skills
+
+[View on GitHub](https://github.com/android/skills/tree/main/play/engage-sdk-integration)
+
+### Integrate Engage SDK
+
+Use the Engage SDK [Android skill](https://developer.android.com/tools/agents/android-skills) to integrate, debug, and resolve implementation issues. To install the skill from the [Android CLI](https://developer.android.com/tools/agents/android-cli), run:
+
+    android skills add engage-sdk-integration
+
+<br />
+
 ## Integration detail
+
+This section details the steps, data models, and terminology required to
+integrate with the Engage SDK for video content.
 
 ### Terminology
 
@@ -61,7 +88,7 @@ Add the `com.google.android.engage:engage-core` library to your app:
 
     dependencies {
         // Make sure you also include that repository in your project's build.gradle file.
-        implementation 'com.google.android.engage:engage-core:1.5.12'
+        implementation 'com.google.android.engage:engage-core:1.6.0'
     }
 
 For more information, see [Package visibility in Android
@@ -88,6 +115,9 @@ cluster types:
 
 ### Step 0: Migration from existing Media Home SDK integration
 
+This section outlines how to migrate your existing Media Home SDK data models
+and API calls to the Engage SDK.
+
 #### Map data models from existing integration
 
 If you are migrating from an existing Media Home integration, the following
@@ -104,7 +134,7 @@ table outlines how to map data models in existing SDKs to the new Engage SDK:
 | `com.google.android.mediahome.video.WatchNextProgram` | Divided into attributes in separate classes: `EventVideoEntity`, `LiveStreamingVideoEntity`, `MovieEntity`, `TvEpisodeEntity`, `TvSeasonEntity`, `TvShowEntity`, `VideoClipEntity` |
 | `com.google.android.mediahome.video.WatchNextProgram.Builder` | Divided into attributes in separate classes: `EventVideoEntity`, `LiveStreamingVideoEntity`, `MovieEntity`, `TvEpisodeEntity`, `TvSeasonEntity`, `TvShowEntity`, `VideoClipEntity` |
 
-#### Publishing clusters in Media Home SDK vs Engage SDK
+#### Publishing clusters in Media Home SDK compared to Engage SDK
 
 With Media Home SDK, clusters and entities were published through separate APIs:
 
@@ -175,7 +205,7 @@ The following chart outlines attributes and requirements for each type.
 | Content ratings | Optional | Free text, follow the industry standard. ([Example](https://www.spectrum.net/support/tv/tv-and-movie-ratings-descriptions)) |
 | Call to action text | Optional | Free text to be displayed as a call to action. |
 | Tags | Optional | List of tags associated with the entity. |
-| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for TV shows, recorded soccer matches in a series, and so on. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
+| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for episodic content such as TV shows or recorded soccer matches in a series. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
 | Last engagement time | Conditionally required | Must be provided when the item is in the Continuation cluster. In epoch milliseconds. |
 | Last playback position time | Conditionally required | Must be provided when the item is in the Continuation cluster and WatchNextType is CONTINUE. In epoch milliseconds. |
 
@@ -196,7 +226,7 @@ The following chart outlines attributes and requirements for each type.
 | Content ratings | Optional | Free text, follow the industry standard. ([Example](https://www.spectrum.net/support/tv/tv-and-movie-ratings-descriptions)) |
 | Call to action text | Optional | Free text to be displayed as a call to action. |
 | Tags | Optional | List of tags associated with the entity. |
-| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for TV shows, recorded soccer matches in a series, and so on. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
+| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for episodic content such as TV shows or recorded soccer matches in a series. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
 | Last engagement time | Conditionally required | Must be provided when the item is in the Continuation cluster. In epoch milliseconds. |
 | Last playback position time | Conditionally required | Must be provided when the item is in the Continuation cluster and WatchNextType is CONTINUE. In epoch milliseconds. |
 
@@ -218,7 +248,7 @@ The following chart outlines attributes and requirements for each type.
 | Content ratings | Optional | Free text, follow the industry standard. ([Example](https://www.spectrum.net/support/tv/tv-and-movie-ratings-descriptions)) |
 | Call to action text | Optional | Free text to be displayed as a call to action. |
 | Tags | Optional | List of tags associated with the entity. |
-| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for TV shows, recorded soccer matches in a series, and so on. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
+| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for episodic content such as TV shows or recorded soccer matches in a series. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
 | Last engagement time | Conditionally required | Must be provided when the item is in the Continuation cluster. In epoch milliseconds. |
 | Last playback position time | Conditionally required | Must be provided when the item is in the Continuation cluster and WatchNextType is CONTINUE. In epoch milliseconds. |
 
@@ -239,7 +269,7 @@ The following chart outlines attributes and requirements for each type.
 | Content ratings | Optional | Free text, follow the industry standard. ([Example](https://www.spectrum.net/support/tv/tv-and-movie-ratings-descriptions)) |
 | Call to action text | Optional | Free text to be displayed as a call to action. |
 | Tags | Optional | List of tags associated with the entity. |
-| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for TV shows, recorded soccer matches in a series, and so on. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
+| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for episodic content such as TV shows or recorded soccer matches in a series. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
 | Last engagement time | Conditionally required | Must be provided when the item is in the Continuation cluster. In epoch milliseconds. |
 | Last playback position time | Conditionally required | Must be provided when the item is in the Continuation cluster and WatchNextType is CONTINUE. In epoch milliseconds. |
 
@@ -256,7 +286,7 @@ The following chart outlines attributes and requirements for each type.
 | View count | Optional | Free text, must be localized. |
 | Call to action text | Optional | Free text to be displayed as a call to action. |
 | Tags | Optional | List of tags associated with the entity. |
-| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for TV shows, recorded soccer matches in a series, and so on. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
+| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for episodic content such as TV shows or recorded soccer matches in a series. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
 | Last engagement time | Conditionally required | Must be provided when the item is in the Continuation cluster. In epoch milliseconds. |
 | Last playback position time | Conditionally required | Must be provided when the item is in the Continuation cluster and WatchNextType is CONTINUE. In epoch milliseconds. |
 
@@ -277,7 +307,7 @@ such as TikTok or YouTube.
 | View count | Optional | Free text, must be localized. |
 | Call to action text | Optional | Free text to be displayed as a call to action. |
 | Tags | Optional | List of tags associated with the entity. |
-| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for TV shows, recorded soccer matches in a series, and so on. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
+| Watch next type | Conditionally required | Must be provided when the item is in the Continuation cluster and must be one of the following four types: CONTINUE: The user has already watched more than 1 minute of this content. NEW: The user has watched all available episodes from some episodic content, but a new episode has become available and there is exactly one unwatched episode. This works for episodic content such as TV shows or recorded soccer matches in a series. NEXT: The user has watched one or more complete episodes from some episodic content, but there remains either more than one episode remaining or exactly one episode remaining where the last episode is not "NEW" and was released before the user started watching the episodic content. WATCHLIST: The user has explicitly elected to add a movie, event, or series to a watchlist to manually curate what they want to watch next. |
 | Last engagement time | Conditionally required | Must be provided when the item is in the Continuation cluster. In epoch milliseconds. |
 | Last playback position time | Conditionally required | Must be provided when the item is in the Continuation cluster and WatchNextType is CONTINUE. In epoch milliseconds. |
 
@@ -368,6 +398,103 @@ APIs are available in the client:
 
 This API is used to check if the service is available for integration and
 whether the content can be presented on the device.
+
+##### For Engage SDK v1.6.0 and higher (Recommended)
+
+
+## Android skills
+
+[View on GitHub](https://github.com/android/skills/tree/main/play/engage-sdk-integration)
+
+### Engage SDK integration
+
+To install the skill from the [Android CLI](https://developer.android.com/tools/agents/android-cli), run:
+
+    android skills add engage-sdk-integration
+
+If your team uses AI coding tools (such as Gemini in Android Studio), you can automate this migration by prompting your AI assistant:
+
+    Use the engage-sdk-integration skill to use Engage SDK 1.6.0 and refactor isServiceAvailable to pass ServiceAvailabilityRequest for publishing all cluster types.
+
+<br />
+
+You can check the service availability for every cluster type that you intend to
+publish. The `isServiceAvailable` API accepts a request object,
+`ServiceAvailabilityRequest`, which contains the cluster types for which service
+availability needs to be checked. You can find the `ClusterType` enum values
+required for `ServiceAvailabilityRequest` from the following table.
+
+| Cluster Type | Cluster Type Constant | Integer Value |
+|---|---|---|
+| Unknown | `TYPE_UNKNOWN` | 0 |
+| Recommendation Cluster | `TYPE_RECOMMENDATION` | 1 |
+| Featured Cluster | `TYPE_FEATURED` | 2 |
+| Continuation Cluster | `TYPE_CONTINUATION` | 3 |
+| User Management Cluster | `TYPE_ENGAGEMENT` | 8 |
+| Subscription Cluster | `TYPE_SUBSCRIPTION` | 12 |
+
+### Kotlin
+
+    val request = ServiceAvailabilityRequest.Builder()
+        .addIntendedClusterType(ClusterType.TYPE_CONTINUATION)
+        .addIntendedClusterType(ClusterType.TYPE_RECOMMENDATION)
+        .build()
+
+    client.isServiceAvailable(request).addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            val availabilityMap = task.result
+            if (availabilityMap[ClusterType.TYPE_CONTINUATION] == true) {
+                // Proceed with publishing continuation content
+            }
+            if (availabilityMap[ClusterType.TYPE_RECOMMENDATION] == true) {
+                // Proceed with publishing recommendation content
+            }
+        } else {
+            // The IPC call itself fails, proceed with error handling logic here,
+            // such as retry.
+        }
+    }
+
+### Java
+
+    ServiceAvailabilityRequest request =
+        new ServiceAvailabilityRequest.Builder()
+            .addIntendedClusterType(ClusterType.TYPE_CONTINUATION)
+            .addIntendedClusterType(ClusterType.TYPE_RECOMMENDATION)
+            .build();
+
+    client.isServiceAvailable(request).addOnCompleteListener(task -> {
+        if (task.isSuccessful()) {
+            Map<Integer, Boolean> availabilityMap = task.getResult();
+            if (Boolean.TRUE.equals(availabilityMap.get(ClusterType.TYPE_CONTINUATION))) {
+                // Proceed with publishing continuation content
+            }
+            if (Boolean.TRUE.equals(availabilityMap.get(ClusterType.TYPE_RECOMMENDATION))) {
+                // Proceed with publishing recommendation content
+            }
+        } else {
+            // The IPC call itself fails, proceed with error handling logic here,
+            // such as retry.
+        }
+    });
+
+###### Conditional Service Availability Feature
+
+Some integrated apps request a special configuration that enables and disables
+the Engage service intermittently to reduce serving costs. However, this
+intermittent content ingestion strategy negatively affects the user experience:
+stale content won't be presented, and some surfaces won't be served.
+
+Starting with v1.6.0, the Engage SDK allows checking availability for specific
+cluster types. If your app uses intermittent ingestion:
+
+- **Continuation clusters** (such as Continue Watching) remain enabled by default across all supported devices.
+- **Other cluster types** (such as Recommendations) are enabled and disabled intermittently.
+
+If this default configuration isn't suitable for your needs, contact
+engage-developers@google.com.
+
+##### For SDK versions prior to v1.6.0 (Deprecated)
 
 ### Kotlin
 
@@ -469,8 +596,8 @@ This API is used to publish a list of `FeaturedCluster` objects.
 ### Java
 
     client.publishFeaturedCluster(
-                new PublishFeaturedClustersRequest.Builder()
-                    .addFeaturedCluster(
+                new PublishFeaturedClusterRequest.Builder()
+                    .setFeaturedCluster(
                         new FeaturedCluster.Builder()
                             .addEntity(entity1)
                             .addEntity(entity2)
@@ -655,7 +782,7 @@ with the status code **NOT_PUBLISHED_REQUIRES_SIGN_IN**
             .setStatusCode(AppEngagePublishStatusCode.NOT_PUBLISHED_REQUIRES_SIGN_IN)
             .build());
 
-#### `deleteRecommendationClusters`
+#### `deleteRecommendationsClusters`
 
 This API is used to delete the content of Recommendation Clusters.
 
@@ -664,11 +791,11 @@ This API is used to delete the content of Recommendation Clusters.
 
 ### Kotlin
 
-    client.deleteRecommendationClusters()
+    client.deleteRecommendationsClusters()
 
 ### Java
 
-    client.deleteRecommendationClusters();
+    client.deleteRecommendationsClusters();
 
 When the service receives the request, it removes the existing data from the
 Recommendation Clusters. In case of an error, the entire request is rejected

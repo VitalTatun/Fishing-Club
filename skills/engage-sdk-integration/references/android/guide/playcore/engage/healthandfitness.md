@@ -10,7 +10,33 @@ site](http://play.google.com/console/about/programs/EngageSDK)**.
 This guide contains instructions for developer partners to deliver health and
 fitness content to Engage content surfaces.
 
+## Category support and surfaces
+
+Engage SDK surface eligibility is based on your app's content category. Use the
+following table to determine your eligibility for specific surfaces:
+
+| Status | Content category or use case | Supported surfaces |
+|---|---|---|
+| **Supported** (Eligible on all surfaces) | - Fitness classes - Fitness routines - Relaxation \& meditation - Routes / trails discovery - Meal planning | - Collections - Play Store Apps tab - Play Store You tab - Play Store store listing page |
+| **Not supported** | - BMI calculator - Physical activity tracker / Step counter - Calorie counter - Sleep tracker - Tools / Remotes - Medical apps |   |
+
+
+## Android skills
+
+[View on GitHub](https://github.com/android/skills/tree/main/play/engage-sdk-integration)
+
+### Integrate Engage SDK
+
+Use the Engage SDK [Android skill](https://developer.android.com/tools/agents/android-skills) to integrate, debug, and resolve implementation issues. To install the skill from the [Android CLI](https://developer.android.com/tools/agents/android-cli), run:
+
+    android skills add engage-sdk-integration
+
+<br />
+
 ## Integration detail
+
+This section details the steps, data models, and terminology required to
+integrate with the Engage SDK for health and fitness content.
 
 ### Terminology
 
@@ -20,7 +46,7 @@ This integration includes the following three cluster types: **Recommendation** 
 - **Recommendation** clusters show personalized health and fitness suggestions
   from an individual developer partner. These recommendations can be
   personalized to the user or generalized (for example, trending fitness \&
-  health). Use these to surface articles or people related to health and
+  health). Use these to feature articles or people related to health and
   fitness.
 
   - A Recommendation cluster can be made of `ArticleEntity`, `PersonEntity`, or `EventEntity` but not a mix of different entity types.
@@ -89,7 +115,7 @@ Add the `com.google.android.engage:engage-core` library to your app:
 
     dependencies {
         // Make sure you also include that repository in your project's build.gradle file.
-        implementation 'com.google.android.engage:engage-core:1.5.12'
+        implementation 'com.google.android.engage:engage-core:1.6.0'
     }
 
 ### Summary
@@ -117,7 +143,8 @@ the following entities for the Health \& Fitness category:
 4. `EventEntity`
 5. `EventReservationEntity`
 
-The charts below outline available attributes and requirements for each type.
+The following charts outline available attributes and requirements for each
+type.
 
 #### `GenericFeaturedEntity`
 
@@ -165,7 +192,7 @@ The charts below outline available attributes and requirements for each type.
 | Popularity - Count | Optional | Indicate the number of followers or popularity value, for example - "3.7 M". **Note:** If both Count and Count Value are provided, Count will be used | String **Recommended text size: max 20 chars for count + label combined** |
 | Popularity - Count Value | Optional | The number of followers or popularity value. **Note:** Provide Count Value if your app doesn't want to handle logic on how a large number should be optimized for different display sizes. If both Count and Count Value are provided, Count will be used. | Long |
 | Popularity - Label | Optional | Indicate what the popularity label is. For example - "Likes". | String **Recommended text size: Max 20 chars for count + label combined** |
-| Popularity - Visual | Optional | Indicate what the interaction is for. For example - Image showing Likes icon, Emojis. Can provide more than 1 image, though not all may not be shown on all form factors. **Note:** Must be Square 1:1 image | See [Image Specifications](https://developer.android.com/guide/playcore/engage/healthandfitness#image-specs) for guidance. |
+| Popularity - Visual | Optional | Indicate what the interaction is for. For example - Image showing Likes icon, emoji. Can provide more than 1 image, though not all may not be shown on all form factors. **Note:** Must be Square 1:1 image | See [Image Specifications](https://developer.android.com/guide/playcore/engage/healthandfitness#image-specs) for guidance. |
 | Rating - Max value | Required | The maximum value of the rating scale. **Must be provided if current value of rating is also provided.** | Number \>= 0.0 |
 | Rating - Current value | Required | The current value of the rating scale. **Must be provided if maximum value of rating is also provided.** | Number \>= 0.0 |
 | Rating - Count | Optional | The count of the ratings for the entity. **Note:** Provide this field if your app controls how the count is displayed to the users. Use a concise string. For example, if the count is 1,000,000, consider using an abbreviation like 1M so that the count isn't truncated on smaller display sizes. | String |
@@ -343,6 +370,103 @@ There are following APIs to publish clusters in the client:
 This API is used to check if the service is available for integration and
 whether the content can be presented on the device.
 
+##### For Engage SDK v1.6.0 and higher (Recommended)
+
+
+## Android skills
+
+[View on GitHub](https://github.com/android/skills/tree/main/play/engage-sdk-integration)
+
+### Engage SDK integration
+
+To install the skill from the [Android CLI](https://developer.android.com/tools/agents/android-cli), run:
+
+    android skills add engage-sdk-integration
+
+If your team uses AI coding tools (such as Gemini in Android Studio), you can automate this migration by prompting your AI assistant:
+
+    Use the engage-sdk-integration skill to use Engage SDK 1.6.0 and refactor isServiceAvailable to pass ServiceAvailabilityRequest for publishing all cluster types.
+
+<br />
+
+You can check the service availability for every cluster type that you intend to
+publish. The `isServiceAvailable` API accepts a request object,
+`ServiceAvailabilityRequest`, which contains the cluster types for which service
+availability needs to be checked. You can find the `ClusterType` enum values
+required for `ServiceAvailabilityRequest` from the following table.
+
+| Cluster Type | Cluster Type Constant | Integer Value |
+|---|---|---|
+| Unknown | `TYPE_UNKNOWN` | 0 |
+| Recommendation Cluster | `TYPE_RECOMMENDATION` | 1 |
+| Featured Cluster | `TYPE_FEATURED` | 2 |
+| Continuation Cluster | `TYPE_CONTINUATION` | 3 |
+| User Management Cluster | `TYPE_ENGAGEMENT` | 8 |
+| Subscription Cluster | `TYPE_SUBSCRIPTION` | 12 |
+
+### Kotlin
+
+    val request = ServiceAvailabilityRequest.Builder()
+        .addIntendedClusterType(ClusterType.TYPE_CONTINUATION)
+        .addIntendedClusterType(ClusterType.TYPE_RECOMMENDATION)
+        .build()
+
+    client.isServiceAvailable(request).addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            val availabilityMap = task.result
+            if (availabilityMap[ClusterType.TYPE_CONTINUATION] == true) {
+                // Proceed with publishing continuation content
+            }
+            if (availabilityMap[ClusterType.TYPE_RECOMMENDATION] == true) {
+                // Proceed with publishing recommendation content
+            }
+        } else {
+            // The IPC call itself fails, proceed with error handling logic here,
+            // such as retry.
+        }
+    }
+
+### Java
+
+    ServiceAvailabilityRequest request =
+        new ServiceAvailabilityRequest.Builder()
+            .addIntendedClusterType(ClusterType.TYPE_CONTINUATION)
+            .addIntendedClusterType(ClusterType.TYPE_RECOMMENDATION)
+            .build();
+
+    client.isServiceAvailable(request).addOnCompleteListener(task -> {
+        if (task.isSuccessful()) {
+            Map<Integer, Boolean> availabilityMap = task.getResult();
+            if (Boolean.TRUE.equals(availabilityMap.get(ClusterType.TYPE_CONTINUATION))) {
+                // Proceed with publishing continuation content
+            }
+            if (Boolean.TRUE.equals(availabilityMap.get(ClusterType.TYPE_RECOMMENDATION))) {
+                // Proceed with publishing recommendation content
+            }
+        } else {
+            // The IPC call itself fails, proceed with error handling logic here,
+            // such as retry.
+        }
+    });
+
+###### Conditional Service Availability Feature
+
+Some integrated apps request a special configuration that enables and disables
+the Engage service intermittently to reduce serving costs. However, this
+intermittent content ingestion strategy negatively affects the user experience:
+stale content won't be presented, and some surfaces won't be served.
+
+Starting with v1.6.0, the Engage SDK allows checking availability for specific
+cluster types. If your app uses intermittent ingestion:
+
+- **Continuation clusters** (such as Continue Reading and Event Reservations) remain enabled by default across all supported devices.
+- **Other cluster types** (such as Recommendations) are enabled and disabled intermittently.
+
+If this default configuration isn't suitable for your needs, contact
+engage-developers@google.com.
+
+##### For SDK versions prior to v1.6.0 (Deprecated)
+
 ### Kotlin
 
     client.isServiceAvailable.addOnCompleteListener { task ->
@@ -443,8 +567,8 @@ This API is used to publish a list of `FeaturedCluster` objects.
 ### Java
 
     client.publishFeaturedCluster(
-                new PublishFeaturedClustersRequest.Builder()
-                    .addFeaturedCluster(
+                new PublishFeaturedClusterRequest.Builder()
+                    .setFeaturedCluster(
                         new FeaturedCluster.Builder()
                             .addEntity(entity1)
                             .addEntity(entity2)
@@ -628,7 +752,7 @@ to publish the Sign In Card then we recommend calling the
             .setStatusCode(AppEngagePublishStatusCode.NOT_PUBLISHED_REQUIRES_SIGN_IN)
             .build());
 
-#### `deleteRecommendationClusters`
+#### `deleteRecommendationsClusters`
 
 This API is used to delete the content of Recommendation Clusters.
 
@@ -637,11 +761,11 @@ This API is used to delete the content of Recommendation Clusters.
 
 ### Kotlin
 
-    client.deleteRecommendationClusters()
+    client.deleteRecommendationsClusters()
 
 ### Java
 
-    client.deleteRecommendationClusters();
+    client.deleteRecommendationsClusters();
 
 When the service receives the request, it removes the existing data from the
 Recommendation Clusters. In case of an error, the entire request is rejected and

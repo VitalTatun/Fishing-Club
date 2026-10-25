@@ -11,7 +11,33 @@ This guide contains instructions for developer partners to deliver food content
 (food ordering, food or restaurant reviews \& discovery, meal subscriptions,
 recipes) to Engage content surfaces.
 
+## Category support and surfaces
+
+Engage SDK surface eligibility is based on your app's content category. Use the
+following table to determine your eligibility for specific surfaces:
+
+| Status | Content category or use case | Supported surfaces |
+|---|---|---|
+| **Supported** (Eligible on all surfaces) | - Food / coffee / drink ordering or delivery - Restaurant / Food discovery, reviews, \& reservations - Meal subscriptions - Recipes \& Cooking | - Collections - Play Store Apps tab - Play Store You tab - Play Store store listing page |
+| **Not supported** | - Driver / deliverer app - Cooking tools / controls |   |
+
+
+## Android skills
+
+[View on GitHub](https://github.com/android/skills/tree/main/play/engage-sdk-integration)
+
+### Integrate Engage SDK
+
+Use the Engage SDK [Android skill](https://developer.android.com/tools/agents/android-skills) to integrate, debug, and resolve implementation issues. To install the skill from the [Android CLI](https://developer.android.com/tools/agents/android-cli), run:
+
+    android skills add engage-sdk-integration
+
+<br />
+
 ## Integration detail
+
+This section details the steps, data models, and terminology required to
+integrate with the Engage SDK for food content.
 
 ### Terminology
 
@@ -20,8 +46,8 @@ This integration includes the following five cluster types: **Recommendation** ,
 
 - **Recommendation** clusters show personalized food-related suggestions from an
   individual developer partner. These recommendations can be personalized to the
-  user or generalized (for example, new on sale). Use them to surface recipes,
-  stores, dishes, groceries, and so on as you see fit.
+  user or generalized (for example, new on sale). Use them to feature items such
+  as recipes, stores, dishes, or groceries.
 
   - A Recommendation cluster can be made of `ProductEntity`, `StoreEntity`, or `RecipeEntity` listings, but not a mix of different entity types.
 
@@ -68,7 +94,7 @@ Add the `com.google.android.engage:engage-core` library to your app:
 
     dependencies {
         // Make sure you also include that repository in your project's build.gradle file.
-        implementation 'com.google.android.engage:engage-core:1.5.12'
+        implementation 'com.google.android.engage:engage-core:1.6.0'
     }
 
 ### Summary
@@ -99,7 +125,8 @@ the following entities for the Food category:
 5. `FoodShoppingList`
 6. `FoodReorderCluster`
 
-The charts below outline available attributes and requirements for each type.
+The following charts outline available attributes and requirements for each
+type.
 
 #### `ProductEntity`
 
@@ -241,7 +268,7 @@ to publish.
 
 #### Image specifications
 
-Required specifications for image assets are listed below:
+The following table lists the required specifications for image assets:
 
 | Aspect ratio | Minimum pixels | Recommended pixels |
 |---|---|---|
@@ -293,6 +320,106 @@ There are following APIs to publish clusters in the client:
 
 This API is used to check if the service is available for integration and
 whether the content can be presented on the device.
+
+##### For Engage SDK v1.6.0 and higher (Recommended)
+
+
+## Android skills
+
+[View on GitHub](https://github.com/android/skills/tree/main/play/engage-sdk-integration)
+
+### Engage SDK integration
+
+To install the skill from the [Android CLI](https://developer.android.com/tools/agents/android-cli), run:
+
+    android skills add engage-sdk-integration
+
+If your team uses AI coding tools (such as Gemini in Android Studio), you can automate this migration by prompting your AI assistant:
+
+    Use the engage-sdk-integration skill to use Engage SDK 1.6.0 and refactor isServiceAvailable to pass ServiceAvailabilityRequest for publishing all cluster types.
+
+<br />
+
+You can check the service availability for every cluster type that you intend to
+publish. The `isServiceAvailable` API accepts a request object,
+`ServiceAvailabilityRequest`, which contains the cluster types for which service
+availability needs to be checked. You can find the `ClusterType` enum values
+required for `ServiceAvailabilityRequest` from the following table.
+
+| Cluster Type | Cluster Type Constant | Integer Value |
+|---|---|---|
+| Unknown | `TYPE_UNKNOWN` | 0 |
+| Recommendation Cluster | `TYPE_RECOMMENDATION` | 1 |
+| Featured Cluster | `TYPE_FEATURED` | 2 |
+| Continuation Cluster | `TYPE_CONTINUATION` | 3 |
+| Food Reorder Cluster | `TYPE_FOOD_REORDER` | 5 |
+| Food Shopping Cart Cluster | `TYPE_FOOD_SHOPPING_CART` | 6 |
+| Food Shopping List Cluster | `TYPE_FOOD_SHOPPING_LIST` | 7 |
+| User Management Cluster | `TYPE_ENGAGEMENT` | 8 |
+| Subscription Cluster | `TYPE_SUBSCRIPTION` | 12 |
+
+### Kotlin
+
+    val request = ServiceAvailabilityRequest.Builder()
+        .addIntendedClusterType(ClusterType.TYPE_CONTINUATION)
+        .addIntendedClusterType(ClusterType.TYPE_RECOMMENDATION)
+        .build()
+
+    client.isServiceAvailable(request).addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            val availabilityMap = task.result
+            if (availabilityMap[ClusterType.TYPE_CONTINUATION] == true) {
+                // Proceed with publishing continuation content
+            }
+            if (availabilityMap[ClusterType.TYPE_RECOMMENDATION] == true) {
+                // Proceed with publishing recommendation content
+            }
+        } else {
+            // The IPC call itself fails, proceed with error handling logic here,
+            // such as retry.
+        }
+    }
+
+### Java
+
+    ServiceAvailabilityRequest request =
+        new ServiceAvailabilityRequest.Builder()
+            .addIntendedClusterType(ClusterType.TYPE_CONTINUATION)
+            .addIntendedClusterType(ClusterType.TYPE_RECOMMENDATION)
+            .build();
+
+    client.isServiceAvailable(request).addOnCompleteListener(task -> {
+        if (task.isSuccessful()) {
+            Map<Integer, Boolean> availabilityMap = task.getResult();
+            if (Boolean.TRUE.equals(availabilityMap.get(ClusterType.TYPE_CONTINUATION))) {
+                // Proceed with publishing continuation content
+            }
+            if (Boolean.TRUE.equals(availabilityMap.get(ClusterType.TYPE_RECOMMENDATION))) {
+                // Proceed with publishing recommendation content
+            }
+        } else {
+            // The IPC call itself fails, proceed with error handling logic here,
+            // such as retry.
+        }
+    });
+
+###### Conditional Service Availability Feature
+
+Some integrated apps request a special configuration that enables and disables
+the Engage service intermittently to reduce serving costs. However, this
+intermittent content ingestion strategy negatively affects the user experience:
+stale content won't be presented, and some surfaces won't be served.
+
+Starting with v1.6.0, the Engage SDK allows checking availability for specific
+cluster types. If your app uses intermittent ingestion:
+
+- **Continuation clusters** (such as Food Shopping Cart, Food Shopping List, and Reorder) remain enabled by default across all supported devices.
+- **Other cluster types** (such as Recommendations) are enabled and disabled intermittently.
+
+If this default configuration isn't suitable for your needs, contact
+engage-developers@google.com.
+
+##### For SDK versions prior to v1.6.0 (Deprecated)
 
 ### Kotlin
 
@@ -464,7 +591,7 @@ This API is used to publish a list of `FoodShoppingList` objects.
     client.publishFoodShoppingLists(
                 PublishFoodShoppingListsRequest.Builder()
                     .addFoodShoppingList(
-                        FoodShoppingListEntity.Builder()
+                        FoodShoppingList.Builder()
                             ...
                             .build())
                     .build())
@@ -474,7 +601,7 @@ This API is used to publish a list of `FoodShoppingList` objects.
     client.publishFoodShoppingLists(
                 new PublishFoodShoppingListsRequest.Builder()
                     .addFoodShoppingList(
-                        new FoodShoppingListEntity.Builder()
+                        new FoodShoppingList.Builder()
                             ...
                             .build())
                     .build());
@@ -655,7 +782,7 @@ with the status code **NOT_PUBLISHED_REQUIRES_SIGN_IN**
             .setStatusCode(AppEngagePublishStatusCode.NOT_PUBLISHED_REQUIRES_SIGN_IN)
             .build());
 
-#### `deleteRecommendationClusters`
+#### `deleteRecommendationsClusters`
 
 This API is used to delete the content of Recommendation Clusters.
 
@@ -664,11 +791,11 @@ This API is used to delete the content of Recommendation Clusters.
 
 ### Kotlin
 
-    client.deleteRecommendationClusters()
+    client.deleteRecommendationsClusters()
 
 ### Java
 
-    client.deleteRecommendationClusters();
+    client.deleteRecommendationsClusters();
 
 When the service receives the request, it removes the existing data from the
 Recommendation Clusters. In case of an error, the entire request is rejected

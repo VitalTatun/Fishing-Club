@@ -1,24 +1,30 @@
 ---
 name: adaptive
 description: Instructions to make or update an app's UI so that it adapts to different
-  Android devices including phones, tablets, foldables, laptops, desktop, TV, Auto
+  Android devices including phones, tablets, foldables, laptops, desktop, TV, Auto,
   and XR. It includes how to handle different window sizes, pointing devices (such
   as mouse) and text entry devices (such as keyboard) using the Compose MediaQuery
-  API. It also covers multi-pane layouts using Navigation3 Scenes, adaptive UI components
-  (such as buttons) with varying target sizes, and adaptive layouts (including navigation
-  areas - nav rails and nav bars) using the Compose Grid and FlexBox APIs.
+  API, and how to preserve UI, navigation, scroll, and media playback state across
+  configuration changes (such as folding/unfolding a foldable, rotating a device,
+  or resizing a window). It also covers multi-pane layouts using Navigation3 Scenes,
+  adaptive UI components (such as buttons) with varying target sizes, and adaptive
+  layouts (including navigation areas - nav rails and nav bars) using the Compose
+  Grid and FlexBox APIs.
 license: Complete terms in LICENSE.txt
 metadata:
   author: Google LLC
-  last-updated: '2026-05-20'
+  last-updated: '2026-10-16'
   keywords:
-  - android
-  - ui
-  - adaptive
+  - Jetpack Compose
+  - Adaptive UI
+  - Navigation
+  - Multi-pane
+  - Layouts
+  - Responsive Design
   - Grid
   - FlexBox
   - MediaQuery
-  - navigation
+  - Android Development
 ---
 
 ## Prerequisites
@@ -38,12 +44,13 @@ task.
 - Step 3: Add multi-pane layouts
 - Step 4: Make vertical lists adaptive by changing the number of columns
 - Step 5: Hide app bars when scrolling
+- Step 6: Preserve UI state across configuration changes
 
 ## Step 1. Verify current UI
 
 Ensure that screenshot tests exist to verify the current UI on different form
 factors. If they don't exist, add the [Compose Preview Screenshot Testing
-tool](references/android/develop/ui/compose/tooling/debug.md). Use the following annotation to create previews for all the major form
+tool](references/android/studio/preview/compose-screenshot-testing-with-testsuites.md). Use the following annotation to create previews for all the major form
 factors. For example:
 
 
@@ -75,11 +82,11 @@ phone in portrait mode. On larger screen hand-held devices, like tablets and
 unfolded foldables, the navigation area must be accessible from the edge of the
 screen (navigation rail).
 
-If you need to provide more screen real state for the content, hide the
+If you need to provide more screen space for the content, hide the
 navigation area. Examples of this include:
 
 - Hiding the navigation bar when the user scrolls down and showing it again when the user scrolls up. The assumption is that when the user is scrolling down, they are consuming content but when scrolling up they are trying to navigate away from that content.
-- Hiding the navigation area when its content is distracting. For example, in camera previews or when the content is best displayed in full screen (such as a single photo screen).
+- Hiding the navigation area when its content is distracting. For example, in camera previews or when displaying a full-screen photo.
 
 When the detail screen is displayed full-screen on mobile, full-screen mode must
 be deactivated on larger screens.
@@ -101,7 +108,7 @@ parameter.
 
 Steps to migrate:
 
-- Identify the scenarios under which the navigation bar is hidden. This is usually done with a boolean variable for the visibility. It could be named something like `isNavBarVisible` or `shouldShowNavBar`.
+- Identify the scenarios under which the navigation bar is hidden. This is usually done with a boolean variable for the visibility. Use `isNavBarVisible` or `shouldShowNavBar` as the variable name.
 - Create an instance of `NavigationSuiteScaffoldState` using `rememberNavigationSuiteScaffoldState()` and pass it to `NavigationSuiteScaffold`.
 - When the navigation area visibility changes, use a `LaunchedEffect` to call `show` or `hide` on the `NavigationSuiteScaffoldState`.
 
@@ -207,8 +214,8 @@ Look for the following vertical list composables: `LazyColumn`,
 
 Steps to migrate:
 
-- Choose a suitable minimum width in dp for the column. It should be large enough so that item is clearly visible to the user.
-- For `LazyColumn`: change to a `LazyVerticalGrid` and follow the instruction below
+- Choose a suitable minimum width in dp for the column. The item must be clearly visible to the user at this width.
+- For `LazyColumn`: change to a `LazyVerticalGrid` and follow the instruction later
 - For `LazyVerticalGrid`: change the `columns` parameter to use `GridCells.Adaptive(<width>.dp)`
 - For `LazyVerticalStaggeredGrid`: change the `columns` parameter to use `StaggeredGridCells.Adaptive(<width>.dp)`
 
@@ -265,6 +272,148 @@ app bar state independently. There are two main scroll behaviors:
 - `exitUntilCollapsedScrollBehavior`: Hides on scroll down, stays hidden while you scroll up until you reach the very top (0 offset).
 - `enterAlwaysScrollBehavior`: Hides on scroll down, shows immediately on scroll up.
 
+## Step 6: Preserve UI state across configuration changes
+
+IMPORTANT: **Never** add `android:configChanges` or `android:screenOrientation`
+to `AndroidManifest.xml` to suppress Activity recreation or lock orientation.
+Opting out of recreation hides state-loss bugs instead of fixing them, breaks
+adaptive resource reloading, and prevents an app's process from restarting.
+
+When fixing state loss across configuration changes, systematically audit
+**every** usage of `remember` across all screens, components, and state holders
+(in other words, do not only search for `remember { mutableStateOf(...) }`):
+
+### Step 6.1. Preserve primitive and custom UI state in Composables
+
+- Replace `remember { mutableStateOf(...) }` with `rememberSaveable { mutableStateOf(...) }` for user input and interactive UI state, such as `TextField` draft text, search queries, scroll position, and toggle states.
+- Key state on relevant identifiers when appropriate (e.g., `rememberSaveable(conversationId) { mutableStateOf("") }`).
+- For custom data classes or collections (for example, a `Set`) that are not natively `Bundle`-saveable:
+  - When delegating a `MutableState<T>` via `var state by rememberSaveable(...) { mutableStateOf(...) }`, pass your custom `Saver` using **`stateSaver`** (do **not** pass `saver = ...` when the block returns `MutableState<T>`):
+
+
+```kotlin
+// this Saver implementation converts CustomState object which we don't know how to save
+// to List<String> which we can save
+private val CustomStateSaver = Saver<CustomState, List<String>>(
+    save = { customState -> customState.values.map { it.value } },
+    restore = { values -> CustomState(values.map { CustomStateValue.valueOf(it) }.toSet()) }
+)
+
+@Composable
+fun MyComposable() {
+    var customState by rememberSaveable(stateSaver = CustomStateSaver) {
+        mutableStateOf(CustomState())
+    }
+}
+```
+
+<br />
+
+- Alternatively, annotate the class with `@Serializable` and use `rememberSerializable`.
+
+### Step 6.2. Preserve scroll state in lazy and scrollable layouts
+
+Plain `remember { LazyListState() }`, `remember { LazyGridState() }`, and
+`remember { ScrollState(...) }` do **not** save scroll position across
+configuration changes because they bypass the state class's `Saver`.
+
+Inspect all scrollable containers (`LazyColumn`, `LazyRow`, `LazyVerticalGrid`,
+`LazyHorizontalGrid`, `LazyVerticalStaggeredGrid`, `Modifier.verticalScroll`,
+and `Modifier.horizontalScroll`) across all screens and reusable components, and
+replace plain `remember` instantiations with the built-in saveable factory
+functions:
+
+- `remember { LazyListState() }` -\> `rememberLazyListState()`
+- `remember { LazyGridState() }` -\> `rememberLazyGridState()`
+- `remember { LazyStaggeredGridState() }` -\> `rememberLazyStaggeredGridState()`
+- `remember { ScrollState(initial = 0) }` -\> `rememberScrollState()`
+
+### Step 6.3. Preserve Navigation 3 state and multiple back stacks
+
+Check out the Navigation 3 guide to [Save and manage navigation state](references/android/guide/navigation/navigation-3/save-state.md)
+for details.
+
+### Step 6.4. Preserve media playback state (`ExoPlayer` / Media3)
+
+When an MediaPlayer (such as `ExoPlayer`) is created inside a composable with `remember`, it is
+released on disposal and recreated from scratch on configuration change,
+resetting playback to `0:00` and auto-playing even if the user had paused the
+video.
+
+To preserve `ExoPlayer` playback state (`currentPosition` and `playWhenReady`):
+
+1. Store `savedPositionMs` (`mutableLongStateOf(0L)`) and `savedPlayWhenReady` (`mutableStateOf(true)`) using `rememberSaveable(videoResId)`.
+2. **Keep saved state updated during playback --- do not only save in `onDispose`** : update `savedPlayWhenReady` and `savedPositionMs` in a `Player.Listener` (`onPlayWhenReadyChanged`, `onPositionDiscontinuity`) **and** periodically inside a `LaunchedEffect(player)` loop while active.
+3. **Initialize the player with the restored state** : Set `playWhenReady = savedPlayWhenReady` and call `seekTo(savedPositionMs)` before `prepare()`.
+4. **Guard `LifecycleStartEffect` so it does not auto-play a paused video or overwrite `savedPlayWhenReady`** :
+   - In `LifecycleStartEffect(player)`, only call `player.play()` when `savedPlayWhenReady` is `true` (otherwise a paused video will start playing again after restoration).
+   - In `onStopOrDispose`, capture `val wasPlaying = player.playWhenReady` and `savedPositionMs = player.currentPosition` before calling `player.pause()`, then restore `savedPlayWhenReady = wasPlaying` so that `player.pause()` on stop/dispose does not overwrite `savedPlayWhenReady` to `false`:
+
+
+```kotlin
+@UnstableApi
+@Composable
+private fun rememberExoPlayer(@RawRes videoResId: Int, fromUri: Unit.(Uri) -> MediaItem): ExoPlayer {
+    val context = LocalContext.current
+    var savedPositionMs by rememberSaveable(videoResId) { mutableLongStateOf(0L) }
+    var savedPlayWhenReady by rememberSaveable(videoResId) { mutableStateOf(true) }
+
+    val player = remember(videoResId) {
+        ExoPlayer.Builder(context.applicationContext).build().apply {
+            setMediaItem(MediaItem.fromUri(RawResourceDataSource.buildRawResourceUri(videoResId)))
+            repeatMode = Player.REPEAT_MODE_ONE
+            playWhenReady = savedPlayWhenReady
+            seekTo(savedPositionMs)
+            prepare()
+        }
+    }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                savedPlayWhenReady = playWhenReady
+                savedPositionMs = player.currentPosition
+            }
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                savedPositionMs = newPosition.positionMs
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            player.release()
+        }
+    }
+
+    LaunchedEffect(player) {
+        while (isActive) {
+            savedPositionMs = player.currentPosition
+            delay(200)
+        }
+    }
+
+    LifecycleStartEffect(player) {
+        if (savedPlayWhenReady) {
+            player.play()
+        }
+        onStopOrDispose {
+            val wasPlaying = player.playWhenReady
+            savedPositionMs = player.currentPosition
+            player.pause()
+            savedPlayWhenReady = wasPlaying
+        }
+    }
+
+    return player
+}
+```
+
+<br />
+
 ## Final step: Build and test
 
 Build the app and run the local tests. If the project has screenshot tests, run
@@ -273,7 +422,7 @@ they have viewed the screenshot diffs.
 
 ## Additional documentation for experimental adaptive APIs
 
-The following APIs are available from Compose 1.11.0-beta01.
+The following APIs are available from Compose 1.11.0.
 
 ### FlexBox
 

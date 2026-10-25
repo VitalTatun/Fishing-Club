@@ -198,62 +198,6 @@ fun MainScreen(
         },
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            if (errorText != null) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(8.dp),
-                    action = {
-                        TextButton(onClick = onErrorDismiss) {
-                            Text(stringResource(R.string.retry))
-                        }
-                    }
-                ) {
-                    Text(errorText)
-                }
-            }
-            if (deleteErrorText != null) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 64.dp, start = 8.dp, end = 8.dp),
-                    action = {
-                        TextButton(onClick = onDeleteErrorDismiss) {
-                            Text(stringResource(R.string.ok))
-                        }
-                    }
-                ) {
-                    Text(deleteErrorText)
-                }
-            }
-            if (favoriteErrorText != null) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 116.dp, start = 8.dp, end = 8.dp),
-                    action = {
-                        TextButton(onClick = onFavoriteErrorDismiss) {
-                            Text(stringResource(R.string.ok))
-                        }
-                    }
-                ) {
-                    Text(favoriteErrorText)
-                }
-            }
-            if (likeErrorText != null) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 168.dp, start = 8.dp, end = 8.dp),
-                    action = {
-                        TextButton(onClick = onLikeErrorDismiss) {
-                            Text(stringResource(R.string.ok))
-                        }
-                    }
-                ) {
-                    Text(likeErrorText)
-                }
-            }
             when (selectedTab) {
                 0 -> {
                     when (homeUiState) {
@@ -406,6 +350,63 @@ fun MainScreen(
                         onChangeHistoryClick = onChangeHistoryClick,
                         onAppearanceClick = onAppearanceClick
                     )
+                }
+            }
+
+            if (errorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(8.dp),
+                    action = {
+                        TextButton(onClick = onErrorDismiss) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
+                ) {
+                    Text(errorText)
+                }
+            }
+            if (deleteErrorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 64.dp, start = 8.dp, end = 8.dp),
+                    action = {
+                        TextButton(onClick = onDeleteErrorDismiss) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                ) {
+                    Text(deleteErrorText)
+                }
+            }
+            if (favoriteErrorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 116.dp, start = 8.dp, end = 8.dp),
+                    action = {
+                        TextButton(onClick = onFavoriteErrorDismiss) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                ) {
+                    Text(favoriteErrorText)
+                }
+            }
+            if (likeErrorText != null) {
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 168.dp, start = 8.dp, end = 8.dp),
+                    action = {
+                        TextButton(onClick = onLikeErrorDismiss) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                ) {
+                    Text(likeErrorText)
                 }
             }
         }

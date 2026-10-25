@@ -231,7 +231,7 @@ class MainViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertNotNull(vm.error.value)
-        assertTrue(vm.error.value!!.contains("Network error"))
+        assertTrue(vm.error.value!!.contains("Нет соединения с интернетом"))
     }
 
     @Test
@@ -418,7 +418,7 @@ class MainViewModelTest {
 
         assertEquals(1, fakeFishingRepository.addFavoriteCallCount)
         assertNotNull(vm.favoriteError.value)
-        assertTrue(vm.favoriteError.value!!.contains("Network error"))
+        assertTrue(vm.favoriteError.value!!.contains("Нет соединения с интернетом"))
         // No false success — the report must not appear as favorited.
         assertTrue(vm.favoriteReports.value.isEmpty())
 
@@ -447,7 +447,7 @@ class MainViewModelTest {
 
         assertEquals(1, fakeFishingRepository.removeFavoriteCallCount)
         assertNotNull(vm.favoriteError.value)
-        assertTrue(vm.favoriteError.value!!.contains("Network error"))
+        assertTrue(vm.favoriteError.value!!.contains("Нет соединения с интернетом"))
         // No false success — the report must remain favorited.
         assertEquals(1, vm.favoriteReports.value.size)
 
@@ -715,7 +715,7 @@ class MainViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(vm.homeUiState.value is HomeUiState.Error)
-        assertEquals("Ошибка загрузки: Network Error", (vm.homeUiState.value as HomeUiState.Error).message)
+        assertEquals("Нет соединения с интернетом", (vm.homeUiState.value as HomeUiState.Error).message)
         job.cancel()
     }
 
@@ -1006,7 +1006,7 @@ class MainViewModelTest {
         assertEquals(1, fakeFishingRepository.addLikeCallCount)
         assertEquals(ReportLikeState(report.id, false, 10), vm.likeStates.value[report.id])
         assertNotNull(vm.likeError.value)
-        assertTrue(vm.likeError.value!!.contains("Network error"))
+        assertTrue(vm.likeError.value!!.contains("Нет соединения с интернетом"))
 
         // Retry after clearing the failure must succeed and clear the error.
         fakeFishingRepository.addLikeException = null

@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.ErrorMapper
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.SupabaseFishingRepository
 import com.example.fishing.data.UserPreferencesSource
@@ -343,12 +344,12 @@ class MainViewModel @Inject constructor(
                     _mapRefreshError.value = null
                 } else {
                     _mapRefreshError.value =
-                        "Не удалось загрузить отчёты: ${result.exceptionOrNull()?.message ?: "неизвестная ошибка"}"
+                        "Не удалось загрузить отчёты: ${ErrorMapper.toUserFriendlyMessage(result.exceptionOrNull() ?: Exception("неизвестная ошибка"))}"
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _mapRefreshError.value = "Не удалось загрузить отчёты: ${e.message ?: "неизвестная ошибка"}"
+                _mapRefreshError.value = "Не удалось загрузить отчёты: ${ErrorMapper.toUserFriendlyMessage(e)}"
             } finally {
                 _mapIsRefreshing.value = false
                 _mapIsLoading.value = false
@@ -383,7 +384,7 @@ class MainViewModel @Inject constructor(
     }
 
     private fun favoriteErrorMessage(e: Throwable): String {
-        return "Не удалось изменить избранное: ${e.message ?: "неизвестная ошибка"}"
+        return "Не удалось изменить избранное: ${ErrorMapper.toUserFriendlyMessage(e)}"
     }
 
     fun clearFavoriteError() {
@@ -506,7 +507,7 @@ class MainViewModel @Inject constructor(
     }
 
     private fun likeErrorMessage(e: Throwable): String {
-        return "Не удалось изменить лайк: ${e.message ?: "неизвестная ошибка"}"
+        return "Не удалось изменить лайк: ${ErrorMapper.toUserFriendlyMessage(e)}"
     }
 
     fun clearLikeError() {
@@ -558,7 +559,7 @@ class MainViewModel @Inject constructor(
     private fun reportDetailError(id: UUID, e: Exception): ReportDetailUiState.Error {
         return ReportDetailUiState.Error(
             reportId = id,
-            message = "Ошибка загрузки отчета: ${e.message ?: "неизвестная"}"
+            message = "Ошибка загрузки отчета: ${ErrorMapper.toUserFriendlyMessage(e)}"
         )
     }
 
@@ -628,7 +629,7 @@ class MainViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 e.printStackTrace()
-                _error.value = "Ошибка загрузки: ${e.message ?: "неизвестная"}"
+                _error.value = ErrorMapper.toUserFriendlyMessage(e)
                 _isInitialLoading.value = false
             } finally {
                 _isRefreshing.value = false
@@ -680,7 +681,7 @@ class MainViewModel @Inject constructor(
                     _deletedReportId.value = id
                 }
                 .onFailure { e ->
-                    _deleteReportError.value = "Не удалось удалить отчет: ${e.message ?: "неизвестная ошибка"}"
+                    _deleteReportError.value = "Не удалось удалить отчет: ${ErrorMapper.toUserFriendlyMessage(e)}"
                 }
             _isDeletingReport.value = false
         }

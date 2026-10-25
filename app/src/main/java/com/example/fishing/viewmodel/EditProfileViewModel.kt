@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.ErrorMapper
 import com.example.fishing.model.User
 import com.example.fishing.utils.PhotoUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,10 +53,10 @@ class EditProfileViewModel @Inject constructor(
                     _user.value = result.getOrNull()
                     _saveSuccess.value = true
                 } else {
-                    _error.value = result.exceptionOrNull()?.message ?: "Unknown error"
+                    _error.value = result.exceptionOrNull()?.let { ErrorMapper.toUserFriendlyMessage(it) } ?: "Неизвестная ошибка"
                 }
             } catch (e: Exception) {
-                _error.value = e.message ?: "Unknown error"
+                _error.value = ErrorMapper.toUserFriendlyMessage(e)
             } finally {
                 _isLoading.value = false
             }
