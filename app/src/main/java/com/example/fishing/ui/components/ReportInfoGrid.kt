@@ -90,7 +90,7 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 if (report.fish.isEmpty()) {
                     Text(
                         text = "—",
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -98,7 +98,7 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                     report.fish.forEach { fish ->
                         Text(
                             text = stringResource(R.string.fish_count, fish.name, fish.count),
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -129,7 +129,7 @@ private fun InfoGridItem(
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface
         )

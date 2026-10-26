@@ -95,20 +95,19 @@ fun FishingReportListItem(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    if (report.type == FishingType.HAUL) {
-                        Surface(
-                            modifier = Modifier.size(width = 60.dp, height = 18.dp),
-                            color = Color(0xFFFFD71D), // semantic yellow
-                            shape = RoundedCornerShape(16.dp)
+                    val isDraft = !report.isPublic
+                    val isTrophy = report.type == FishingType.HAUL
+
+                    if (isDraft || isTrophy) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = stringResource(R.string.trophy),
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF50250A)
-                                    )
-                                )
+                            if (isDraft) {
+                                DraftBadge()
+                            }
+                            if (isTrophy) {
+                                TrophyBadge()
                             }
                         }
                     }

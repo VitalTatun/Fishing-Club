@@ -69,8 +69,8 @@ fun TrophyBadge(modifier: Modifier = Modifier) {
 fun DraftBadge(modifier: Modifier = Modifier) {
     FishingBadge(
         text = stringResource(R.string.draft),
-        containerColor = Color(0xFFD8E2FF), // D8E2FF
-        contentColor = Color(0xFF2C4678),   // 2C4678
+        containerColor = MaterialTheme.colorScheme.primary, // D8E2FF
+        contentColor = MaterialTheme.colorScheme.onPrimary,   // 2C4678
         modifier = modifier
     )
 }

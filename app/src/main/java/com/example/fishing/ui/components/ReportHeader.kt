@@ -116,24 +116,6 @@ fun ReportPhotoCarousel(
                 }
             }
         }
-
-        if (showTrophyBadge) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 14.dp, start = 22.dp),
-                color = FishingTheme.colors.trophyYellow,
-                shape = RoundedCornerShape(22.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.trophy),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = FishingTheme.colors.textOnTrophy
-                )
-            }
-        }
     }
 }
 
