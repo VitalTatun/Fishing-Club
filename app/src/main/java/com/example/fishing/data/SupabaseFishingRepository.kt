@@ -13,6 +13,7 @@ import com.example.fishing.data.supabase.*
 import com.example.fishing.model.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,8 +27,15 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import java.io.File
@@ -234,7 +242,7 @@ class SupabaseFishingRepository @Inject constructor(
             ?: return Result.failure(IllegalStateException("Нет активной сессии"))
         return try {
             val fishings = supabase.postgrest["fishing"].select(
-                columns = io.github.jan.supabase.postgrest.query.Columns.raw("*, fishing_fish(*)")
+                columns = Columns.raw("*, fishing_fish(*)")
             ) {
                 filter {
                     or {
@@ -300,10 +308,13 @@ class SupabaseFishingRepository @Inject constructor(
         val dto = report.toFishingDto(now)
         val finalDto = dto.copy(
             isPublic = report.isPublic,
-            publishedAt = if (report.isPublic) now else null
+            // Keep the original publish time when a published report is saved again;
+            // the RPC does the same with coalesce(f.published_at, excluded.published_at).
+            publishedAt = if (report.isPublic) (dto.publishedAt ?: now) else null
         )
         val uploadedPaths = mutableListOf<String>()
-        var reportRowWritten = false
+        var reportExistedOnServer = false
+        var publishedOnServer = false
 
         try {
             // 1. Never write a report for another user.
@@ -314,7 +325,15 @@ class SupabaseFishingRepository @Inject constructor(
             }
 
             // 2. Upload only new photos. Storage is not transactional, so doing this
-            // before the DB row exists lets us compensate a failure safely.
+            // before the report is written lets us compensate a failure safely.
+            val hasNewPhotos = report.photos.any { !isStoragePath(it.url) }
+            if (hasNewPhotos) {
+                // Uploading with upsert=true may overwrite objects that an existing
+                // report still references, so their cleanup on failure is not safe.
+                // If we cannot tell whether the report exists, keep the files.
+                reportExistedOnServer = runCatching { reportExistsOnServer(report.id) }
+                    .getOrDefault(true)
+            }
             val storagePaths = report.photos.map { photo ->
                 ensureActive()
                 if (isStoragePath(photo.url)) {
@@ -337,14 +356,8 @@ class SupabaseFishingRepository @Inject constructor(
 
             ensureActive()
 
-            // 3. Write the report as a private draft. It becomes visible to other
-            // users only on the final publish step below.
-            supabase.postgrest["fishing"].upsert(dto.copy(isPublic = false, publishedAt = null))
-            reportRowWritten = true
-
-            ensureActive()
-
-            // 4. Prepare and upsert child rows.
+            // 3. Write the report, its children and the publish flag atomically in a
+            // single RPC transaction: either all rows land or none of them do.
             val fishDtos = report.fish.map { it.toFishDto(report.id) }
             val baitDtos = report.bait.map { BaitDto(report.id, it.name) }
             val photoDtos = report.photos.mapIndexed { index, photo ->
@@ -356,34 +369,21 @@ class SupabaseFishingRepository @Inject constructor(
                 )
             }
 
-            // Upsert children instead of delete+insert to maintain idempotency.
-            // Unique constraints (like PK on fish.id) will prevent duplicates on retry.
-            if (fishDtos.isNotEmpty()) {
-                supabase.postgrest["fishing_fish"].upsert(fishDtos)
-            }
-            if (baitDtos.isNotEmpty()) {
-                supabase.postgrest["fishing_baits"].upsert(baitDtos)
-            }
-            if (photoDtos.isNotEmpty()) {
-                supabase.postgrest["fishing_photos"].upsert(photoDtos)
-            }
-
-            ensureActive()
-
-            // 5. Publish (or explicitly keep private) only after everything else succeeded.
-            val publishedAt = finalDto.publishedAt
-            supabase.postgrest["fishing"].update({
-                set("is_public", finalDto.isPublic)
-                if (publishedAt != null) {
-                    set("published_at", publishedAt)
-                } else {
-                    setToNull("published_at")
+            val rpcResult = supabase.postgrest.rpc(
+                function = "publish_report",
+                parameters = buildJsonObject {
+                    put("payload", buildPublishPayload(finalDto, fishDtos, baitDtos, photoDtos))
                 }
-                set("updated_at", now)
-            }) {
-                filter {
-                    eq("id", report.id)
-                    eq("user_id", report.userId)
+            )
+            publishedOnServer = true
+
+            // 4. Photos removed from the form are no longer referenced by the DB.
+            // Deleting their objects is best-effort: a failure here only leaves
+            // harmless orphans and must not fail an already published report.
+            val removedPhotoPaths = parseRemovedPhotoPaths(rpcResult.data)
+            if (removedPhotoPaths.isNotEmpty()) {
+                runCatching {
+                    supabase.storage.from("fishing_photos").delete(removedPhotoPaths)
                 }
             }
 
@@ -432,9 +432,9 @@ class SupabaseFishingRepository @Inject constructor(
             // may retry, and deterministic paths overwrite previous uploads.
             throw e
         } catch (e: Exception) {
-            // Only delete files uploaded in THIS call, and only while no DB row
-            // references them yet. After the draft row exists they must be kept.
-            if (!reportRowWritten && uploadedPaths.isNotEmpty()) {
+            // Only delete files uploaded in THIS call, and only when the server
+            // holds no report that may already reference those deterministic paths.
+            if (!reportExistedOnServer && !publishedOnServer && uploadedPaths.isNotEmpty()) {
                 runCatching {
                     supabase.storage.from("fishing_photos").delete(uploadedPaths)
                 }
@@ -442,7 +442,6 @@ class SupabaseFishingRepository @Inject constructor(
             Result.failure(e)
         }
     }
-
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {
         return try {
@@ -906,6 +905,87 @@ class SupabaseFishingRepository @Inject constructor(
             createdAt = createdAt?.let { formatDate(it) } ?: now,
             updatedAt = now
         )
+    }
+
+    /**
+     * Builds the payload for the atomic [publish_report] RPC. Missing optional
+     * values are simply omitted: the SQL function treats a missing key as null.
+     */
+    private fun buildPublishPayload(
+        dto: FishingDto,
+        fish: List<FishDto>,
+        baits: List<BaitDto>,
+        photos: List<PhotoDto>
+    ): JsonObject = buildJsonObject {
+        put("id", dto.id.toString())
+        put("user_id", dto.userId.toString())
+        put("type", dto.type)
+        put("name", dto.name)
+        dto.waterName?.let { put("water_name", it) }
+        dto.waterLat?.let { put("water_lat", it) }
+        dto.waterLng?.let { put("water_lng", it) }
+        put("water_paid", dto.waterPaid)
+        dto.spotLat?.let { put("spot_lat", it) }
+        dto.spotLng?.let { put("spot_lng", it) }
+        dto.fishingStartAt?.let { put("fishing_start_at", it) }
+        dto.fishingEndAt?.let { put("fishing_end_at", it) }
+        put("weight", dto.weight)
+        dto.fishingMethod?.let { put("fishing_method", it) }
+        dto.comment?.let { put("comment", it) }
+        put("shore", dto.shore)
+        put("is_public", dto.isPublic)
+        dto.createdAt?.let { put("created_at", it) }
+        dto.publishedAt?.let { put("published_at", it) }
+
+        putJsonArray("fish") {
+            fish.forEach { item ->
+                addJsonObject {
+                    put("id", item.id.toString())
+                    put("name", item.name)
+                    put("count", item.count)
+                }
+            }
+        }
+        putJsonArray("baits") {
+            baits.forEach { item ->
+                addJsonObject { put("bait_code", item.baitCode) }
+            }
+        }
+        putJsonArray("photos") {
+            photos.forEach { item ->
+                addJsonObject {
+                    put("id", item.id.toString())
+                    put("storage_path", item.storagePath)
+                    put("sort_order", item.sortOrder ?: 0)
+                }
+            }
+        }
+    }
+
+    private suspend fun reportExistsOnServer(id: UUID): Boolean {
+        return supabase.postgrest["fishing"]
+            .select(Columns.list("id")) {
+                filter { eq("id", id) }
+                limit(1)
+            }
+            .decodeList<JsonObject>()
+            .isNotEmpty()
+    }
+
+    /**
+     * The RPC returns `{ "id": ..., "removed_photo_paths": [...] }`.
+     * Accept both a bare object and an array-wrapped row for safety.
+     */
+    private fun parseRemovedPhotoPaths(body: String): List<String> {
+        val element = runCatching { json.parseToJsonElement(body) }.getOrNull()
+            ?: return emptyList()
+        val obj = (element as? JsonObject)
+            ?: ((element as? JsonArray)?.firstOrNull() as? JsonObject)
+            ?: return emptyList()
+        return obj["removed_photo_paths"]
+            ?.jsonArray
+            ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+            .orEmpty()
     }
 
     private fun Fish.toFishDto(fishingId: UUID): FishDto {

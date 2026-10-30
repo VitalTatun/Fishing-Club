@@ -719,6 +719,48 @@ supabase.postgrest.rpc("publish_report", buildJsonObject { put("payload", json) 
 если RPC упал, файлы остаются в Storage и перезаписываются при retry
 (пути детерминированные), а сироты чистит фоновая задача.
 
+## Статус реализации
+
+### Этап 1 — выполнен
+
+Миграция: `report_upload_hardening_storage`.
+
+- Удалена `tmp_storage_open_insert_any`; bucket-лимиты и MIME-типы заданы.
+- Политики `avatars_*` проверяют владельца по пути.
+- `saveReport` и обработка фото вынесены на `@IoDispatcher`.
+- Отчёт пишется черновиком, публикуется последним шагом; компенсация удаляет
+  только файлы текущей попытки и только до появления строки в БД.
+- Добавлены `saveJob`, отмена сохранения, диалог «Идёт сохранение»,
+  блокировка при частичной ошибке фото, `ErrorMapper`.
+
+### Этап 2 — выполнен
+
+Миграция: `report_upload_hardening_stage_2`.
+
+- PK `fishing_baits (fishing_id, bait_code)`; дублей перед добавлением не было.
+- Индексы по FK: `fishing.user_id`, `favorites.fishing_id`, `likes.fishing_id`,
+  `fishing_fish.fishing_id`, `fishing_photos.fishing_id`
+  (у `fishing_baits` FK покрыт PK).
+- Функция `public.publish_report(payload jsonb)` (`security invoker`,
+  `search_path = public`) выполняет в одной транзакции: upsert отчёта,
+  delete-missing + upsert рыбы, полную замену приманок, delete-missing + upsert
+  фото. Возвращает `jsonb`:
+
+  ```json
+  { "id": "<uuid>", "removed_photo_paths": ["<path>", "..."] }
+  ```
+
+  `removed_photo_paths` позволяет клиенту удалить осиротевшие объекты Storage
+  после успешной публикации.
+- Клиент вызывает RPC одним запросом; отдельные `upsert`/`update` из
+  `saveReport` удалены. `published_at` существующего публичного отчёта
+  сохраняется (`coalesce(f.published_at, excluded.published_at)`).
+- `get_advisors(performance)`: `unindexed_foreign_keys` и `no_primary_key`
+  больше не показываются; `get_advisors(security)` по новой функции замечаний
+  не даёт.
+
+### Этапы 3 — не начат
+
 ## References
 
 - Публикация: `app/src/main/java/com/example/fishing/data/SupabaseFishingRepository.kt:294-398`
