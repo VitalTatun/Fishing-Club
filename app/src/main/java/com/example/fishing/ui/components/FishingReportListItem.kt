@@ -34,6 +34,7 @@ import com.example.fishing.ui.theme.FishingTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
+
 @Composable
 fun FishingReportListItem(
     report: FishingReport,
@@ -286,3 +287,5 @@ fun FishingReportListItemPreview() {
         )
     }
 }
+
+

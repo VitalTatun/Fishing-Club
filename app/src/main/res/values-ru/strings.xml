@@ -200,4 +200,7 @@
     <string name="add_photo">Добавить фото</string>
     <string name="camera">Камера</string>
     <string name="gallery">Галерея</string>
+    <string name="bookmarks">Закладки</string>
+    <string name="show_all">Показать все</string>
+    <string name="my_reports">Мои отчеты</string>
 </resources>

@@ -1,12 +1,17 @@
 package com.example.fishing.ui.screens.main
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
@@ -32,6 +37,7 @@ import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingReportCardItem
 import com.example.fishing.ui.components.FishingReportListItem
+import com.example.fishing.ui.components.HomeReportListItem
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.HomeUiState
@@ -75,6 +81,7 @@ fun MainScreen(
     userEmail: String? = null,
     userName: String? = null,
     userImage: String? = null,
+    currentUserId: UUID? = null,
     onLogout: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onChangeHistoryClick: () -> Unit = {},
@@ -99,10 +106,8 @@ fun MainScreen(
     val currentSortOrder by viewModel?.reportSortOrder?.collectAsState() ?: remember { mutableStateOf(ReportSortOrder.BY_FISHING_TIME) }
     
     var showSortMenu by remember { mutableStateOf(false) }
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
@@ -114,46 +119,8 @@ fun MainScreen(
                         },
                     )
                 },
-                scrollBehavior = scrollBehavior,
                 actions = {
                     if (selectedTab == 0) {
-                        Box {
-                            IconButton(onClick = { showSortMenu = true }) {
-                                Icon(
-                                    Icons.Default.SwapVert,
-                                    contentDescription = stringResource(R.string.sort)
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.sort_by_publish_date)) },
-                                    onClick = {
-                                        viewModel?.setSortOrder(ReportSortOrder.BY_PUBLISH_DATE)
-                                        showSortMenu = false
-                                    },
-                                    leadingIcon = {
-                                        if (currentSortOrder == ReportSortOrder.BY_PUBLISH_DATE) {
-                                            Icon(Icons.Default.Check, contentDescription = null)
-                                        }
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.sort_by_fishing_time)) },
-                                    onClick = {
-                                        viewModel?.setSortOrder(ReportSortOrder.BY_FISHING_TIME)
-                                        showSortMenu = false
-                                    },
-                                    leadingIcon = {
-                                        if (currentSortOrder == ReportSortOrder.BY_FISHING_TIME) {
-                                            Icon(Icons.Default.Check, contentDescription = null)
-                                        }
-                                    }
-                                )
-                            }
-                        }
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
@@ -252,6 +219,9 @@ fun MainScreen(
                             }
                         }
                         is HomeUiState.Success -> {
+                            val myReports = remember(homeUiState.reports, currentUserId) {
+                                homeUiState.reports.filter { currentUserId == null || it.userId == currentUserId }
+                            }
                             PullToRefreshBox(
                                 isRefreshing = isRefreshing,
                                 onRefresh = { viewModel?.refresh() },
@@ -259,37 +229,171 @@ fun MainScreen(
                             ) {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize(),
-                                    contentPadding = if (reportDisplayMode == ReportDisplayMode.CARD) {
-                                        PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                                    } else {
-                                        PaddingValues(vertical = 0.dp)
-                                    },
-                                    verticalArrangement = Arrangement.spacedBy(
-                                        if (reportDisplayMode == ReportDisplayMode.LIST)  0.dp else 16.dp
-                                    )
+                                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    itemsIndexed(
-                                        items = homeUiState.reports,
-                                        key = { _, report -> report.id }
-                                    ) { index, report ->
-                                        // Prefetch the next page once the user nears the end.
-                                        if (hasMoreReports &&
-                                            index >= homeUiState.reports.size - PREFETCH_THRESHOLD
-                                        ) {
-                                            LaunchedEffect(index) { onLoadMore() }
-                                        }
-                                        if (reportDisplayMode == ReportDisplayMode.CARD) {
-                                            FishingReportCardItem(
-                                                report = report,
-                                                onClick = { onReportClick(report) }
-                                            )
-                                        } else {
-                                            FishingReportListItem(
-                                                report = report,
-                                                onClick = { onReportClick(report) }
-                                            )
+                                    if (favoriteReports.isNotEmpty()) {
+                                        item {
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(0.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.bookmarks),
+                                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    )
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .clickable(
+                                                                indication = null,
+                                                                interactionSource = remember { MutableInteractionSource() }
+                                                            ) {
+                                                                viewModel?.searchIsFavoritesSelected = true
+                                                                onSearchClick()
+                                                            },
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(R.string.show_all),
+                                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                        )
+                                                        Icon(
+                                                            imageVector = Icons.Default.ChevronRight,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
+                                                }
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .horizontalScroll(rememberScrollState()),
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    favoriteReports.take(5).forEach { report ->
+                                                        HomeReportListItem(
+                                                            report = report,
+                                                            currentUserId = currentUserId,
+                                                            modifier = Modifier.width(320.dp),
+                                                            onClick = { onReportClick(report) }
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
+
+                                    item {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(
+                                                    text = stringResource(R.string.my_reports),
+                                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                )
+
+                                                Box {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .clickable(
+                                                                indication = null,
+                                                                interactionSource = remember { MutableInteractionSource() }
+                                                            ) { showSortMenu = true },
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = when (currentSortOrder) {
+                                                                ReportSortOrder.BY_PUBLISH_DATE -> stringResource(R.string.sort_by_publish_date)
+                                                                ReportSortOrder.BY_FISHING_TIME -> stringResource(R.string.sort_by_fishing_time)
+                                                            },
+                                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                                color = MaterialTheme.colorScheme.primary
+                                                            )
+                                                        )
+                                                        Icon(
+                                                            imageVector = Icons.Default.SwapVert,
+                                                            contentDescription = stringResource(R.string.sort),
+                                                            tint = MaterialTheme.colorScheme.primary,
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
+                                                    DropdownMenu(
+                                                        expanded = showSortMenu,
+                                                        onDismissRequest = { showSortMenu = false }
+                                                    ) {
+                                                        DropdownMenuItem(
+                                                            text = { Text(stringResource(R.string.sort_by_publish_date)) },
+                                                            onClick = {
+                                                                viewModel?.setSortOrder(ReportSortOrder.BY_PUBLISH_DATE)
+                                                                showSortMenu = false
+                                                            },
+                                                            leadingIcon = {
+                                                                if (currentSortOrder == ReportSortOrder.BY_PUBLISH_DATE) {
+                                                                    Icon(Icons.Default.Check, contentDescription = null)
+                                                                }
+                                                            }
+                                                        )
+                                                        DropdownMenuItem(
+                                                            text = { Text(stringResource(R.string.sort_by_fishing_time)) },
+                                                            onClick = {
+                                                                viewModel?.setSortOrder(ReportSortOrder.BY_FISHING_TIME)
+                                                                showSortMenu = false
+                                                            },
+                                                            leadingIcon = {
+                                                                if (currentSortOrder == ReportSortOrder.BY_FISHING_TIME) {
+                                                                    Icon(Icons.Default.Check, contentDescription = null)
+                                                                }
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                myReports.forEachIndexed { index, report ->
+                                                    if (hasMoreReports &&
+                                                        index >= myReports.size - PREFETCH_THRESHOLD
+                                                    ) {
+                                                        LaunchedEffect(index) { onLoadMore() }
+                                                    }
+                                                    HomeReportListItem(
+                                                        report = report,
+                                                        currentUserId = currentUserId,
+                                                        onClick = { onReportClick(report) }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     if (isLoadingMore) {
                                         item {
                                             Box(
@@ -417,53 +521,61 @@ fun MainScreen(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, widthDp = 412, heightDp = 800)
 @Composable
 fun MainScreenPreview() {
     FishingTheme(darkTheme = false, dynamicColor = false) {
-        val sampleUser = User(name = "Виталий", image = "", email = "vital@example.com")
+        val myUserId = UUID.randomUUID()
+        val otherUserId = UUID.randomUUID()
+        val sampleUser = User(id = myUserId, name = "Виталий", image = "", email = "vital@example.com")
+        val otherUser = User(id = otherUserId, name = "Никита Белозерцев", image = "", email = "nikita@example.com")
         val calendar = Calendar.getInstance()
 
-        val sampleReports = listOf(
-            FishingReport(
-                id = UUID.randomUUID(),
-                userId = UUID.randomUUID(),
-                type = FishingType.FISHING_LOG,
-                name = "Смеркалось...",
-                water = Water(waterName = "Водохранилище Крылово", latitude = 0.0, longitude = 0.0),
-                photos = emptyList(),
-                fishingStartAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant(),
-                fishingEndAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant().plusSeconds(3600 * 3),
-                weight = 1.2,
-                fish = listOf(Fish(id = UUID.randomUUID(), name = "Окунь", count = 1)),
-                fishingMethod = FishingMethod.SPINNING,
-                bait = listOf(Bait.WOBBLER),
-                comment = "Ловил на джиг, глубина 5 метров.",
-                user = sampleUser,
-                fishingFromTheShore = false,
-                isPublic = false
-            ),
-            FishingReport(
-                id = UUID.randomUUID(),
-                userId = UUID.randomUUID(),
-                type = FishingType.FISHING_LOG,
-                name = "Отчет без фото",
-                water = Water(waterName = "Чистый пруд", latitude = 0.0, longitude = 0.0),
-                photos = emptyList(),
-                fishingStartAt = calendar.apply { set(2024, Calendar.MAY, 1) }.time.toInstant(),
-                fishingEndAt = calendar.apply { set(2024, Calendar.MAY, 1) }.time.toInstant().plusSeconds(3600 * 3),
-                weight = 0.5,
-                fish = listOf(Fish(id = UUID.randomUUID(), name = "Карась", count = 2)),
-                fishingMethod = FishingMethod.BOBBER,
-                bait = listOf(Bait.BREAD),
-                comment = "Забыл телефон дома, фоток нет.",
-                user = sampleUser,
-                fishingFromTheShore = true,
-                isPublic = true
-            )
+        val myReport = FishingReport(
+            id = UUID.randomUUID(),
+            userId = myUserId,
+            type = FishingType.FISHING_LOG,
+            name = "Смеркалось...",
+            water = Water(waterName = "Водохранилище Крылово", latitude = 0.0, longitude = 0.0),
+            photos = emptyList(),
+            fishingStartAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant(),
+            fishingEndAt = calendar.apply { set(2023, Calendar.AUGUST, 22) }.time.toInstant().plusSeconds(3600 * 3),
+            weight = 1.2,
+            fish = listOf(Fish(id = UUID.randomUUID(), name = "Окунь", count = 1)),
+            fishingMethod = FishingMethod.SPINNING,
+            bait = listOf(Bait.WOBBLER),
+            comment = "Ловил на джиг, глубина 5 метров.",
+            user = sampleUser,
+            fishingFromTheShore = false,
+            isPublic = false
         )
+
+        val bookmarkReport = FishingReport(
+            id = UUID.randomUUID(),
+            userId = otherUserId,
+            type = FishingType.FISHING_LOG,
+            name = "Поплавок • Карась",
+            water = Water(waterName = "Заславское водохранилище", latitude = 0.0, longitude = 0.0),
+            photos = emptyList(),
+            fishingStartAt = calendar.apply { set(2026, Calendar.AUGUST, 18) }.time.toInstant(),
+            fishingEndAt = calendar.apply { set(2026, Calendar.AUGUST, 18) }.time.toInstant().plusSeconds(3600 * 3),
+            weight = 2.0,
+            fish = listOf(Fish(id = UUID.randomUUID(), name = "Карась", count = 2)),
+            fishingMethod = FishingMethod.BOBBER,
+            bait = listOf(Bait.WORM),
+            comment = "Отличная рыбалка",
+            user = otherUser,
+            fishingFromTheShore = true,
+            isPublic = true
+        )
+
         MainScreen(
-            homeUiState = HomeUiState.Success(sampleReports),
+            homeUiState = HomeUiState.Success(listOf(myReport)),
+            favoriteReports = listOf(bookmarkReport),
+            currentUserId = myUserId,
+            userEmail = sampleUser.email,
+            userName = sampleUser.name,
+            userImage = sampleUser.image,
             repository = com.example.fishing.data.MockFishingRepository(),
             onReportClick = {}
         )

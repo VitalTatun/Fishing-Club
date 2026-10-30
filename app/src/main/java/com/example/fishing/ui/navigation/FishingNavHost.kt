@@ -140,6 +140,7 @@ fun FishingNavHost(
                     userEmail = currentUser?.email,
                     userName = currentUser?.name,
                     userImage = currentUser?.image,
+                    currentUserId = currentUser?.id,
                     onLogout = {
                         coroutineScope.launch {
                             authRepository.logout()
