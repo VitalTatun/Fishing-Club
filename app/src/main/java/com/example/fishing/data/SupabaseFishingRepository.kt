@@ -15,12 +15,15 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -49,7 +52,8 @@ class SupabaseFishingRepository @Inject constructor(
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
     private val likeDao: LikeDao,
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : FishingRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -291,18 +295,28 @@ class SupabaseFishingRepository @Inject constructor(
         return true
     }
 
-    override suspend fun saveReport(report: FishingReport): Result<Unit> {
+    override suspend fun saveReport(report: FishingReport): Result<Unit> = withContext(ioDispatcher) {
         val now = formatDate(Date())
         val dto = report.toFishingDto(now)
+        val finalDto = dto.copy(
+            isPublic = report.isPublic,
+            publishedAt = if (report.isPublic) now else null
+        )
         val uploadedPaths = mutableListOf<String>()
+        var reportRowWritten = false
 
-        return try {
-            // 1. Upsert base report. This handles both new and existing reports.
-            // If it exists, it will be updated with the latest data (comment, weight, etc.)
-            supabase.postgrest["fishing"].upsert(dto)
+        try {
+            // 1. Never write a report for another user.
+            val currentUser = authRepository.currentUser()
+                ?: throw IllegalStateException("Not authenticated")
+            if (currentUser.id != report.userId) {
+                throw IllegalStateException("Cannot save a report for another user")
+            }
 
-            // 2. Upload only new photos.
+            // 2. Upload only new photos. Storage is not transactional, so doing this
+            // before the DB row exists lets us compensate a failure safely.
             val storagePaths = report.photos.map { photo ->
+                ensureActive()
                 if (isStoragePath(photo.url)) {
                     photo.url
                 } else {
@@ -321,20 +335,28 @@ class SupabaseFishingRepository @Inject constructor(
                 }
             }
 
-            // 3. Prepare child DTOs.
+            ensureActive()
+
+            // 3. Write the report as a private draft. It becomes visible to other
+            // users only on the final publish step below.
+            supabase.postgrest["fishing"].upsert(dto.copy(isPublic = false, publishedAt = null))
+            reportRowWritten = true
+
+            ensureActive()
+
+            // 4. Prepare and upsert child rows.
             val fishDtos = report.fish.map { it.toFishDto(report.id) }
             val baitDtos = report.bait.map { BaitDto(report.id, it.name) }
             val photoDtos = report.photos.mapIndexed { index, photo ->
-                val finalPath = storagePaths[index]
                 PhotoDto(
                     id = photo.id,
                     fishingId = report.id,
-                    storagePath = finalPath,
+                    storagePath = storagePaths[index],
                     sortOrder = index
                 )
             }
 
-            // 4. Upsert children instead of delete+insert to maintain idempotency.
+            // Upsert children instead of delete+insert to maintain idempotency.
             // Unique constraints (like PK on fish.id) will prevent duplicates on retry.
             if (fishDtos.isNotEmpty()) {
                 supabase.postgrest["fishing_fish"].upsert(fishDtos)
@@ -346,32 +368,51 @@ class SupabaseFishingRepository @Inject constructor(
                 supabase.postgrest["fishing_photos"].upsert(photoDtos)
             }
 
-            val markerEntity = dto.toMarkerEntity(report.fish.map { it.name })
+            ensureActive()
+
+            // 5. Publish (or explicitly keep private) only after everything else succeeded.
+            val publishedAt = finalDto.publishedAt
+            supabase.postgrest["fishing"].update({
+                set("is_public", finalDto.isPublic)
+                if (publishedAt != null) {
+                    set("published_at", publishedAt)
+                } else {
+                    setToNull("published_at")
+                }
+                set("updated_at", now)
+            }) {
+                filter {
+                    eq("id", report.id)
+                    eq("user_id", report.userId)
+                }
+            }
+
+            val markerEntity = finalDto.toMarkerEntity(report.fish.map { it.name })
             val detailsEntity = ReportDetailsEntity(
                 id = report.id,
                 userId = report.userId,
-                publishedAt = dto.publishedAt,
-                type = dto.type,
-                name = dto.name,
-                waterName = dto.waterName,
-                waterLat = dto.waterLat,
-                waterLng = dto.waterLng,
-                waterPaid = dto.waterPaid,
-                spotLat = dto.spotLat,
-                spotLng = dto.spotLng,
-                fishingStartAt = dto.fishingStartAt,
-                fishingEndAt = dto.fishingEndAt,
-                weight = dto.weight,
-                fishingMethod = dto.fishingMethod,
-                comment = dto.comment,
-                shore = dto.shore,
-                isPublic = dto.isPublic,
+                publishedAt = finalDto.publishedAt,
+                type = finalDto.type,
+                name = finalDto.name,
+                waterName = finalDto.waterName,
+                waterLat = finalDto.waterLat,
+                waterLng = finalDto.waterLng,
+                waterPaid = finalDto.waterPaid,
+                spotLat = finalDto.spotLat,
+                spotLng = finalDto.spotLng,
+                fishingStartAt = finalDto.fishingStartAt,
+                fishingEndAt = finalDto.fishingEndAt,
+                weight = finalDto.weight,
+                fishingMethod = finalDto.fishingMethod,
+                comment = finalDto.comment,
+                shore = finalDto.shore,
+                isPublic = finalDto.isPublic,
                 imageUrls = storagePaths,
                 fishJson = json.encodeToString(fishDtos),
                 baitsJson = json.encodeToString(baitDtos),
                 authorName = report.user.name,
                 authorAvatar = report.user.image,
-                createdAt = dto.createdAt
+                createdAt = finalDto.createdAt
             )
 
             database.withTransaction {
@@ -380,15 +421,20 @@ class SupabaseFishingRepository @Inject constructor(
                 // avoid clobbering a like that landed while this save was running.
                 val preservedLikesCount = reportDetailsDao.getByIdOneShot(report.id)?.likesCount ?: 0
                 reportDetailsDao.insert(detailsEntity.copy(likesCount = preservedLikesCount))
-                if (dto.isPublic || dto.userId == authRepository.currentUser()?.id) {
+                if (finalDto.isPublic || finalDto.userId == authRepository.currentUser()?.id) {
                     markerDao.insertAll(listOf(markerEntity))
                 }
             }
 
             Result.success(Unit)
+        } catch (e: CancellationException) {
+            // Cancelling a save is not an error. Never delete files here: the user
+            // may retry, and deterministic paths overwrite previous uploads.
+            throw e
         } catch (e: Exception) {
-            // Cleanup: only delete photos uploaded in THIS specific call attempt.
-            if (uploadedPaths.isNotEmpty()) {
+            // Only delete files uploaded in THIS call, and only while no DB row
+            // references them yet. After the draft row exists they must be kept.
+            if (!reportRowWritten && uploadedPaths.isNotEmpty()) {
                 runCatching {
                     supabase.storage.from("fishing_photos").delete(uploadedPaths)
                 }

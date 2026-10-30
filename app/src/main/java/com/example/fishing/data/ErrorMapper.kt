@@ -38,6 +38,12 @@ object ErrorMapper {
             msg.contains("Email link is invalid or expired", ignoreCase = true) ->
                 "Ссылка устарела"
 
+            msg.contains("Photo file not found", ignoreCase = true) ->
+                "Фото было удалено, выберите его заново"
+
+            msg.contains("Not authenticated", ignoreCase = true) ->
+                "Сессия истекла. Войдите в аккаунт ещё раз"
+
             msg.contains("signup_disabled", ignoreCase = true) ->
                 "Регистрация временно отключена"
 

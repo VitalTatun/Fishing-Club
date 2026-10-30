@@ -2,6 +2,7 @@ package com.example.fishing
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
@@ -20,6 +21,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -28,10 +30,8 @@ import org.junit.runner.RunWith
 import org.osmdroid.util.GeoPoint
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
-import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import java.text.SimpleDateFormat
-import java.io.ByteArrayInputStream
 import java.io.File
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -69,7 +69,8 @@ class CreateReportViewModelTest {
         return CreateReportViewModel(
             repository = fakeFishingRepository,
             authRepository = fakeAuthRepository,
-            context = context
+            context = context,
+            ioDispatcher = mainDispatcherRule.testDispatcher
         )
     }
 
@@ -94,6 +95,17 @@ class CreateReportViewModelTest {
     private fun validPastRange(): Pair<Instant, Instant> {
         val end = Instant.now().minusSeconds(3600)
         return Pair(end.minusSeconds(7200), end)
+    }
+
+    /** Creates a real JPEG on disk so PhotoUtils can decode it on both passes. */
+    private fun createTestPhotoFile(): Uri {
+        val file = File(context.cacheDir, "test_photo_${UUID.randomUUID()}.jpg")
+        val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+        file.outputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+        }
+        bitmap.recycle()
+        return Uri.fromFile(file)
     }
 
     @Test
@@ -395,10 +407,7 @@ class CreateReportViewModelTest {
         val vm = createViewModel()
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
-        val photoUri = Uri.parse("content://test/photo")
-        Shadows.shadowOf(context.contentResolver)
-            .registerInputStream(photoUri, ByteArrayInputStream(ByteArray(0)))
-        vm.formPhotos = listOf(ReportPhoto(uri = photoUri))
+        vm.formPhotos = listOf(ReportPhoto(uri = createTestPhotoFile()))
 
         var successCalled = false
         vm.saveReport { successCalled = true }
@@ -418,10 +427,7 @@ class CreateReportViewModelTest {
         val vm = createViewModel()
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
-        val photoUri = Uri.parse("content://test/photo")
-        Shadows.shadowOf(context.contentResolver)
-            .registerInputStream(photoUri, ByteArrayInputStream(ByteArray(0)))
-        vm.formPhotos = listOf(ReportPhoto(uri = photoUri))
+        vm.formPhotos = listOf(ReportPhoto(uri = createTestPhotoFile()))
 
         var successCalled = false
         vm.saveReport { successCalled = true }
@@ -435,6 +441,60 @@ class CreateReportViewModelTest {
 
         val photosDir = File(context.filesDir, "photos")
         assertTrue(photosDir.listFiles()?.isEmpty() ?: true)
+    }
+
+    @Test
+    fun `partially unreadable photos block save and keep the form`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+        vm.formPhotos = listOf(
+            ReportPhoto(uri = createTestPhotoFile()),
+            ReportPhoto(uri = Uri.fromFile(File(context.cacheDir, "missing_${UUID.randomUUID()}.jpg")))
+        )
+
+        var successCalled = false
+        vm.saveReport { successCalled = true }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(successCalled)
+        assertEquals(0, fakeFishingRepository.saveReportCallCount)
+        assertEquals(CreateReportSaveState.Error, vm.saveState)
+        assertNotNull(vm.saveErrorMessage)
+        assertEquals(2, vm.formPhotos.size)
+        assertFalse(vm.formSelectedFish.isEmpty())
+    }
+
+    @Test
+    fun `cancelled save does not produce an error and keeps form data`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+
+        var successCalled = false
+        vm.saveReport { successCalled = true }
+        vm.cancelSave()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(successCalled)
+        assertEquals(0, fakeFishingRepository.saveReportCallCount)
+        assertEquals(CreateReportSaveState.Idle, vm.saveState)
+        assertNull(vm.saveErrorMessage)
+        assertFalse(vm.formSelectedFish.isEmpty())
+    }
+
+    @Test
+    fun `network error is mapped to a friendly message`() = runTest {
+        fakeFishingRepository.saveReportException = RuntimeException("timeout")
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+
+        vm.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(CreateReportSaveState.Error, vm.saveState)
+        assertEquals("Нет соединения с интернетом", vm.saveErrorMessage)
     }
 
     @Test

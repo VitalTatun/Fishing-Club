@@ -20,6 +20,7 @@ internal object UuidSerializer : KSerializer<UUID> {
 data class FishingDto(
     @Serializable(with = UuidSerializer::class) val id: UUID,
     @Serializable(with = UuidSerializer::class) @SerialName("user_id") val userId: UUID,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     @SerialName("published_at") val publishedAt: String? = null,
     val type: String,
     val name: String,
@@ -35,6 +36,7 @@ data class FishingDto(
     @SerialName("fishing_method") val fishingMethod: String? = null,
     val comment: String? = null,
     val shore: Boolean = true,
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     @SerialName("is_public") val isPublic: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,

@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -45,7 +46,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -66,8 +69,11 @@ import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.utils.PhotoUtils
 import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.ReportPhoto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -106,6 +112,7 @@ fun CreateReportScreen(
     }
 
     var showDiscardDialog by remember { mutableStateOf(false) }
+    var showSavingDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
@@ -114,6 +121,7 @@ fun CreateReportScreen(
 
     var tempCameraFile by remember { mutableStateOf<File?>(null) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val currentTime = Calendar.getInstance()
     val endTimeCalendar = (currentTime.clone() as Calendar).apply {
@@ -145,20 +153,25 @@ fun CreateReportScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) {
-            tempCameraFile?.let { file ->
-                val persistedUri = PhotoUtils.persistCameraPhoto(
-                    context.contentResolver,
-                    context.filesDir,
-                    Uri.fromFile(file)
-                )
+        val capturedFile = tempCameraFile
+        tempCameraFile = null
+        if (success && capturedFile != null) {
+            scope.launch {
+                val persistedUri = withContext(Dispatchers.IO) {
+                    PhotoUtils.persistCameraPhoto(
+                        context.contentResolver,
+                        context.filesDir,
+                        Uri.fromFile(capturedFile)
+                    )
+                }
+                capturedFile.delete()
                 if (persistedUri != null) {
                     viewModel.formPhotos = viewModel.formPhotos + ReportPhoto(uri = persistedUri)
                 }
             }
+        } else {
+            capturedFile?.delete()
         }
-        tempCameraFile?.delete()
-        tempCameraFile = null
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -183,14 +196,47 @@ fun CreateReportScreen(
     }
 
     val handleBack = {
-        if (formHasData) {
-            showDiscardDialog = true
-        } else {
-            onBackClick()
+        when {
+            isSaving -> showSavingDialog = true
+            formHasData -> showDiscardDialog = true
+            else -> onBackClick()
         }
     }
 
-    BackHandler(enabled = formHasData) { showDiscardDialog = true }
+    BackHandler(enabled = isSaving || formHasData) {
+        if (isSaving) showSavingDialog = true else showDiscardDialog = true
+    }
+
+    if (showSavingDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text(stringResource(R.string.save_in_progress_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text(stringResource(R.string.save_in_progress_message))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSavingDialog = false
+                    viewModel.cancelSave()
+                }) {
+                    Text(stringResource(R.string.cancel_saving))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSavingDialog = false }) {
+                    Text(stringResource(R.string.save_in_progress_wait))
+                }
+            }
+        )
+    }
 
     if (showDiscardDialog) {
         AlertDialog(
@@ -407,7 +453,8 @@ private fun CreateReportScreenPreview() {
                     override suspend fun updateProfile(name: String, imageUri: String?): Result<User> = Result.failure(Exception("mock"))
                     override fun resolveImageUrl(path: String): String = ""
                 },
-                context = context
+                context = context,
+                ioDispatcher = Dispatchers.IO
             )
         }
         CreateReportScreen(

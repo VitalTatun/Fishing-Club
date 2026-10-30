@@ -250,7 +250,9 @@ fun FishingNavHost(
                     onBackClick = { navController.popBackStack() },
                     onSaveComplete = {
                         viewModel.refresh()
-                        navController.popBackStack()
+                        if (navController.currentDestination?.route == "create_report") {
+                            navController.popBackStack()
+                        }
                     },
                     onNavigateToCatchEdit = {
                         currentEntry.savedStateHandle["fish"] = ArrayList(createReportViewModel.formSelectedFish)

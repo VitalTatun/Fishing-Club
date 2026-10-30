@@ -22,12 +22,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.R
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.ErrorMapper
 import com.example.fishing.data.FishingRepository
+import com.example.fishing.data.IoDispatcher
 import com.example.fishing.model.*
 import com.example.fishing.utils.PhotoUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
 import java.io.File
 import java.text.SimpleDateFormat
@@ -47,14 +53,21 @@ data class ReportPhoto(
     val uri: Uri
 )
 
+private data class ProcessedPhotos(
+    val processed: List<Pair<UUID, String>>,
+    val failed: List<ReportPhoto>
+)
+
 @HiltViewModel
 class CreateReportViewModel @Inject constructor(
     private val repository: FishingRepository,
     private val authRepository: AuthRepository,
     @param:ApplicationContext private val context: Context,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private var currentReportId: UUID = UUID.randomUUID()
+    private var saveJob: Job? = null
 
     // Form state
     var formReportType by mutableStateOf(FishingType.FISHING_LOG)
@@ -342,78 +355,126 @@ class CreateReportViewModel @Inject constructor(
 
         saveState = CreateReportSaveState.Saving
         saveErrorMessage = null
+        val photosSnapshot = formPhotos
 
-        viewModelScope.launch {
-            val photoProcessingResults = formPhotos.map { reportPhoto ->
-                val internalPath = PhotoUtils.copyPhotoToInternalStorage(
-                    context.contentResolver,
-                    context.filesDir,
-                    reportPhoto.uri
+        saveJob = viewModelScope.launch {
+            try {
+                // Bitmap decoding, compression and file writes are heavy: never do
+                // them on the Main thread.
+                val photoResult = withContext(ioDispatcher) {
+                    val results = photosSnapshot.map { reportPhoto ->
+                        reportPhoto to PhotoUtils.copyPhotoToInternalStorage(
+                            context.contentResolver,
+                            context.filesDir,
+                            reportPhoto.uri
+                        )
+                    }
+                    ProcessedPhotos(
+                        processed = results.mapNotNull { (photo, path) ->
+                            path?.let { photo.id to it }
+                        },
+                        failed = results.filter { it.second == null }.map { it.first }
+                    )
+                }
+
+                if (photoResult.failed.isNotEmpty()) {
+                    // Never save silently with fewer photos than the user selected.
+                    Log.e(
+                        TAG,
+                        "saveReport aborted: ${photoResult.failed.size} photo(s) could not be processed"
+                    )
+                    withContext(ioDispatcher) {
+                        cleanupTempPhotos(
+                            photos = emptyList(),
+                            extraFiles = photoResult.processed.map { it.second }
+                        )
+                    }
+                    saveState = CreateReportSaveState.Error
+                    saveErrorMessage = context.getString(
+                        R.string.error_photos_partially_processed,
+                        photoResult.failed.size
+                    )
+                    return@launch
+                }
+
+                val startAt = combineStart()
+                val endAt = combineEnd()
+
+                val fishingPhotos = photoResult.processed.map { (id, path) ->
+                    FishingPhoto(id = id, url = path)
+                }
+
+                val report = FishingReport(
+                    id = currentReportId,
+                    userId = currentUser.id,
+                    type = formReportType,
+                    name = buildReportName(),
+                    water = Water(
+                        waterName = formWaterName,
+                        latitude = formLocation?.latitude ?: 0.0,
+                        longitude = formLocation?.longitude ?: 0.0,
+                        isPaid = formIsPaidWater
+                    ),
+                    spotLat = formLocation?.latitude,
+                    spotLng = formLocation?.longitude,
+                    photos = fishingPhotos,
+                    fishingStartAt = startAt,
+                    fishingEndAt = endAt,
+                    createdAt = Date(),
+                    weight = formWeight.toDouble(),
+                    fish = formSelectedFish,
+                    fishingMethod = formSelectedMethod,
+                    bait = formSelectedBaits,
+                    comment = formComment,
+                    user = currentUser,
+                    fishingFromTheShore = formFishingFromShore,
+                    isPublic = formIsPublic
                 )
-                reportPhoto.id to internalPath
-            }
 
-            if (formPhotos.isNotEmpty() && photoProcessingResults.all { it.second == null }) {
-                Log.e(TAG, "saveReport failed: none of the selected photos could be processed")
-                saveState = CreateReportSaveState.Error
-                saveErrorMessage = context.getString(R.string.error_photo_processing_failed)
-                return@launch
-            }
+                val result = try {
+                    repository.saveReport(report)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "saveReport failed", e)
+                    Result.failure(e)
+                }
 
-            val startAt = combineStart()
-            val endAt = combineEnd()
-
-            val fishingPhotos = photoProcessingResults.mapNotNull { (id, path) ->
-                path?.let { FishingPhoto(id = id, url = it) }
-            }
-
-            val report = FishingReport(
-                id = currentReportId,
-                userId = currentUser.id,
-                type = formReportType,
-                name = buildReportName(),
-                water = Water(
-                    waterName = formWaterName,
-                    latitude = formLocation?.latitude ?: 0.0,
-                    longitude = formLocation?.longitude ?: 0.0,
-                    isPaid = formIsPaidWater
-                ),
-                spotLat = formLocation?.latitude,
-                spotLng = formLocation?.longitude,
-                photos = fishingPhotos,
-                fishingStartAt = startAt,
-                fishingEndAt = endAt,
-                createdAt = Date(),
-                weight = formWeight.toDouble(),
-                fish = formSelectedFish,
-                fishingMethod = formSelectedMethod,
-                bait = formSelectedBaits,
-                comment = formComment,
-                user = currentUser,
-                fishingFromTheShore = formFishingFromShore,
-                isPublic = formIsPublic
-            )
-
-            val result = try {
-                repository.saveReport(report)
-            } catch (e: Exception) {
-                Log.e(TAG, "saveReport failed", e)
-                Result.failure(e)
-            }
-
-            result
-                .onSuccess {
+                val error = result.exceptionOrNull()
+                if (error == null) {
+                    withContext(ioDispatcher) {
+                        cleanupTempPhotos(
+                            photos = photosSnapshot,
+                            extraFiles = fishingPhotos.map { it.url }
+                        )
+                    }
                     saveState = CreateReportSaveState.Success
                     onSuccess()
-                    cleanupTempPhotos()
-                    resetFormState()
-                }
-                .onFailure { e ->
-                    Log.e(TAG, "saveReport failed: ${e.message}", e)
+                    resetFormState(cleanupPhotos = false)
+                } else {
+                    Log.e(TAG, "saveReport failed: ${error.message}", error)
                     saveState = CreateReportSaveState.Error
-                    saveErrorMessage = context.getString(R.string.error_save_report)
+                    saveErrorMessage = ErrorMapper.toUserFriendlyMessage(error)
                 }
+            } catch (e: CancellationException) {
+                // Cancellation is not an error; the form and photo files stay intact.
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "saveReport failed", e)
+                saveState = CreateReportSaveState.Error
+                saveErrorMessage = ErrorMapper.toUserFriendlyMessage(e)
+            } finally {
+                if (saveJob === coroutineContext[Job]) {
+                    saveJob = null
+                }
+            }
         }
+    }
+
+    fun cancelSave() {
+        saveJob?.cancel()
+        saveJob = null
+        resetSaveState()
     }
 
     fun resetSaveState() {
@@ -421,8 +482,8 @@ class CreateReportViewModel @Inject constructor(
         saveErrorMessage = null
     }
 
-    fun resetFormState() {
-        cleanupTempPhotos()
+    fun resetFormState(cleanupPhotos: Boolean = true) {
+        val photosToDelete = formPhotos
         currentReportId = UUID.randomUUID()
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
@@ -438,6 +499,11 @@ class CreateReportViewModel @Inject constructor(
         formMood = 3
         formComment = ""
         formLocation = null
+        if (cleanupPhotos) {
+            viewModelScope.launch(ioDispatcher) {
+                cleanupTempPhotos(photos = photosToDelete)
+            }
+        }
     }
 
     private fun setDefaultDateTimeValues() {
@@ -454,16 +520,18 @@ class CreateReportViewModel @Inject constructor(
         formEndTime = timeFormatter.format(endCal.time)
     }
 
-    private fun cleanupTempPhotos() {
-        formPhotos.forEach { photo ->
-            if (photo.uri.scheme == "file") {
-                photo.uri.path?.let { path ->
-                    runCatching { File(path).delete() }
-                }
-            }
+    private fun cleanupTempPhotos(
+        photos: List<ReportPhoto> = formPhotos,
+        extraFiles: List<String> = emptyList()
+    ) {
+        val paths = photos.mapNotNull { photo ->
+            photo.uri.path?.takeIf { photo.uri.scheme == "file" }
+        } + extraFiles
+        paths.forEach { path ->
+            runCatching { File(path).delete() }
         }
-        val photosDir = File(context.filesDir, "photos")
-        runCatching { photosDir.listFiles()?.forEach { it.delete() } }
+        // Remove the directory only when nothing else is using it.
+        runCatching { File(context.filesDir, "photos").delete() }
     }
 
     private fun buildReportName(): String {
