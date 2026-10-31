@@ -10,6 +10,7 @@ import com.example.fishing.data.ErrorMapper
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.SupabaseFishingRepository
 import com.example.fishing.data.UserPreferencesSource
+import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,7 +55,8 @@ sealed interface HomeUiState {
 class MainViewModel @Inject constructor(
     private val repository: FishingRepository,
     private val authRepository: AuthRepository,
-    private val userPreferencesRepository: UserPreferencesSource
+    private val userPreferencesRepository: UserPreferencesSource,
+    private val reportUploadQueue: ReportUploadQueue
 ) : ViewModel() {
 
     private companion object {
@@ -169,6 +171,14 @@ class MainViewModel @Inject constructor(
     private val _deletedReportId = MutableStateFlow<UUID?>(null)
     val deletedReportId: StateFlow<UUID?> = _deletedReportId.asStateFlow()
 
+    /** Reports waiting for upload; the banner in [MainScreen] is driven by this. */
+    val pendingUploads: StateFlow<List<PendingReportUpload>> =
+        reportUploadQueue.observePending()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _uploadNotice = MutableStateFlow<ReportUploadNotice?>(null)
+    val uploadNotice: StateFlow<ReportUploadNotice?> = _uploadNotice.asStateFlow()
+
     val homeUiState: StateFlow<HomeUiState> = combine(
         sortedReports,
         isInitialLoading,
@@ -227,6 +237,27 @@ class MainViewModel @Inject constructor(
                 }
             }
         }
+        viewModelScope.launch {
+            reportUploadQueue.observeResults().collect { result ->
+                _uploadNotice.value = if (result.success) {
+                    ReportUploadNotice.Published(isPublic = result.isPublic)
+                } else {
+                    ReportUploadNotice.Failed(result.message.orEmpty())
+                }
+            }
+        }
+    }
+
+    fun retryPendingUpload(reportId: UUID) {
+        viewModelScope.launch { reportUploadQueue.retry(reportId) }
+    }
+
+    fun cancelPendingUpload(reportId: UUID) {
+        viewModelScope.launch { reportUploadQueue.cancel(reportId) }
+    }
+
+    fun consumeUploadNotice() {
+        _uploadNotice.value = null
     }
 
     private fun clearUserContent() {
@@ -253,6 +284,7 @@ class MainViewModel @Inject constructor(
         _favoriteError.value = null
         favoriteOpsInFlight.clear()
         _deletedReportId.value = null
+        _uploadNotice.value = null
         _isInitialLoading.value = true
         _isRefreshing.value = false
         _isLoadingMore.value = false

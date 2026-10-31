@@ -10,9 +10,12 @@ import com.example.fishing.model.FishingDateTimeError
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.ReportField
+import com.example.fishing.model.ReportSaveProgress
+import com.example.fishing.model.ReportUploadState
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.FakeFishingRepository
+import com.example.fishing.testutil.FakeReportUploadQueue
 import com.example.fishing.testutil.MainDispatcherRule
 import com.example.fishing.viewmodel.CreateReportSaveState
 import com.example.fishing.viewmodel.CreateReportViewModel
@@ -48,6 +51,7 @@ class CreateReportViewModelTest {
 
     private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var fakeFishingRepository: FakeFishingRepository
+    private lateinit var fakeReportUploadQueue: FakeReportUploadQueue
     private lateinit var context: Context
 
     private val testUser = User(
@@ -61,6 +65,7 @@ class CreateReportViewModelTest {
     fun setup() {
         fakeAuthRepository = FakeAuthRepository()
         fakeFishingRepository = FakeFishingRepository()
+        fakeReportUploadQueue = FakeReportUploadQueue()
         fakeAuthRepository.sessionUser = testUser
         context = RuntimeEnvironment.getApplication()
     }
@@ -69,6 +74,7 @@ class CreateReportViewModelTest {
         return CreateReportViewModel(
             repository = fakeFishingRepository,
             authRepository = fakeAuthRepository,
+            reportUploadQueue = fakeReportUploadQueue,
             context = context,
             ioDispatcher = mainDispatcherRule.testDispatcher
         )
@@ -223,8 +229,8 @@ class CreateReportViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(successCalled)
-        assertEquals(1, fakeFishingRepository.saveReportCallCount)
-        val saved = fakeFishingRepository.savedReports.single()
+        assertEquals(1, fakeReportUploadQueue.enqueuedReports.size)
+        val saved = fakeReportUploadQueue.enqueuedReports.single()
         assertEquals(testUser.id, saved.userId)
         assertEquals("${context.getString(FishingMethod.SPINNING.labelRes)} • Щука", saved.name)
         assertEquals(start.truncatedTo(ChronoUnit.MINUTES), saved.fishingStartAt)
@@ -242,7 +248,7 @@ class CreateReportViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(successCalled)
-        val saved = fakeFishingRepository.savedReports.single()
+        val saved = fakeReportUploadQueue.enqueuedReports.single()
         assertEquals(
             "${context.getString(FishingMethod.SPINNING.labelRes)} • Щука",
             saved.name
@@ -264,7 +270,7 @@ class CreateReportViewModelTest {
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        val saved = fakeFishingRepository.savedReports.single()
+        val saved = fakeReportUploadQueue.enqueuedReports.single()
         assertEquals(
             "${context.getString(FishingMethod.FEEDER.labelRes)} • Лещ",
             saved.name
@@ -283,7 +289,7 @@ class CreateReportViewModelTest {
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        val saved = fakeFishingRepository.savedReports.single()
+        val saved = fakeReportUploadQueue.enqueuedReports.single()
         assertEquals(
             "${context.getString(FishingMethod.BOBBER.labelRes)} • Карась",
             saved.name
@@ -308,19 +314,25 @@ class CreateReportViewModelTest {
 
     @Test
     fun `failed save sets error and does not reset form`() = runTest {
-        fakeFishingRepository.saveReportException = RuntimeException("boom")
         val vm = createViewModel()
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
+        fakeReportUploadQueue.onEnqueue = { report ->
+            fakeReportUploadQueue.setPendingRow(
+                reportId = report.id,
+                state = ReportUploadState.FAILED,
+                lastError = "Не удалось загрузить фото"
+            )
+        }
 
         var successCalled = false
         vm.saveReport { successCalled = true }
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(successCalled)
-        assertEquals(1, fakeFishingRepository.saveReportCallCount)
+        assertEquals(1, fakeReportUploadQueue.enqueuedReports.size)
         assertEquals(CreateReportSaveState.Error, vm.saveState)
-        assertNotNull(vm.saveErrorMessage)
+        assertEquals("Не удалось загрузить фото", vm.saveErrorMessage)
         assertEquals("Озеро Нарочь", vm.formWaterName)
         assertFalse(vm.formSelectedFish.isEmpty())
     }
@@ -335,7 +347,7 @@ class CreateReportViewModelTest {
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(1, fakeFishingRepository.saveReportCallCount)
+        assertEquals(1, fakeReportUploadQueue.enqueuedReports.size)
     }
 
     @Test
@@ -397,24 +409,30 @@ class CreateReportViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(successCalled)
-        val saved = fakeFishingRepository.savedReports.single()
+        val saved = fakeReportUploadQueue.enqueuedReports.single()
         assertTrue(saved.photos.isEmpty())
     }
 
     @Test
     fun `failed save preserves copied photo files for retry`() = runTest {
-        fakeFishingRepository.saveReportException = RuntimeException("storage upload failed")
         val vm = createViewModel()
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
         vm.formPhotos = listOf(ReportPhoto(uri = createTestPhotoFile()))
+        fakeReportUploadQueue.onEnqueue = { report ->
+            fakeReportUploadQueue.setPendingRow(
+                reportId = report.id,
+                state = ReportUploadState.FAILED,
+                lastError = "storage upload failed"
+            )
+        }
 
         var successCalled = false
         vm.saveReport { successCalled = true }
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(successCalled)
-        assertEquals(1, fakeFishingRepository.saveReportCallCount)
+        assertEquals(1, fakeReportUploadQueue.enqueuedReports.size)
         assertEquals(CreateReportSaveState.Error, vm.saveState)
         assertNotNull(vm.saveErrorMessage)
 
@@ -434,8 +452,8 @@ class CreateReportViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(successCalled)
-        assertEquals(1, fakeFishingRepository.saveReportCallCount)
-        val saved = fakeFishingRepository.savedReports.single()
+        assertEquals(1, fakeReportUploadQueue.enqueuedReports.size)
+        val saved = fakeReportUploadQueue.enqueuedReports.single()
         assertEquals(1, saved.photos.size)
         assertTrue(saved.photos.single().url.startsWith(File(context.filesDir, "photos").absolutePath))
 
@@ -477,7 +495,8 @@ class CreateReportViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertFalse(successCalled)
-        assertEquals(0, fakeFishingRepository.saveReportCallCount)
+        assertEquals(0, fakeReportUploadQueue.enqueuedReports.size)
+        assertEquals(1, fakeReportUploadQueue.cancelledReportIds.size)
         assertEquals(CreateReportSaveState.Idle, vm.saveState)
         assertNull(vm.saveErrorMessage)
         assertFalse(vm.formSelectedFish.isEmpty())
@@ -485,10 +504,16 @@ class CreateReportViewModelTest {
 
     @Test
     fun `network error is mapped to a friendly message`() = runTest {
-        fakeFishingRepository.saveReportException = RuntimeException("timeout")
         val vm = createViewModel()
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
+        fakeReportUploadQueue.onEnqueue = { report ->
+            fakeReportUploadQueue.setPendingRow(
+                reportId = report.id,
+                state = ReportUploadState.FAILED,
+                lastError = "Нет соединения с интернетом"
+            )
+        }
 
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
@@ -503,28 +528,86 @@ class CreateReportViewModelTest {
         val (start, end) = validPastRange()
         fillValidReport(vm, start, end)
 
-        fakeFishingRepository.saveReportException = RuntimeException("fail")
+        var failNext = true
+        fakeReportUploadQueue.onEnqueue = { report ->
+            if (failNext) {
+                fakeReportUploadQueue.setPendingRow(
+                    reportId = report.id,
+                    state = ReportUploadState.FAILED,
+                    lastError = "fail"
+                )
+            }
+        }
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        val idAfterFail = fakeFishingRepository.lastSavedReportId
+        val idAfterFail = fakeReportUploadQueue.enqueuedReports.single().id
         assertNotNull(idAfterFail)
 
-        fakeFishingRepository.saveReportException = null
+        failNext = false
+        fakeReportUploadQueue.pending.value = emptyList()
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(idAfterFail, fakeFishingRepository.lastSavedReportId)
+        assertEquals(idAfterFail, fakeReportUploadQueue.enqueuedReports[1].id)
 
-        // Reset form should generate new ID (via success or explicit reset)
-        // Success already happened, form is reset
+        // Reset form should generate new ID (via success or explicit reset).
         fillValidReport(vm, start, end)
         vm.saveReport {}
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        val idAfterSuccess = fakeFishingRepository.lastSavedReportId
+        val idAfterSuccess = fakeReportUploadQueue.enqueuedReports[2].id
         assertNotNull(idAfterSuccess)
         assertTrue(idAfterFail != idAfterSuccess)
+    }
+
+    @Test
+    fun `save reports upload progress from the queue`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+        fakeReportUploadQueue.onEnqueue = { report ->
+            fakeReportUploadQueue.setPendingRow(
+                reportId = report.id,
+                state = ReportUploadState.UPLOADING,
+                uploadedPhotos = 1,
+                totalPhotos = 2
+            )
+        }
+
+        var successCalled = false
+        vm.saveReport { successCalled = true }
+        mainDispatcherRule.testDispatcher.scheduler.runCurrent()
+
+        assertEquals(CreateReportSaveState.Saving, vm.saveState)
+        assertEquals(1, vm.saveProgress?.uploadedPhotos)
+        assertEquals(2, vm.saveProgress?.totalPhotos)
+        assertFalse(successCalled)
+
+        // The worker removes the row after the report is published.
+        fakeReportUploadQueue.pending.value = emptyList()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(successCalled)
+        assertEquals(CreateReportSaveState.Success, vm.saveState)
+        assertNull(vm.saveProgress)
+    }
+
+    @Test
+    fun `enqueue failure keeps the form and shows an error`() = runTest {
+        fakeReportUploadQueue.enqueueResult = Result.failure(RuntimeException("boom"))
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+
+        var successCalled = false
+        vm.saveReport { successCalled = true }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(successCalled)
+        assertEquals(CreateReportSaveState.Error, vm.saveState)
+        assertNotNull(vm.saveErrorMessage)
+        assertEquals("Озеро Нарочь", vm.formWaterName)
     }
 
     @Test

@@ -6,6 +6,8 @@ import com.example.fishing.model.FishingType
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
 import com.example.fishing.model.ReportSortOrder
+import com.example.fishing.model.ReportUploadNotice
+import com.example.fishing.model.ReportUploadState
 import com.example.fishing.model.User
 import com.example.fishing.model.Water
 import com.example.fishing.model.Fish
@@ -14,6 +16,8 @@ import com.example.fishing.model.Bait
 import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeUserPreferencesRepository
+import com.example.fishing.testutil.FakeReportUploadQueue
+import com.example.fishing.data.upload.ReportUploadResult
 import com.example.fishing.testutil.MainDispatcherRule
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.ReportDetailUiState
@@ -37,6 +41,7 @@ class MainViewModelTest {
     private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var fakeFishingRepository: FakeFishingRepository
     private lateinit var fakeUserPreferencesRepository: FakeUserPreferencesRepository
+    private lateinit var fakeReportUploadQueue: FakeReportUploadQueue
 
     private val testUserId = UUID.randomUUID()
     private val testUser = User(
@@ -85,6 +90,7 @@ class MainViewModelTest {
         fakeAuthRepository = FakeAuthRepository()
         fakeFishingRepository = FakeFishingRepository()
         fakeUserPreferencesRepository = FakeUserPreferencesRepository()
+        fakeReportUploadQueue = FakeReportUploadQueue()
         fakeAuthRepository.sessionUser = testUser
     }
 
@@ -92,7 +98,8 @@ class MainViewModelTest {
         return MainViewModel(
             repository = fakeFishingRepository,
             authRepository = fakeAuthRepository,
-            userPreferencesRepository = fakeUserPreferencesRepository
+            userPreferencesRepository = fakeUserPreferencesRepository,
+            reportUploadQueue = fakeReportUploadQueue
         )
     }
 
@@ -1183,5 +1190,62 @@ class MainViewModelTest {
             report.photos.map { "signed:${it.url}" },
             vm.reports.value.single().photos.map { it.url }
         )
+    }
+
+    @Test
+    fun `pending uploads are exposed from the queue`() = runTest {
+        val vm = createViewModel()
+        val reportId = UUID.randomUUID()
+        val collector = backgroundScope.launch { vm.pendingUploads.collect() }
+        mainDispatcherRule.testDispatcher.scheduler.runCurrent()
+
+        fakeReportUploadQueue.setPendingRow(
+            reportId = reportId,
+            state = ReportUploadState.FAILED,
+            lastError = "offline"
+        )
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val upload = vm.pendingUploads.value.single()
+        assertEquals(reportId, upload.reportId)
+        assertEquals(ReportUploadState.FAILED, upload.state)
+        assertEquals("offline", upload.lastError)
+        collector.cancel()
+    }
+
+    @Test
+    fun `upload result becomes a notice and can be consumed`() = runTest {
+        val vm = createViewModel()
+        val collector = backgroundScope.launch { vm.uploadNotice.collect() }
+        mainDispatcherRule.testDispatcher.scheduler.runCurrent()
+
+        fakeReportUploadQueue.emitResult(
+            ReportUploadResult(
+                reportId = UUID.randomUUID(),
+                success = true,
+                isPublic = false,
+                message = null
+            )
+        )
+        mainDispatcherRule.testDispatcher.scheduler.runCurrent()
+
+        assertEquals(ReportUploadNotice.Published(isPublic = false), vm.uploadNotice.value)
+
+        vm.consumeUploadNotice()
+        assertNull(vm.uploadNotice.value)
+        collector.cancel()
+    }
+
+    @Test
+    fun `retry and cancel are forwarded to the queue`() = runTest {
+        val vm = createViewModel()
+        val reportId = UUID.randomUUID()
+
+        vm.retryPendingUpload(reportId)
+        vm.cancelPendingUpload(reportId)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(reportId), fakeReportUploadQueue.retriedReportIds)
+        assertEquals(listOf(reportId), fakeReportUploadQueue.cancelledReportIds)
     }
 }

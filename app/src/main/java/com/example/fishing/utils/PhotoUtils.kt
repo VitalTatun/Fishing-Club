@@ -47,13 +47,20 @@ object PhotoUtils {
 
     /**
      * Removes temporary photos written by the app. Safe to call on start-up and
-     * on logout: an interrupted edit is not resumable, and a pending upload keeps
-     * its files only while the process is alive.
+     * on logout: an interrupted edit is not resumable. [keepPaths] holds the
+     * files still referenced by pending uploads, which must survive a restart.
      */
-    fun clearSavedPhotos(filesDir: File) {
+    fun clearSavedPhotos(filesDir: File, keepPaths: Set<String> = emptySet()) {
         val photosDir = File(filesDir, "photos")
+        val keep = keepPaths.mapNotNull { path ->
+            runCatching { File(path).canonicalPath }.getOrNull()
+        }.toSet()
         photosDir.listFiles()?.forEach { file ->
-            runCatching { file.delete() }
+            runCatching {
+                if (file.canonicalPath !in keep) {
+                    file.delete()
+                }
+            }
         }
     }
 

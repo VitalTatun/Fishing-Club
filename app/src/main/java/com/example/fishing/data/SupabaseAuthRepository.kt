@@ -16,6 +16,7 @@ import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
 import com.example.fishing.data.supabase.ProfileDto
+import com.example.fishing.data.upload.ReportUploadQueue
 import android.util.Log
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +43,8 @@ class SupabaseAuthRepository @Inject constructor(
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
     private val likeDao: LikeDao,
-    private val markerDao: MarkerDao
+    private val markerDao: MarkerDao,
+    private val reportUploadQueue: ReportUploadQueue
 ) : AuthRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -140,8 +142,10 @@ class SupabaseAuthRepository @Inject constructor(
                 Log.e("SupabaseAuth", "Failed to clear user cache on logout: ${e.message}")
             }
         }
-        // Unsaved report photos belong to the session that just ended.
+        // Unsaved report photos belong to the session that just ended. The queue
+        // is cleared first so its rows cannot keep files alive across sessions.
         withContext(Dispatchers.IO) {
+            runCatching { reportUploadQueue.clearAll() }
             runCatching { PhotoUtils.clearSavedPhotos(appContext.filesDir) }
         }
     }

@@ -10,7 +10,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -36,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -63,6 +66,8 @@ import androidx.core.content.ContextCompat
 import com.example.fishing.R
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.MockFishingRepository
+import com.example.fishing.data.upload.ReportUploadQueue
+import com.example.fishing.data.upload.ReportUploadResult
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.ui.theme.FishingTheme
@@ -70,8 +75,12 @@ import com.example.fishing.utils.PhotoUtils
 import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.ReportPhoto
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -100,6 +109,7 @@ fun CreateReportScreen(
 
     val isSaveEnabled = viewModel.isSaveEnabled
     val isSaving = viewModel.isSaving
+    val saveProgress = viewModel.saveProgress
     val saveErrorMessage = viewModel.saveErrorMessage
     val formHasData = viewModel.formHasData
     val snackbarHostState = remember { SnackbarHostState() }
@@ -380,56 +390,121 @@ fun CreateReportScreen(
         }
     ) { paddingValues ->
         val formConfig = viewModel.formConfig
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            items(formConfig) { section ->
-                SectionGroup {
-                    section.items.forEach { field ->
-                        ReportFieldRenderer(
-                            field = field,
-                            viewModel = viewModel,
-                            onNavigateToWaterEdit = onNavigateToWaterEdit,
-                            onNavigateToWaterNameEdit = onNavigateToWaterNameEdit,
-                            onNavigateToMethodAndBaitEdit = onNavigateToMethodAndBaitEdit,
-                            onNavigateToCatchEdit = onNavigateToCatchEdit,
-                            onNavigateToCommentEdit = onNavigateToCommentEdit,
-                            onDatePickerClick = { target ->
-                                pickerTarget = target
-                                showDatePicker = true
-                            },
-                            onTimePickerClick = { target ->
-                                pickerTarget = target
-                                showTimePicker = true
-                            },
-                            onPhotoPickerClick = {
-                                if (viewModel.formPhotos.size < MaxPhotos) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    showPhotoSourceDialog = true
-                                }
-                            },
-                            isDetailsExpanded = isDetailsExpanded,
-                            onDetailsExpandClick = { isDetailsExpanded = !isDetailsExpanded },
-                            haptic = haptic
-                        )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(formConfig) { section ->
+                    SectionGroup {
+                        section.items.forEach { field ->
+                            ReportFieldRenderer(
+                                field = field,
+                                viewModel = viewModel,
+                                onNavigateToWaterEdit = onNavigateToWaterEdit,
+                                onNavigateToWaterNameEdit = onNavigateToWaterNameEdit,
+                                onNavigateToMethodAndBaitEdit = onNavigateToMethodAndBaitEdit,
+                                onNavigateToCatchEdit = onNavigateToCatchEdit,
+                                onNavigateToCommentEdit = onNavigateToCommentEdit,
+                                onDatePickerClick = { target ->
+                                    pickerTarget = target
+                                    showDatePicker = true
+                                },
+                                onTimePickerClick = { target ->
+                                    pickerTarget = target
+                                    showTimePicker = true
+                                },
+                                onPhotoPickerClick = {
+                                    if (viewModel.formPhotos.size < MaxPhotos) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        showPhotoSourceDialog = true
+                                    }
+                                },
+                                isDetailsExpanded = isDetailsExpanded,
+                                onDetailsExpandClick = { isDetailsExpanded = !isDetailsExpanded },
+                                haptic = haptic
+                            )
+                        }
                     }
                 }
+
+                item {
+                    Text(
+                        text = stringResource(R.string.required_fields),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        color = CreateReportColors.OnSurface,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
             }
-            
-            item {
-                Text(
-                    text = stringResource(R.string.required_fields),
+
+            if (isSaving) {
+                // Swallow taps so the form cannot be edited while an upload is in
+                // flight; the progress banner below stays interactive.
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    color = CreateReportColors.OnSurface,
-                    style = MaterialTheme.typography.titleMedium
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {}
                 )
+                SaveProgressBanner(
+                    progress = saveProgress,
+                    onCancel = { viewModel.cancelSave() },
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveProgressBanner(
+    progress: ReportSaveProgress?,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val text = when {
+        progress == null -> stringResource(R.string.report_save_processing)
+        progress.totalPhotos == 0 || progress.uploadedPhotos >= progress.totalPhotos ->
+            stringResource(R.string.report_save_publishing)
+        else -> stringResource(
+            R.string.report_save_uploading,
+            progress.uploadedPhotos,
+            progress.totalPhotos
+        )
+    }
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            Text(
+                text = text,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.cancel))
             }
         }
     }
@@ -453,6 +528,7 @@ private fun CreateReportScreenPreview() {
                     override suspend fun updateProfile(name: String, imageUri: String?): Result<User> = Result.failure(Exception("mock"))
                     override fun resolveImageUrl(path: String): String = ""
                 },
+                reportUploadQueue = PreviewReportUploadQueue(),
                 context = context,
                 ioDispatcher = Dispatchers.IO
             )
@@ -463,4 +539,21 @@ private fun CreateReportScreenPreview() {
             onSaveComplete = {}
         )
     }
+}
+
+/** No-op queue so the preview can build the ViewModel without Room/WorkManager. */
+private class PreviewReportUploadQueue : ReportUploadQueue {
+    override fun observePending(): Flow<List<PendingReportUpload>> = flowOf(emptyList())
+    override fun observeResults(): SharedFlow<ReportUploadResult> = MutableSharedFlow()
+    override suspend fun enqueue(
+        report: FishingReport,
+        localPhotoPaths: List<String>,
+        temporaryPhotoPaths: List<String>
+    ): Result<Unit> = Result.success(Unit)
+    override suspend fun cancel(reportId: UUID) {}
+    override suspend fun retry(reportId: UUID) {}
+    override suspend fun resumePending() {}
+    override suspend fun cleanupStale(nowMillis: Long) {}
+    override suspend fun clearAll() {}
+    override suspend fun referencedLocalPaths(): Set<String> = emptySet()
 }

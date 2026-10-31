@@ -195,6 +195,16 @@
     <string name="save_in_progress_message">Отчёт ещё загружается. Дождитесь завершения или отмените сохранение.</string>
     <string name="save_in_progress_wait">Подождать</string>
     <string name="cancel_saving">Отменить сохранение</string>
+    <string name="report_save_processing">Обработка фотографий…</string>
+    <string name="report_save_uploading">Загрузка фото: %1$d из %2$d</string>
+    <string name="report_save_publishing">Публикация отчёта…</string>
+    <string name="upload_banner_queued">Отчёт ждёт соединения</string>
+    <string name="upload_banner_uploading">Отправка отчёта: %1$d из %2$d фото</string>
+    <string name="upload_banner_publishing">Публикация отчёта…</string>
+    <string name="upload_banner_failed">Не удалось отправить отчёт</string>
+    <string name="upload_banner_more">Ещё в очереди: %1$d</string>
+    <string name="report_published_notice">Отчёт опубликован</string>
+    <string name="report_draft_saved_notice">Сохранено в черновики</string>
 
     <!-- Карта: состояния загрузки -->
     <string name="map_loading">Загрузка карты…</string>

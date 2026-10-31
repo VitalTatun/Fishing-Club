@@ -138,10 +138,14 @@ class FakeFishingRepository : FishingRepository {
         return Result.success(Unit)
     }
 
-    override suspend fun saveReport(report: FishingReport): Result<Unit> {
+    override suspend fun saveReport(
+        report: FishingReport,
+        onPhotoUploaded: (suspend (uploaded: Int, total: Int) -> Unit)?
+    ): Result<Unit> {
         saveReportCallCount++
         savedReports.add(report)
         saveReportException?.let { return Result.failure(it) }
+        onPhotoUploaded?.invoke(report.photos.size, report.photos.size)
         _homeReports.value = listOf(report) + _homeReports.value
         return Result.success(Unit)
     }

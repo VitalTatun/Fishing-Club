@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.LikeDao
 import com.example.fishing.data.local.dao.MarkerDao
+import com.example.fishing.data.local.dao.PendingReportUploadDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import dagger.Module
 import dagger.Provides
@@ -24,8 +25,11 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "fishing_database"
-        ).addMigrations(AppDatabase.MIGRATION_9_10, AppDatabase.MIGRATION_10_11)
-            .build()
+        ).addMigrations(
+            AppDatabase.MIGRATION_9_10,
+            AppDatabase.MIGRATION_10_11,
+            AppDatabase.MIGRATION_11_12
+        ).build()
     }
 
     @Provides
@@ -46,5 +50,10 @@ object DatabaseModule {
     @Provides
     fun provideLikeDao(database: AppDatabase): LikeDao {
         return database.likeDao()
+    }
+
+    @Provides
+    fun providePendingReportUploadDao(database: AppDatabase): PendingReportUploadDao {
+        return database.pendingReportUploadDao()
     }
 }

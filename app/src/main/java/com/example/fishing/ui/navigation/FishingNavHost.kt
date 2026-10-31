@@ -71,6 +71,8 @@ fun FishingNavHost(
     val mapErrorMessage by viewModel.mapRefreshError.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val reportDisplayMode by viewModel.reportDisplayMode.collectAsState()
+    val pendingUploads by viewModel.pendingUploads.collectAsState()
+    val uploadNotice by viewModel.uploadNotice.collectAsState()
 
     val isAuthenticated = authState is AuthState.Authenticated
     val currentUser = (authState as? AuthState.Authenticated)?.user
@@ -163,7 +165,12 @@ fun FishingNavHost(
                     favoriteErrorText = viewModel.favoriteError.collectAsState().value,
                     onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
                     likeErrorText = viewModel.likeError.collectAsState().value,
-                    onLikeErrorDismiss = { viewModel.clearLikeError() }
+                    onLikeErrorDismiss = { viewModel.clearLikeError() },
+                    pendingUploads = pendingUploads,
+                    uploadNotice = uploadNotice,
+                    onRetryPendingUpload = { viewModel.retryPendingUpload(it) },
+                    onCancelPendingUpload = { viewModel.cancelPendingUpload(it) },
+                    onUploadNoticeConsumed = { viewModel.consumeUploadNotice() }
                 )
             }
 

@@ -306,7 +306,13 @@ class SupabaseFishingRepository @Inject constructor(
         return true
     }
 
-    override suspend fun saveReport(report: FishingReport): Result<Unit> = withContext(ioDispatcher) {
+    override suspend fun saveReport(
+        report: FishingReport,
+        onPhotoUploaded: (suspend (uploaded: Int, total: Int) -> Unit)?
+    ): Result<Unit> = withContext(ioDispatcher) {
+        val totalPhotos = report.photos.size
+        var uploadedPhotos = report.photos.count { isStoragePath(it.url) }
+        onPhotoUploaded?.invoke(uploadedPhotos, totalPhotos)
         val now = formatDate(Date())
         val dto = report.toFishingDto(now)
         val finalDto = dto.copy(
@@ -353,6 +359,8 @@ class SupabaseFishingRepository @Inject constructor(
                         upsert = true
                     }
                     uploadedPaths.add(storagePath)
+                    uploadedPhotos++
+                    onPhotoUploaded?.invoke(uploadedPhotos, totalPhotos)
                     storagePath
                 }
             }

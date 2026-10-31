@@ -43,6 +43,7 @@ import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.HomeUiState
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.ui.screens.profile.ProfileScreen
+import kotlinx.coroutines.delay
 import java.util.*
 
 sealed class BottomNavItem(
@@ -95,6 +96,11 @@ fun MainScreen(
     onFavoriteErrorDismiss: () -> Unit = {},
     likeErrorText: String? = null,
     onLikeErrorDismiss: () -> Unit = {},
+    pendingUploads: List<PendingReportUpload> = emptyList(),
+    uploadNotice: ReportUploadNotice? = null,
+    onRetryPendingUpload: (UUID) -> Unit = {},
+    onCancelPendingUpload: (UUID) -> Unit = {},
+    onUploadNoticeConsumed: () -> Unit = {},
 ) {
     val items = listOf(
         BottomNavItem.Home,
@@ -516,6 +522,122 @@ fun MainScreen(
                 ) {
                     Text(likeErrorText)
                 }
+            }
+
+            pendingUploads.firstOrNull()?.let { upload ->
+                ReportUploadBanner(
+                    upload = upload,
+                    extraCount = (pendingUploads.size - 1).coerceAtLeast(0),
+                    onRetry = { onRetryPendingUpload(upload.reportId) },
+                    onCancel = { onCancelPendingUpload(upload.reportId) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(8.dp)
+                )
+            }
+
+            if (uploadNotice != null) {
+                val noticeText = when (uploadNotice) {
+                    is ReportUploadNotice.Published -> stringResource(
+                        if (uploadNotice.isPublic) R.string.report_published_notice
+                        else R.string.report_draft_saved_notice
+                    )
+                    is ReportUploadNotice.Failed ->
+                        uploadNotice.message.ifBlank { stringResource(R.string.error_save_report) }
+                }
+                LaunchedEffect(uploadNotice) {
+                    delay(4_000)
+                    onUploadNoticeConsumed()
+                }
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(
+                            start = 8.dp,
+                            end = 8.dp,
+                            bottom = if (pendingUploads.isNotEmpty()) 92.dp else 8.dp
+                        ),
+                    action = {
+                        TextButton(onClick = onUploadNoticeConsumed) {
+                            Text(stringResource(R.string.ok))
+                        }
+                    }
+                ) {
+                    Text(noticeText)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReportUploadBanner(
+    upload: PendingReportUpload,
+    extraCount: Int,
+    onRetry: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val text = when (upload.state) {
+        ReportUploadState.FAILED -> stringResource(R.string.upload_banner_failed)
+        ReportUploadState.QUEUED -> stringResource(R.string.upload_banner_queued)
+        ReportUploadState.UPLOADING ->
+            if (upload.totalPhotos > 0 && upload.uploadedPhotos < upload.totalPhotos) {
+                stringResource(
+                    R.string.upload_banner_uploading,
+                    upload.uploadedPhotos,
+                    upload.totalPhotos
+                )
+            } else {
+                stringResource(R.string.upload_banner_publishing)
+            }
+    }
+    val isFailed = upload.state == ReportUploadState.FAILED
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = if (isFailed) MaterialTheme.colorScheme.errorContainer
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (!isFailed) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+                Text(
+                    text = text,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                if (isFailed) {
+                    TextButton(onClick = onRetry) {
+                        Text(stringResource(R.string.retry))
+                    }
+                    TextButton(onClick = onCancel) {
+                        Text(stringResource(R.string.delete))
+                    }
+                } else {
+                    TextButton(onClick = onCancel) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            }
+            if (extraCount > 0) {
+                Text(
+                    text = stringResource(R.string.upload_banner_more, extraCount),
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
         }
     }

@@ -37,7 +37,15 @@ interface FishingRepository {
     suspend fun refreshMapMarkers(): Result<List<MarkerDomain>>
     suspend fun addFavorite(report: FishingReport): Result<Unit>
     suspend fun removeFavorite(reportId: UUID): Result<Unit>
-    suspend fun saveReport(report: FishingReport): Result<Unit>
+    /**
+     * Saves (and optionally publishes) a report. [onPhotoUploaded] is called with
+     * the number of photos already in storage and the total count, so callers can
+     * persist progress that survives process death.
+     */
+    suspend fun saveReport(
+        report: FishingReport,
+        onPhotoUploaded: (suspend (uploaded: Int, total: Int) -> Unit)? = null
+    ): Result<Unit>
     suspend fun deleteReport(id: UUID): Result<Unit>
     suspend fun getPhotoSignedUrl(storagePath: String): String?
     /** Resolves many storage paths in as few requests as possible. */
@@ -74,8 +82,12 @@ class MockFishingRepository : FishingRepository {
         emit(reports.firstOrNull { it.id == id })
     }
 
-    override suspend fun saveReport(report: FishingReport): Result<Unit> {
+    override suspend fun saveReport(
+        report: FishingReport,
+        onPhotoUploaded: (suspend (uploaded: Int, total: Int) -> Unit)?
+    ): Result<Unit> {
         reports.add(0, report)
+        onPhotoUploaded?.invoke(report.photos.size, report.photos.size)
         return Result.success(Unit)
     }
 

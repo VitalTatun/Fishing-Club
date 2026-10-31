@@ -25,6 +25,7 @@ import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.ErrorMapper
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.IoDispatcher
+import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.model.*
 import com.example.fishing.utils.PhotoUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,6 +33,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
@@ -62,12 +66,14 @@ private data class ProcessedPhotos(
 class CreateReportViewModel @Inject constructor(
     private val repository: FishingRepository,
     private val authRepository: AuthRepository,
+    private val reportUploadQueue: ReportUploadQueue,
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private var currentReportId: UUID = UUID.randomUUID()
     private var saveJob: Job? = null
+    private var pendingProcessedPaths: List<String> = emptyList()
 
     // Form state
     var formReportType by mutableStateOf(FishingType.FISHING_LOG)
@@ -90,6 +96,9 @@ class CreateReportViewModel @Inject constructor(
 
     var saveState by mutableStateOf(CreateReportSaveState.Idle)
     var saveErrorMessage by mutableStateOf<String?>(null)
+
+    /** Null while photos are still being processed on-device. */
+    var saveProgress by mutableStateOf<ReportSaveProgress?>(null)
 
     val isSaving: Boolean
         get() = saveState == CreateReportSaveState.Saving
@@ -355,7 +364,10 @@ class CreateReportViewModel @Inject constructor(
 
         saveState = CreateReportSaveState.Saving
         saveErrorMessage = null
+        saveProgress = null
+        pendingProcessedPaths = emptyList()
         val photosSnapshot = formPhotos
+        val reportId = currentReportId
 
         saveJob = viewModelScope.launch {
             try {
@@ -403,9 +415,11 @@ class CreateReportViewModel @Inject constructor(
                 val fishingPhotos = photoResult.processed.map { (id, path) ->
                     FishingPhoto(id = id, url = path)
                 }
+                val localPaths = photoResult.processed.map { it.second }
+                pendingProcessedPaths = localPaths
 
                 val report = FishingReport(
-                    id = currentReportId,
+                    id = reportId,
                     userId = currentUser.id,
                     type = formReportType,
                     name = buildReportName(),
@@ -431,30 +445,56 @@ class CreateReportViewModel @Inject constructor(
                     isPublic = formIsPublic
                 )
 
-                val result = try {
-                    repository.saveReport(report)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.e(TAG, "saveReport failed", e)
-                    Result.failure(e)
+                // The queue row is the source of truth: WorkManager picks the report
+                // up, survives process death and keeps retrying with backoff.
+                val enqueued = reportUploadQueue.enqueue(
+                    report = report,
+                    localPhotoPaths = localPaths,
+                    temporaryPhotoPaths = localPaths
+                )
+                val enqueueError = enqueued.exceptionOrNull()
+                if (enqueueError != null) {
+                    Log.e(TAG, "saveReport: could not enqueue upload", enqueueError)
+                    saveState = CreateReportSaveState.Error
+                    saveErrorMessage = ErrorMapper.toUserFriendlyMessage(enqueueError)
+                    return@launch
                 }
 
-                val error = result.exceptionOrNull()
-                if (error == null) {
+                // Progress and completion come from the queue, so the screen keeps
+                // showing the right state even after the form itself is gone.
+                val terminalRows = reportUploadQueue.observePending()
+                    .onEach { rows ->
+                        val row = rows.firstOrNull { it.reportId == reportId }
+                        if (row != null) {
+                            saveProgress = ReportSaveProgress(
+                                uploadedPhotos = row.uploadedPhotos,
+                                totalPhotos = row.totalPhotos
+                            )
+                        }
+                    }
+                    .first { rows ->
+                        val row = rows.firstOrNull { it.reportId == reportId }
+                        row == null || row.state == ReportUploadState.FAILED
+                    }
+
+                val failedRow = terminalRows.firstOrNull { it.reportId == reportId }
+                if (failedRow == null) {
+                    // The worker removed the row only after a successful publish.
                     withContext(ioDispatcher) {
                         cleanupTempPhotos(
                             photos = photosSnapshot,
-                            extraFiles = fishingPhotos.map { it.url }
+                            extraFiles = pendingProcessedPaths
                         )
                     }
+                    pendingProcessedPaths = emptyList()
+                    saveProgress = null
                     saveState = CreateReportSaveState.Success
                     onSuccess()
                     resetFormState(cleanupPhotos = false)
                 } else {
-                    Log.e(TAG, "saveReport failed: ${error.message}", error)
                     saveState = CreateReportSaveState.Error
-                    saveErrorMessage = ErrorMapper.toUserFriendlyMessage(error)
+                    saveErrorMessage = failedRow.lastError
+                        ?: context.getString(R.string.error_save_report)
                 }
             } catch (e: CancellationException) {
                 // Cancellation is not an error; the form and photo files stay intact.
@@ -472,14 +512,32 @@ class CreateReportViewModel @Inject constructor(
     }
 
     fun cancelSave() {
-        saveJob?.cancel()
+        val job = saveJob
+        val reportId = currentReportId
         saveJob = null
+        saveProgress = null
         resetSaveState()
+
+        viewModelScope.launch {
+            // Wait for the cancelled job first so an enqueue that was already in
+            // flight is visible to the queue cancellation.
+            job?.cancelAndJoin()
+            reportUploadQueue.cancel(reportId)
+            // When the job was cancelled before the queue row was written there is
+            // nothing for the queue to clean up, so remove its copies here.
+            withContext(ioDispatcher) {
+                pendingProcessedPaths.forEach { path ->
+                    runCatching { File(path).delete() }
+                }
+            }
+            pendingProcessedPaths = emptyList()
+        }
     }
 
     fun resetSaveState() {
         saveState = CreateReportSaveState.Idle
         saveErrorMessage = null
+        saveProgress = null
     }
 
     fun resetFormState(cleanupPhotos: Boolean = true) {
