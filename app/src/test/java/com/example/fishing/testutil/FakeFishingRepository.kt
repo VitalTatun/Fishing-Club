@@ -84,6 +84,12 @@ class FakeFishingRepository : FishingRepository {
     val savedReports = mutableListOf<FishingReport>()
     val lastSavedReportId: UUID? get() = savedReports.lastOrNull()?.id
 
+    var getPhotoSignedUrlsCallCount = 0
+    var getPhotoSignedUrlsException: Exception? = null
+    var getPhotoSignedUrlsGate: CompletableDeferred<Unit>? = null
+    var signedUrlResults: Map<String, String> = emptyMap()
+    val getPhotoSignedUrlsRequests = mutableListOf<List<String>>()
+
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = _homeReports.asStateFlow()
 
     override fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>> = _favoriteReports.asStateFlow()
@@ -151,7 +157,19 @@ class FakeFishingRepository : FishingRepository {
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? = storagePath
 
-    override fun isStoragePath(path: String): Boolean = false
+    override suspend fun getPhotoSignedUrls(storagePaths: List<String>): Map<String, String> {
+        getPhotoSignedUrlsCallCount++
+        getPhotoSignedUrlsRequests += storagePaths
+        getPhotoSignedUrlsGate?.await()
+        getPhotoSignedUrlsException?.let { throw it }
+        return storagePaths.associateWith { path ->
+            signedUrlResults[path] ?: "signed:$path"
+        }
+    }
+
+    override fun isStoragePath(path: String): Boolean {
+        return !path.startsWith("http") && !path.startsWith("/")
+    }
 
     override suspend fun addLike(reportId: UUID): Result<Unit> {
         addLikeCallCount++

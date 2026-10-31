@@ -79,6 +79,9 @@ class SupabaseFishingRepository @Inject constructor(
 
     private companion object {
         const val PAGE_SIZE = 20
+
+        // Supabase Storage accepts a limited number of paths per signed-url call.
+        const val SIGNED_URL_BATCH_SIZE = 50
     }
 
     private val datePatterns = listOf(
@@ -690,6 +693,27 @@ class SupabaseFishingRepository @Inject constructor(
             e.printStackTrace()
             null
         }
+    }
+
+    override suspend fun getPhotoSignedUrls(storagePaths: List<String>): Map<String, String> {
+        val paths = storagePaths.filter { isStoragePath(it) }.distinct()
+        if (paths.isEmpty()) return emptyMap()
+
+        val result = mutableMapOf<String, String>()
+        paths.chunked(SIGNED_URL_BATCH_SIZE).forEach { chunk ->
+            val signedUrls = supabase.storage.from("fishing_photos")
+                .createSignedUrls(24.hours, chunk)
+            signedUrls.forEach { signed ->
+                if (signed.error == null) {
+                    result[signed.path] = if (signed.signedURL.startsWith("http")) {
+                        signed.signedURL
+                    } else {
+                        SupabaseConfig.URL.trimEnd('/') + signed.signedURL
+                    }
+                }
+            }
+        }
+        return result
     }
 
     override fun isStoragePath(path: String): Boolean {

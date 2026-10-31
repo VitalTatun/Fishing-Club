@@ -42,12 +42,13 @@ class EditProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            
+            var localImagePath: String? = null
+
             try {
-                val localImagePath = imageUri?.let {
+                localImagePath = imageUri?.let {
                     PhotoUtils.copyPhotoToInternalStorage(contentResolver, filesDir, it)
                 }
-                
+
                 val result = authRepository.updateProfile(name, localImagePath)
                 if (result.isSuccess) {
                     _user.value = result.getOrNull()
@@ -58,6 +59,9 @@ class EditProfileViewModel @Inject constructor(
             } catch (e: Exception) {
                 _error.value = ErrorMapper.toUserFriendlyMessage(e)
             } finally {
+                // The avatar is uploaded to Storage; the local temp copy is no
+                // longer needed, so filesDir/photos does not accumulate files.
+                localImagePath?.let { path -> runCatching { File(path).delete() } }
                 _isLoading.value = false
             }
         }

@@ -1,5 +1,6 @@
 package com.example.fishing
 
+import com.example.fishing.model.FishingPhoto
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MarkerDomain
@@ -1109,5 +1110,78 @@ class MainViewModelTest {
         assertEquals(1, fakeFishingRepository.addLikeCallCount)
         assertTrue(vm.likeStates.value.isEmpty())
         assertNull(vm.likeError.value)
+    }
+
+    private fun reportWithPhotos(count: Int): FishingReport {
+        val photos = (1..count).map { index ->
+            FishingPhoto(
+                id = UUID.randomUUID(),
+                url = "user/report/photo_$index.jpg"
+            )
+        }
+        return createReport().copy(photos = photos)
+    }
+
+    @Test
+    fun `photos are resolved with a single batched request`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = reportWithPhotos(count = 20)
+        fakeFishingRepository.homeReportsValue = listOf(report)
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.getPhotoSignedUrlsCallCount)
+        assertEquals(
+            report.photos.map { it.url },
+            fakeFishingRepository.getPhotoSignedUrlsRequests.single()
+        )
+        assertEquals(
+            report.photos.map { "signed:${it.url}" },
+            vm.reports.value.single().photos.map { it.url }
+        )
+    }
+
+    @Test
+    fun `signed urls are reused from the cache on refresh`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.homeReportsValue = listOf(reportWithPhotos(count = 3))
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, fakeFishingRepository.getPhotoSignedUrlsCallCount)
+
+        vm.refresh()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.getPhotoSignedUrlsCallCount)
+        assertTrue(vm.reports.value.single().photos.all { it.url.startsWith("signed:") })
+    }
+
+    @Test
+    fun `failed signed url lookup is retried instead of cached`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = reportWithPhotos(count = 2)
+        fakeFishingRepository.homeReportsValue = listOf(report)
+        fakeFishingRepository.getPhotoSignedUrlsException = Exception("offline")
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.getPhotoSignedUrlsCallCount)
+        assertEquals(
+            report.photos.map { it.url },
+            vm.reports.value.single().photos.map { it.url }
+        )
+
+        fakeFishingRepository.getPhotoSignedUrlsException = null
+        vm.refresh()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeFishingRepository.getPhotoSignedUrlsCallCount)
+        assertEquals(
+            report.photos.map { "signed:${it.url}" },
+            vm.reports.value.single().photos.map { it.url }
+        )
     }
 }

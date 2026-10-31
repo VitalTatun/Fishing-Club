@@ -1,7 +1,9 @@
 package com.example.fishing.data
 
+import android.content.Context
 import com.example.fishing.model.AuthState
 import com.example.fishing.model.User
+import com.example.fishing.utils.PhotoUtils
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.LikeDao
@@ -25,7 +27,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -33,6 +37,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SupabaseAuthRepository @Inject constructor(
+    @param:ApplicationContext private val appContext: Context,
     private val supabase: SupabaseClient,
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
@@ -135,6 +140,10 @@ class SupabaseAuthRepository @Inject constructor(
                 Log.e("SupabaseAuth", "Failed to clear user cache on logout: ${e.message}")
             }
         }
+        // Unsaved report photos belong to the session that just ended.
+        withContext(Dispatchers.IO) {
+            runCatching { PhotoUtils.clearSavedPhotos(appContext.filesDir) }
+        }
     }
 
     override fun currentUser(): User? {
@@ -194,9 +203,11 @@ class SupabaseAuthRepository @Inject constructor(
         }
 
         val storagePath = path.substringBefore('?')
-        val bucket = if (storagePath.startsWith("avatars/")) "avatars" else "fishing_photos"
+        // Only the avatars bucket is public. Report photos live in the private
+        // "fishing_photos" bucket and must be read through signed URLs.
+        if (!storagePath.startsWith("avatars/")) return path
 
-        return "${SupabaseConfig.URL.trimEnd('/')}/storage/v1/object/public/$bucket/$storagePath"
+        return "${SupabaseConfig.URL.trimEnd('/')}/storage/v1/object/public/avatars/$storagePath"
     }
 
     private suspend fun syncProfile(user: User) {

@@ -40,6 +40,8 @@ interface FishingRepository {
     suspend fun saveReport(report: FishingReport): Result<Unit>
     suspend fun deleteReport(id: UUID): Result<Unit>
     suspend fun getPhotoSignedUrl(storagePath: String): String?
+    /** Resolves many storage paths in as few requests as possible. */
+    suspend fun getPhotoSignedUrls(storagePaths: List<String>): Map<String, String>
     fun isStoragePath(path: String): Boolean
     suspend fun addLike(reportId: UUID): Result<Unit>
     suspend fun removeLike(reportId: UUID): Result<Unit>
@@ -107,6 +109,10 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? {
         return storagePath
+    }
+
+    override suspend fun getPhotoSignedUrls(storagePaths: List<String>): Map<String, String> {
+        return storagePaths.associateWith { it }
     }
 
     override fun isStoragePath(path: String): Boolean {

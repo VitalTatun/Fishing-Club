@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.osmdroid.util.GeoPoint
 import javax.inject.Inject
 import java.util.Date
@@ -54,6 +56,11 @@ class MainViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userPreferencesRepository: UserPreferencesSource
 ) : ViewModel() {
+
+    private companion object {
+        const val SIGNED_URL_TTL_MILLIS = 24L * 60 * 60 * 1000
+        const val SIGNED_URL_REFRESH_BEFORE_MILLIS = 5L * 60 * 1000
+    }
 
     private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
     val reports: StateFlow<List<FishingReport>> = _reports.asStateFlow()
@@ -181,7 +188,16 @@ class MainViewModel @Inject constructor(
     private var reportDetailsJob: Job? = null
     private var deleteReportJob: Job? = null
     private var likesLoadJob: Job? = null
-    private val signedPhotoUrlCache = mutableMapOf<String, String>()
+
+    private data class CachedSignedUrl(val url: String, val expiresAtMillis: Long)
+
+    // Signed URLs are valid for 24h. Refresh slightly early so an image request
+    // never races the expiry, and never cache failures — the next render retries.
+    private val signedPhotoUrlCache = mutableMapOf<String, CachedSignedUrl>()
+    private val signedPhotoUrlMutex = Mutex()
+    private var homePhotosVersion = 0
+    private var favoritePhotosVersion = 0
+    private var detailPhotosVersion = 0
 
     private var currentUserId: UUID? = null
     // Remembers which user the home state was already loaded for, so repeated
@@ -264,7 +280,10 @@ class MainViewModel @Inject constructor(
         mapLastCenterLon = null
         mapLastZoom = 6.0
 
-        signedPhotoUrlCache.clear()
+        homePhotosVersion++
+        favoritePhotosVersion++
+        detailPhotosVersion++
+        synchronized(signedPhotoUrlCache) { signedPhotoUrlCache.clear() }
     }
 
     fun refresh() {
@@ -525,9 +544,20 @@ class MainViewModel @Inject constructor(
                 try {
                     repository.getReportDetails(id).collect { report ->
                         if (report != null) {
+                            // Render immediately with raw paths, then swap in signed
+                            // URLs. Network work never blocks the Room collector.
                             _reportDetailUiState.value = ReportDetailUiState.Success(
-                                report.copy(photos = resolvePhotoUrls(report.photos))
+                                applyCachedPhotoUrls(listOf(report)).single()
                             )
+                            val version = ++detailPhotosVersion
+                            launch {
+                                val resolved = report.copy(
+                                    photos = resolvePhotoUrls(report.photos)
+                                )
+                                if (version == detailPhotosVersion) {
+                                    _reportDetailUiState.value = ReportDetailUiState.Success(resolved)
+                                }
+                            }
                         }
                     }
                 } catch (e: CancellationException) {
@@ -585,15 +615,20 @@ class MainViewModel @Inject constructor(
             launch {
                 try {
                     repository.getHomeReports(userId = userId).collect { reports ->
-                        _reports.value = reports.map { report ->
-                            report.copy(
-                                photos = resolvePhotoUrls(report.photos)
-                            )
-                        }
+                        // Show cached rows at once; signed URLs are resolved in a
+                        // separate coroutine so the UI is not delayed by network I/O.
+                        _reports.value = applyCachedPhotoUrls(reports)
                         // Cached data is enough to leave the full-screen loading
                         // state; the network refresh keeps running quietly below.
                         if (reports.isNotEmpty()) {
                             _isInitialLoading.value = false
+                        }
+                        val version = ++homePhotosVersion
+                        launch {
+                            val resolved = resolveReportsPhotoUrls(reports)
+                            if (version == homePhotosVersion) {
+                                _reports.value = resolved
+                            }
                         }
                     }
                 } catch (e: CancellationException) {
@@ -605,8 +640,13 @@ class MainViewModel @Inject constructor(
             launch {
                 try {
                     repository.getFavoriteReports(userId).collect { reports ->
-                        _favoriteReports.value = reports.map { report ->
-                            report.copy(photos = resolvePhotoUrls(report.photos))
+                        _favoriteReports.value = applyCachedPhotoUrls(reports)
+                        val version = ++favoritePhotosVersion
+                        launch {
+                            val resolved = resolveReportsPhotoUrls(reports)
+                            if (version == favoritePhotosVersion) {
+                                _favoriteReports.value = resolved
+                            }
                         }
                     }
                 } catch (e: CancellationException) {
@@ -656,15 +696,123 @@ class MainViewModel @Inject constructor(
     }
 
     private suspend fun resolvePhotoUrls(photos: List<FishingPhoto>): List<FishingPhoto> {
+        val storagePaths = photos.map { it.url }
+            .filter { repository.isStoragePath(it) }
+            .distinct()
+        if (storagePaths.isEmpty()) return photos
+
+        val urls = resolveSignedUrls(storagePaths)
+        if (urls.isEmpty()) return photos
         return photos.map { photo ->
-            if (repository.isStoragePath(photo.url)) {
-                val signedUrl = signedPhotoUrlCache.getOrPut(photo.url) {
-                    repository.getPhotoSignedUrl(photo.url) ?: photo.url
+            urls[photo.url]?.let { photo.copy(url = it) } ?: photo
+        }
+    }
+
+    /**
+     * Reuses already known signed URLs so repeated Room emissions (likes, cache
+     * updates) do not flash raw storage paths before the async resolve finishes.
+     */
+    private fun applyCachedPhotoUrls(reports: List<FishingReport>): List<FishingReport> {
+        val now = System.currentTimeMillis()
+        val snapshot = synchronized(signedPhotoUrlCache) { signedPhotoUrlCache.toMap() }
+        if (snapshot.isEmpty()) return reports
+        return reports.map { report ->
+            report.copy(
+                photos = report.photos.map { photo ->
+                    val cached = snapshot[photo.url]
+                    if (cached != null &&
+                        now < cached.expiresAtMillis - SIGNED_URL_REFRESH_BEFORE_MILLIS
+                    ) {
+                        photo.copy(url = cached.url)
+                    } else {
+                        photo
+                    }
                 }
-                photo.copy(url = signedUrl)
-            } else {
-                photo
+            )
+        }
+    }
+
+    private suspend fun resolveReportsPhotoUrls(
+        reports: List<FishingReport>
+    ): List<FishingReport> {
+        val storagePaths = reports.flatMap { it.photos }
+            .map { it.url }
+            .filter { repository.isStoragePath(it) }
+            .distinct()
+        if (storagePaths.isEmpty()) return reports
+
+        val urls = resolveSignedUrls(storagePaths)
+        if (urls.isEmpty()) return reports
+        return reports.map { report ->
+            report.copy(
+                photos = report.photos.map { photo ->
+                    urls[photo.url]?.let { photo.copy(url = it) } ?: photo
+                }
+            )
+        }
+    }
+
+    /**
+     * Resolves signed URLs for [storagePaths] using the cache where possible and
+     * one batched repository call for the rest. A failed lookup is not cached, so
+     * the next render tries again.
+     */
+    private suspend fun resolveSignedUrls(storagePaths: List<String>): Map<String, String> {
+        val now = System.currentTimeMillis()
+        val resolved = mutableMapOf<String, String>()
+        val missing = mutableListOf<String>()
+
+        synchronized(signedPhotoUrlCache) {
+            signedPhotoUrlCache.entries.removeAll { it.value.expiresAtMillis <= now }
+            storagePaths.forEach { path ->
+                val cached = signedPhotoUrlCache[path]
+                if (cached != null &&
+                    now < cached.expiresAtMillis - SIGNED_URL_REFRESH_BEFORE_MILLIS
+                ) {
+                    resolved[path] = cached.url
+                } else {
+                    missing += path
+                }
             }
+        }
+        if (missing.isEmpty()) return resolved
+
+        return signedPhotoUrlMutex.withLock {
+            val toFetch = mutableListOf<String>()
+            val lockedNow = System.currentTimeMillis()
+            synchronized(signedPhotoUrlCache) {
+                missing.forEach { path ->
+                    val cached = signedPhotoUrlCache[path]
+                    if (cached != null &&
+                        lockedNow < cached.expiresAtMillis - SIGNED_URL_REFRESH_BEFORE_MILLIS
+                    ) {
+                        resolved[path] = cached.url
+                    } else {
+                        toFetch += path
+                    }
+                }
+            }
+
+            if (toFetch.isNotEmpty()) {
+                val fetched = try {
+                    repository.getPhotoSignedUrls(toFetch)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emptyMap()
+                }
+                if (fetched.isNotEmpty()) {
+                    val expiresAt = lockedNow + SIGNED_URL_TTL_MILLIS
+                    synchronized(signedPhotoUrlCache) {
+                        fetched.forEach { (path, url) ->
+                            signedPhotoUrlCache[path] = CachedSignedUrl(url, expiresAt)
+                            resolved[path] = url
+                        }
+                    }
+                }
+            }
+            resolved
         }
     }
 
