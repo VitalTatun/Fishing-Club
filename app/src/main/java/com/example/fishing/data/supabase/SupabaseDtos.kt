@@ -71,6 +71,12 @@ data class PhotoDto(
     @SerialName("created_at") val createdAt: String? = null
 )
 
+/** Minimal projection used by the orphan-photo cleanup. */
+@Serializable
+data class PhotoPathDto(
+    @SerialName("storage_path") val storagePath: String
+)
+
 @Serializable
 data class FavoriteDto(
     @Serializable(with = UuidSerializer::class) @SerialName("user_id") val userId: UUID,

@@ -3,6 +3,7 @@ package com.example.fishing
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.example.fishing.data.cleanup.OrphanPhotoCleanupScheduler
 import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.utils.PhotoUtils
 import dagger.hilt.android.HiltAndroidApp
@@ -21,6 +22,9 @@ class FishingApp : Application(), Configuration.Provider {
 
     @Inject
     lateinit var reportUploadQueue: ReportUploadQueue
+
+    @Inject
+    lateinit var orphanPhotoCleanupScheduler: OrphanPhotoCleanupScheduler
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -46,6 +50,7 @@ class FishingApp : Application(), Configuration.Provider {
                 PhotoUtils.clearSavedPhotos(filesDir, keepPaths)
                 reportUploadQueue.resumePending()
             }
+            runCatching { orphanPhotoCleanupScheduler.schedule() }
         }
     }
 }
