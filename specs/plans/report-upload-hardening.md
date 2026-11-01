@@ -643,10 +643,28 @@
 5. Переиспользовать существующие `FakeFishingRepository`/`FakeAuthRepository`
    и `Migration_*` тесты.
 
+**Статус (Step 14):**
+
+- [x] 3. Unit-тесты VM — `CreateReportViewModelTest` (enqueue, прогресс, `FAILED`,
+      ошибка enqueue, отмена) и `MainViewModelTest` (баннер очереди, снекбар,
+      retry/cancel, пакетные signed URL и кэш).
+- [x] 5. `Migration_11_12_Test` (Robolectric, `app/src/test`): v11 → v12,
+      сохраняет существующие отчёты, создаёт `pending_report_uploads` и
+      проверяет round-trip через `PendingReportUploadDao`.
+- [x] Поведение upload-кода покрыто на уровне `ReportUploadProcessorTest`
+      (успех + очистка файлов, retry, `FAILED` после 3 попыток, `FAILED`-строка
+      не перезапускается) и `OrphanPhotoSelectionTest`.
+- [ ] 1–2. Выделение `ReportRemoteDataSource` и unit-тесты самого
+      `SupabaseFishingRepository` (падение upload на 2-м фото, падение RPC,
+      retry с тем же `id`, delete-missing, `CancellationException`) — остаётся.
+- [ ] 4. Instrumented-тест `publish_report` RPC — нужен эмулятор/устройство и
+      доступ к проекту; не выполнялся.
+- [ ] Coverage ≥ 80% — не измерялся, JaCoCo в проект не подключён.
+
 **Критерий успеха:**
 
-- [ ] Coverage нового upload-кода ≥ 80%.
-- [ ] Все сценарии выше — зелёные в CI (`:app:testDebugUnitTest`).
+- [ ] Coverage нового upload-кода ≥ 80% (не измерялся).
+- [x] `./gradlew :app:testDebugUnitTest` — зелёный.
 
 **Зависимости:** Step 3, Step 7.
 
