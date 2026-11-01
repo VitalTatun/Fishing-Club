@@ -27,13 +27,9 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.encodeToString
@@ -56,6 +52,7 @@ import javax.inject.Singleton
 class SupabaseFishingRepository @Inject constructor(
     private val supabase: SupabaseClient,
     private val authRepository: AuthRepository,
+    private val reportRemoteDataSource: ReportRemoteDataSource,
     private val markerDao: MarkerDao,
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
@@ -340,8 +337,9 @@ class SupabaseFishingRepository @Inject constructor(
                 // Uploading with upsert=true may overwrite objects that an existing
                 // report still references, so their cleanup on failure is not safe.
                 // If we cannot tell whether the report exists, keep the files.
-                reportExistedOnServer = runCatching { reportExistsOnServer(report.id) }
-                    .getOrDefault(true)
+                reportExistedOnServer = runCatching {
+                    reportRemoteDataSource.reportExists(report.id)
+                }.getOrDefault(true)
             }
             val storagePaths = report.photos.map { photo ->
                 ensureActive()
@@ -355,9 +353,7 @@ class SupabaseFishingRepository @Inject constructor(
                     if (!file.exists()) {
                         throw IllegalStateException("Photo file not found: ${photo.url}")
                     }
-                    supabase.storage.from("fishing_photos").upload(storagePath, file.readBytes()) {
-                        upsert = true
-                    }
+                    reportRemoteDataSource.uploadPhoto(storagePath, file.readBytes())
                     uploadedPaths.add(storagePath)
                     uploadedPhotos++
                     onPhotoUploaded?.invoke(uploadedPhotos, totalPhotos)
@@ -380,22 +376,17 @@ class SupabaseFishingRepository @Inject constructor(
                 )
             }
 
-            val rpcResult = supabase.postgrest.rpc(
-                function = "publish_report",
-                parameters = buildJsonObject {
-                    put("payload", buildPublishPayload(finalDto, fishDtos, baitDtos, photoDtos))
-                }
+            val publishResult = reportRemoteDataSource.publishReport(
+                buildPublishPayload(finalDto, fishDtos, baitDtos, photoDtos)
             )
             publishedOnServer = true
 
             // 4. Photos removed from the form are no longer referenced by the DB.
             // Deleting their objects is best-effort: a failure here only leaves
             // harmless orphans and must not fail an already published report.
-            val removedPhotoPaths = parseRemovedPhotoPaths(rpcResult.data)
+            val removedPhotoPaths = publishResult.removedPhotoPaths
             if (removedPhotoPaths.isNotEmpty()) {
-                runCatching {
-                    supabase.storage.from("fishing_photos").delete(removedPhotoPaths)
-                }
+                runCatching { reportRemoteDataSource.deletePhotos(removedPhotoPaths) }
             }
 
             val markerEntity = finalDto.toMarkerEntity(report.fish.map { it.name })
@@ -446,9 +437,7 @@ class SupabaseFishingRepository @Inject constructor(
             // Only delete files uploaded in THIS call, and only when the server
             // holds no report that may already reference those deterministic paths.
             if (!reportExistedOnServer && !publishedOnServer && uploadedPaths.isNotEmpty()) {
-                runCatching {
-                    supabase.storage.from("fishing_photos").delete(uploadedPaths)
-                }
+                runCatching { reportRemoteDataSource.deletePhotos(uploadedPaths) }
             }
             Result.failure(e)
         }
@@ -992,32 +981,6 @@ class SupabaseFishingRepository @Inject constructor(
                 }
             }
         }
-    }
-
-    private suspend fun reportExistsOnServer(id: UUID): Boolean {
-        return supabase.postgrest["fishing"]
-            .select(Columns.list("id")) {
-                filter { eq("id", id) }
-                limit(1)
-            }
-            .decodeList<JsonObject>()
-            .isNotEmpty()
-    }
-
-    /**
-     * The RPC returns `{ "id": ..., "removed_photo_paths": [...] }`.
-     * Accept both a bare object and an array-wrapped row for safety.
-     */
-    private fun parseRemovedPhotoPaths(body: String): List<String> {
-        val element = runCatching { json.parseToJsonElement(body) }.getOrNull()
-            ?: return emptyList()
-        val obj = (element as? JsonObject)
-            ?: ((element as? JsonArray)?.firstOrNull() as? JsonObject)
-            ?: return emptyList()
-        return obj["removed_photo_paths"]
-            ?.jsonArray
-            ?.mapNotNull { it.jsonPrimitive.contentOrNull }
-            .orEmpty()
     }
 
     private fun Fish.toFishDto(fishingId: UUID): FishDto {

@@ -21,4 +21,10 @@ abstract class RepositoryModule {
     abstract fun bindUserPreferencesSource(
         repository: UserPreferencesRepository
     ): UserPreferencesSource
+
+    @Binds
+    @Singleton
+    abstract fun bindReportRemoteDataSource(
+        dataSource: SupabaseReportRemoteDataSource
+    ): ReportRemoteDataSource
 }

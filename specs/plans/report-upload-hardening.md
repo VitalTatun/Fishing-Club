@@ -659,9 +659,21 @@
 - [x] Поведение upload-кода покрыто на уровне `ReportUploadProcessorTest`
       (успех + очистка файлов, retry, `FAILED` после 3 попыток, `FAILED`-строка
       не перезапускается) и `OrphanPhotoSelectionTest`.
-- [ ] 1–2. Выделение `ReportRemoteDataSource` и unit-тесты самого
-      `SupabaseFishingRepository` (падение upload на 2-м фото, падение RPC,
-      retry с тем же `id`, delete-missing, `CancellationException`) — остаётся.
+- [x] 1–2. Удалённый слой вынесен в `ReportRemoteDataSource`
+      (`reportExists`, `uploadPhoto`, `publishReport`, `deletePhotos`).
+      Supabase-реализация — `SupabaseReportRemoteDataSource`; Hilt-биндинг в
+      `RepositoryModule`. `SupabaseFishingRepository.saveReport` больше не
+      обращается к Supabase напрямую в пути публикации.
+- [x] `SupabaseFishingRepositoryTest` (Robolectric + in-memory Room +
+      fake remote): успешная публикация (прогресс, payload, кэш, маркер,
+      удаление убранных фото), падение 2-го upload (компенсация, нет строки),
+      падение RPC (нет частичных строк), retry с тем же `id` без дублей,
+      существующий отчёт не удаляет файлы при ошибке RPC, best-effort
+      cleanup, `CancellationException` пробрасывается, чужой `userId`
+      отклоняется, черновик без `published_at`.
+- [x] `SupabaseReportRemoteDataSourceTest` — разбор ответа RPC: объект,
+      обёрнутый в массив, отсутствие `removed_photo_paths`, битый/неожиданный
+      JSON и невалидный `id`.
 - [ ] 4. Instrumented-тест `publish_report` RPC — нужен эмулятор/устройство и
       доступ к проекту; не выполнялся.
 - [ ] Coverage ≥ 80% — не измерялся, JaCoCo в проект не подключён.
@@ -869,9 +881,30 @@ service-role ключом и cron, переиспользовав ту же вы
   `FAILED` после лимита, `FAILED`-строка не перезапускается, отсутствующая
   строка). `:app:assembleDebug` и `:app:testDebugUnitTest` — зелёные.
 
+### Step 14 — тесты публикации (14.1–14.2 выполнены)
+
+- Удалённый слой публикации вынесен в `ReportRemoteDataSource`:
+  `reportExists`, `uploadPhoto`, `publishReport`, `deletePhotos`.
+  `SupabaseReportRemoteDataSource` — единственная реализация; она же разбирает
+  ответ RPC (`id` + `removed_photo_paths`) в `PublishReportResult`.
+- `SupabaseFishingRepository.saveReport` принимает `ReportRemoteDataSource`
+  через конструктор, поэтому сценарии ошибок проверяются без Supabase.
+- `SupabaseFishingRepositoryTest` (Robolectric, in-memory Room, fake remote)
+  покрывает: успешную публикацию и прогресс, падение 2-го upload с
+  компенсацией, падение RPC без частичных строк, retry с тем же `id`,
+  сохранение файлов при ошибке RPC для уже существующего отчёта,
+  best-effort удаление убранных фото, проброс `CancellationException`,
+  запрет сохранения чужого отчёта и черновик без `published_at`.
+- `SupabaseReportRemoteDataSourceTest` проверяет разбор ответа RPC (объект,
+  массив, отсутствие путей, битый JSON, невалидный `id`), не доверяя формату
+  ответа.
+- Осталось: instrumented-тест RPC (нужно устройство) и измерение coverage.
+
 ## References
 
 - Публикация: `app/src/main/java/com/example/fishing/data/SupabaseFishingRepository.kt:294-398`
+- Удалённый слой публикации: `app/src/main/java/com/example/fishing/data/ReportRemoteDataSource.kt`,
+  `app/src/main/java/com/example/fishing/data/SupabaseReportRemoteDataSource.kt`
 - Удаление (как правильно): `SupabaseFishingRepository.kt:401-450`
 - ViewModel: `app/src/main/java/com/example/fishing/viewmodel/CreateReportViewModel.kt:329-467`
 - Экран: `app/src/main/java/com/example/fishing/ui/screens/report/create/CreateReportScreen.kt:185-216, 313-331`
@@ -880,6 +913,7 @@ service-role ключом и cron, переиспользовав ту же вы
 - Signed URL: `app/src/main/java/com/example/fishing/viewmodel/MainViewModel.kt:184, 658-669`
 - Аватары: `app/src/main/java/com/example/fishing/data/SupabaseAuthRepository.kt:144-200`
 - Навигация: `app/src/main/java/com/example/fishing/ui/navigation/FishingNavHost.kt:248-254`
-- Тесты: `app/src/test/java/com/example/fishing/CreateReportViewModelTest.kt`
+- Тесты: `app/src/test/java/com/example/fishing/CreateReportViewModelTest.kt`,
+  `app/src/test/java/com/example/fishing/data/SupabaseFishingRepositoryTest.kt`
 - Схема/политики: Supabase project (Storage buckets `fishing_photos`, `avatars`; таблицы
   `fishing`, `fishing_fish`, `fishing_baits`, `fishing_photos`)
