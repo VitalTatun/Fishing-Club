@@ -127,6 +127,43 @@ fun MainScreen(
                 },
                 actions = {
                     if (selectedTab == 0) {
+                        Box {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(
+                                    Icons.Default.SwapVert,
+                                    contentDescription = stringResource(R.string.sort)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.sort_by_publish_date)) },
+                                    onClick = {
+                                        viewModel?.setSortOrder(ReportSortOrder.BY_PUBLISH_DATE)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (currentSortOrder == ReportSortOrder.BY_PUBLISH_DATE) {
+                                            Icon(Icons.Default.Check, contentDescription = null)
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.sort_by_fishing_time)) },
+                                    onClick = {
+                                        viewModel?.setSortOrder(ReportSortOrder.BY_FISHING_TIME)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (currentSortOrder == ReportSortOrder.BY_FISHING_TIME) {
+                                            Icon(Icons.Default.Check, contentDescription = null)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
@@ -245,77 +282,6 @@ fun MainScreen(
                                             modifier = Modifier.fillMaxWidth(),
                                             verticalArrangement = Arrangement.spacedBy(0.dp)
                                         ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.my_reports),
-                                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                )
-
-                                                Box {
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .clickable(
-                                                                indication = null,
-                                                                interactionSource = remember { MutableInteractionSource() }
-                                                            ) { showSortMenu = true },
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = when (currentSortOrder) {
-                                                                ReportSortOrder.BY_PUBLISH_DATE -> stringResource(R.string.sort_by_publish_date)
-                                                                ReportSortOrder.BY_FISHING_TIME -> stringResource(R.string.sort_by_fishing_time)
-                                                            },
-                                                            style = MaterialTheme.typography.labelLarge.copy(
-                                                                color = MaterialTheme.colorScheme.primary
-                                                            )
-                                                        )
-                                                        Icon(
-                                                            imageVector = Icons.Default.SwapVert,
-                                                            contentDescription = stringResource(R.string.sort),
-                                                            tint = MaterialTheme.colorScheme.primary,
-                                                            modifier = Modifier.size(18.dp)
-                                                        )
-                                                    }
-                                                    DropdownMenu(
-                                                        expanded = showSortMenu,
-                                                        onDismissRequest = { showSortMenu = false }
-                                                    ) {
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(R.string.sort_by_publish_date)) },
-                                                            onClick = {
-                                                                viewModel?.setSortOrder(ReportSortOrder.BY_PUBLISH_DATE)
-                                                                showSortMenu = false
-                                                            },
-                                                            leadingIcon = {
-                                                                if (currentSortOrder == ReportSortOrder.BY_PUBLISH_DATE) {
-                                                                    Icon(Icons.Default.Check, contentDescription = null)
-                                                                }
-                                                            }
-                                                        )
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(R.string.sort_by_fishing_time)) },
-                                                            onClick = {
-                                                                viewModel?.setSortOrder(ReportSortOrder.BY_FISHING_TIME)
-                                                                showSortMenu = false
-                                                            },
-                                                            leadingIcon = {
-                                                                if (currentSortOrder == ReportSortOrder.BY_FISHING_TIME) {
-                                                                    Icon(Icons.Default.Check, contentDescription = null)
-                                                                }
-                                                            }
-                                                        )
-                                                    }
-                                                }
-                                            }
 
                                             Column(
                                                 modifier = Modifier
