@@ -47,7 +47,7 @@ fun MapScreen(
     isLocationEnabled: Boolean = true,
     markersInteractive: Boolean = true,
     initialReportId: UUID? = null,
-    repository: FishingRepository,
+    repository: FishingRepository? = null,
     favoriteReports: List<FishingReport> = emptyList(),
     isLoading: Boolean = false,
     isRefreshing: Boolean = false,

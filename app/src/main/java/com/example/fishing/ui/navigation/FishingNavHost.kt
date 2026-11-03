@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,22 +57,23 @@ fun FishingNavHost(
     val viewModel: MainViewModel = hiltViewModel()
     val createReportViewModel: CreateReportViewModel = hiltViewModel()
 
-    val reports by viewModel.sortedReports.collectAsState()
-    val homeUiState by viewModel.homeUiState.collectAsState()
-    val filterFavoriteReports by viewModel.filterFavoriteReports.collectAsState()
-    val likeStates by viewModel.likeStates.collectAsState()
-    val mapMarkers by viewModel.mapMarkers.collectAsState()
-    val isInitialLoading by viewModel.isInitialLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
-    val hasMoreReports by viewModel.hasMoreReports.collectAsState()
-    val mapIsLoading by viewModel.mapIsLoading.collectAsState()
-    val mapIsRefreshing by viewModel.mapIsRefreshing.collectAsState()
-    val mapErrorMessage by viewModel.mapRefreshError.collectAsState()
-    val selectedTab by viewModel.selectedTab.collectAsState()
-    val reportDisplayMode by viewModel.reportDisplayMode.collectAsState()
-    val pendingUploads by viewModel.pendingUploads.collectAsState()
-    val uploadNotice by viewModel.uploadNotice.collectAsState()
+    val reports by viewModel.sortedReports.collectAsStateWithLifecycle()
+    val homeUiState by viewModel.homeUiState.collectAsStateWithLifecycle()
+    val favoriteReports by viewModel.favoriteReports.collectAsStateWithLifecycle()
+    val filterFavoriteReports by viewModel.filterFavoriteReports.collectAsStateWithLifecycle()
+    val likeStates by viewModel.likeStates.collectAsStateWithLifecycle()
+    val mapMarkers by viewModel.mapMarkers.collectAsStateWithLifecycle()
+    val isInitialLoading by viewModel.isInitialLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsStateWithLifecycle()
+    val hasMoreReports by viewModel.hasMoreReports.collectAsStateWithLifecycle()
+    val mapIsLoading by viewModel.mapIsLoading.collectAsStateWithLifecycle()
+    val mapIsRefreshing by viewModel.mapIsRefreshing.collectAsStateWithLifecycle()
+    val mapErrorMessage by viewModel.mapRefreshError.collectAsStateWithLifecycle()
+    val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
+    val reportDisplayMode by viewModel.reportDisplayMode.collectAsStateWithLifecycle()
+    val pendingUploads by viewModel.pendingUploads.collectAsStateWithLifecycle()
+    val uploadNotice by viewModel.uploadNotice.collectAsStateWithLifecycle()
 
     val isAuthenticated = authState is AuthState.Authenticated
     val currentUser = (authState as? AuthState.Authenticated)?.user
@@ -423,7 +425,7 @@ fun FishingNavHost(
                                 ReportDetailScreen(
                                     report = state.report,
                                     onBackClick = { navController.popBackStack() },
-                                    isFavorite = filterFavoriteReports.any { it.id == state.report.id } || viewModel.favoriteReports.value.any { it.id == state.report.id },
+                                    isFavorite = filterFavoriteReports.any { it.id == state.report.id } || favoriteReports.any { it.id == state.report.id },
                                     onToggleFavorite = { viewModel.toggleFavorite(state.report) },                                    onMapClick = { point ->
                                         viewModel.requestMapLocation(point)
                                         navController.navigate("full_map/${state.report.id}")
