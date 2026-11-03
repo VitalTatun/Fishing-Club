@@ -7,7 +7,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -112,7 +111,6 @@ fun FishingNavHost(
             composable("main") {
                 MainScreen(
                     homeUiState = homeUiState,
-                    isInitialLoading = isInitialLoading,
                     isRefreshing = isRefreshing,
                     isLoadingMore = isLoadingMore,
                     hasMoreReports = hasMoreReports,
@@ -156,7 +154,6 @@ fun FishingNavHost(
                     onAppearanceClick = {
                         navController.navigate("appearance")
                     },
-                    reportDisplayMode = reportDisplayMode,
                     errorText = viewModel.error.collectAsState().value,
                     onErrorDismiss = { viewModel.refresh() },
                     deleteErrorText = viewModel.deleteReportError.collectAsState().value,

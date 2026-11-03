@@ -1,23 +1,16 @@
 package com.example.fishing.ui.screens.main
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
@@ -26,17 +19,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.model.*
-import com.example.fishing.ui.components.FishingReportCardItem
-import com.example.fishing.ui.components.FishingReportListItem
 import com.example.fishing.ui.components.HomeReportListItem
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
@@ -62,9 +50,7 @@ private const val PREFETCH_THRESHOLD = 3
 @Composable
 fun MainScreen(
     homeUiState: HomeUiState,
-    favoriteReports: List<FishingReport> = emptyList(),
     mapMarkers: List<MarkerDomain> = emptyList(),
-    isInitialLoading: Boolean = false,
     isRefreshing: Boolean = false,
     isLoadingMore: Boolean = false,
     hasMoreReports: Boolean = false,
@@ -87,7 +73,6 @@ fun MainScreen(
     onEditProfileClick: () -> Unit = {},
     onChangeHistoryClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
-    reportDisplayMode: ReportDisplayMode = ReportDisplayMode.CARD,
     errorText: String? = null,
     onErrorDismiss: () -> Unit = {},
     deleteErrorText: String? = null,
@@ -130,7 +115,7 @@ fun MainScreen(
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
                                 Icon(
-                                    Icons.Default.SwapVert,
+                                    Icons.Default.MoreVert,
                                     contentDescription = stringResource(R.string.sort)
                                 )
                             }
@@ -331,7 +316,7 @@ fun MainScreen(
                     }
                     LaunchedEffect(mainMapIsFavoritesSelected) {
                         if (mainMapIsFavoritesSelected) {
-                            viewModel?.loadFilterFavoriteReports(force = true)
+                            viewModel.loadFilterFavoriteReports(force = true)
                         }
                     }
                     MapScreen(
