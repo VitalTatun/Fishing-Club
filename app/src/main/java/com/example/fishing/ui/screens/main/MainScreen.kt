@@ -238,69 +238,7 @@ fun MainScreen(
                                     contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    if (favoriteReports.isNotEmpty()) {
-                                        item {
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalArrangement = Arrangement.spacedBy(0.dp)
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween
-                                                ) {
-                                                    Text(
-                                                        text = stringResource(R.string.bookmarks),
-                                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                                            color = MaterialTheme.colorScheme.onSurface
-                                                        )
-                                                    )
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .clickable(
-                                                                indication = null,
-                                                                interactionSource = remember { MutableInteractionSource() }
-                                                            ) {
-                                                                viewModel?.searchIsFavoritesSelected = true
-                                                                onSearchClick()
-                                                            },
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = stringResource(R.string.show_all),
-                                                            style = MaterialTheme.typography.labelLarge.copy(
-                                                                color = MaterialTheme.colorScheme.primary
-                                                            )
-                                                        )
-                                                        Icon(
-                                                            imageVector = Icons.Default.ChevronRight,
-                                                            contentDescription = null,
-                                                            tint = MaterialTheme.colorScheme.primary,
-                                                            modifier = Modifier.size(18.dp)
-                                                        )
-                                                    }
-                                                }
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .horizontalScroll(rememberScrollState()),
-                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                                ) {
-                                                    favoriteReports.take(5).forEach { report ->
-                                                        HomeReportListItem(
-                                                            report = report,
-                                                            currentUserId = currentUserId,
-                                                            modifier = Modifier.width(320.dp),
-                                                            onClick = { onReportClick(report) }
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    // Избранные убраны с главного экрана. Доступ через поиск с фильтром.
 
                                     item {
                                         Column(
@@ -420,9 +358,21 @@ fun MainScreen(
                     }
                 }
                 1 -> {
+                    val mainMapFavoriteReports = viewModel?.filterFavoriteReports?.collectAsState()?.value ?: emptyList()
+                    val mainMapIsFavoritesSelected = viewModel?.mapIsFavoritesSelected ?: false
+                    LaunchedEffect(Unit) {
+                        viewModel?.loadFilterFavoriteReports()
+                    }
+                    LaunchedEffect(mainMapIsFavoritesSelected) {
+                        if (mainMapIsFavoritesSelected) {
+                            viewModel?.loadFilterFavoriteReports(force = true)
+                        }
+                    }
                     MapScreen(
                         markers = mapMarkers,
-                        favoriteReports = favoriteReports,
+                        viewModel = viewModel,
+                        favoriteReports = mainMapFavoriteReports,
+
                         onMarkerClick = { marker ->
                             onReportClick(FishingReport(
                                 id = marker.id,
@@ -446,7 +396,6 @@ fun MainScreen(
                                 isPublic = marker.isPublic
                             ))
                         },
-                        viewModel = viewModel,
                         repository = repository,
                         isLoading = mapIsLoading,
                         isRefreshing = mapIsRefreshing,
@@ -693,7 +642,7 @@ fun MainScreenPreview() {
 
         MainScreen(
             homeUiState = HomeUiState.Success(listOf(myReport)),
-            favoriteReports = listOf(bookmarkReport),
+
             currentUserId = myUserId,
             userEmail = sampleUser.email,
             userName = sampleUser.name,

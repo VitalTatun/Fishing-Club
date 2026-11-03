@@ -100,24 +100,18 @@ class SupabaseFishingRepository @Inject constructor(
     override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
         try {
             val likesSnapshotSeq = likeMutationSeq.get()
-            // First page of own reports + all bookmarks replace the cache.
             val (ownEntities, hasMore) = fetchReportPage(userId, offset = 0, limit = PAGE_SIZE)
-            val (favoriteEntities, favoriteLinks) = fetchFavoriteEntities(userId)
-            val fetchedEntities = (ownEntities + favoriteEntities).distinctBy { it.id }
 
             database.withTransaction {
-                // The home cache is one coherent snapshot: own reports plus bookmarked reports.
-                val entities = preserveRecentLikes(fetchedEntities, likesSnapshotSeq)
+                val entities = preserveRecentLikes(ownEntities, likesSnapshotSeq)
                 reportDetailsDao.deleteAll()
                 reportDetailsDao.insertAll(entities)
-                favoriteReportDao.deleteAllForUser(userId)
-                favoriteReportDao.insertAll(favoriteLinks)
             }
             homeLoadedOwnCount = ownEntities.size
             homeHasMore = hasMore
             return HomeRefreshResult(
                 hasMore = hasMore,
-                loadedCount = (ownEntities + favoriteEntities).distinctBy { it.id }.size
+                loadedCount = ownEntities.size
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -157,6 +151,11 @@ class SupabaseFishingRepository @Inject constructor(
         val page = if (hasMore) fetched.take(limit) else fetched
         if (page.isEmpty()) return emptyList<ReportDetailsEntity>() to false
         return buildReportEntities(page, page.map { it.id }) to hasMore
+    }
+
+    override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
+        val (entities, _) = fetchFavoriteEntities(userId)
+        return entities.map { it.toDomain() }
     }
 
     private suspend fun fetchFavoriteEntities(
@@ -227,11 +226,6 @@ class SupabaseFishingRepository @Inject constructor(
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = markerDao.getAll().map { entities ->
         entities.map { it.toDomain() }
     }
-
-    override fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>> =
-        reportDetailsDao.getFavorites(userId).map { entities ->
-            entities.map { it.toDomain() }
-        }
 
     override fun getReportDetails(id: UUID): Flow<FishingReport?> = reportDetailsDao.getById(id).map { entity ->
         entity?.toDomain()

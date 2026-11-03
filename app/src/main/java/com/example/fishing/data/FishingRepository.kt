@@ -27,7 +27,7 @@ data class HomeRefreshResult(
 
 interface FishingRepository {
     fun getHomeReports(userId: UUID): Flow<List<FishingReport>>
-    fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>>
+    suspend fun loadFavoriteReports(userId: UUID): List<FishingReport>
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
     /** Loads the first page of home reports, replacing the cache. */
@@ -67,10 +67,7 @@ class MockFishingRepository : FishingRepository {
         emit((reports + favoriteReports).distinctBy { it.id })
     }
 
-    override fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>> = flow {
-        delay(1000)
-        emit(favoriteReports.toList())
-    }
+
 
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = flow {
         delay(1000)
@@ -102,6 +99,10 @@ class MockFishingRepository : FishingRepository {
     }
 
     override suspend fun loadMoreHomeReports(userId: UUID): Boolean = false
+
+    override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
+        return favoriteReports.toList()
+    }
 
     override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
         return Result.success(reports.map { it.toMarkerDomain() })

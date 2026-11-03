@@ -59,7 +59,7 @@ fun FishingNavHost(
 
     val reports by viewModel.sortedReports.collectAsState()
     val homeUiState by viewModel.homeUiState.collectAsState()
-    val favoriteReports by viewModel.favoriteReports.collectAsState()
+    val filterFavoriteReports by viewModel.filterFavoriteReports.collectAsState()
     val likeStates by viewModel.likeStates.collectAsState()
     val mapMarkers by viewModel.mapMarkers.collectAsState()
     val isInitialLoading by viewModel.isInitialLoading.collectAsState()
@@ -121,7 +121,6 @@ fun FishingNavHost(
                     mapIsRefreshing = mapIsRefreshing,
                     mapErrorMessage = mapErrorMessage,
                     selectedTab = selectedTab,
-                    favoriteReports = favoriteReports,
                     mapMarkers = mapMarkers,
                     viewModel = viewModel,
                     repository = fishingRepository,
@@ -175,18 +174,23 @@ fun FishingNavHost(
             }
 
             composable("report_list_search") {
-                val combinedReports = remember(reports, favoriteReports) {
-                    (reports + favoriteReports).distinctBy { it.id }
+                LaunchedEffect(viewModel.searchIsFavoritesSelected) {
+                    if (viewModel.searchIsFavoritesSelected) {
+                        viewModel.loadFilterFavoriteReports(force = true)
+                    }
                 }
                 ReportSearchScreen(
-                    reports = combinedReports,
-                    favoriteReports = favoriteReports,
+                    reports = reports,
+                    favoriteReports = filterFavoriteReports,
                     query = viewModel.searchQuery,
                     onQueryChange = { viewModel.searchQuery = it },
                     selectedDate = viewModel.searchSelectedDate,
                     onDateChange = { viewModel.searchSelectedDate = it },
                     isFavoritesSelected = viewModel.searchIsFavoritesSelected,
-                    onFavoritesChange = { viewModel.searchIsFavoritesSelected = it },
+                    onFavoritesChange = { 
+                        viewModel.searchIsFavoritesSelected = it
+                        if (it) viewModel.loadFilterFavoriteReports(force = true)
+                    },
                     isTrophySelected = viewModel.searchIsTrophySelected,
                     onTrophyChange = { viewModel.searchIsTrophySelected = it },
                     isPaidSelected = viewModel.searchIsPaidSelected,
@@ -422,7 +426,7 @@ fun FishingNavHost(
                                 ReportDetailScreen(
                                     report = state.report,
                                     onBackClick = { navController.popBackStack() },
-                                    isFavorite = favoriteReports.any { it.id == state.report.id },
+                                    isFavorite = filterFavoriteReports.any { it.id == state.report.id } || viewModel.favoriteReports.value.any { it.id == state.report.id },
                                     onToggleFavorite = { viewModel.toggleFavorite(state.report) },                                    onMapClick = { point ->
                                         viewModel.requestMapLocation(point)
                                         navController.navigate("full_map/${state.report.id}")
@@ -501,6 +505,11 @@ fun FishingNavHost(
                     mapMarkers.firstOrNull { it.id == id }
                 }
 
+                LaunchedEffect(viewModel.mapIsFavoritesSelected) {
+                    if (viewModel.mapIsFavoritesSelected) {
+                        viewModel.loadFilterFavoriteReports(force = true)
+                    }
+                }
                 MapScreen(
                     markers = if (singleMarker != null) listOf(singleMarker) else mapMarkers,
                     viewModel = viewModel,
@@ -515,7 +524,7 @@ fun FishingNavHost(
                     markersInteractive = false,
                     initialReportId = reportId,
                     repository = fishingRepository,
-                    favoriteReports = favoriteReports
+                    favoriteReports = filterFavoriteReports
                 )
             }
 
