@@ -69,14 +69,6 @@ fun MapScreen(
     var hasInitialLocationBeenSet by remember { mutableStateOf(false) }
 
     val requestedLocation by viewModel?.mapRequestedLocation?.collectAsState() ?: remember { mutableStateOf(null) }
-    val fallbackCenter = remember(markers) {
-        val validMarkers = markers.filter { it.waterLat != 0.0 || it.waterLng != 0.0 }
-        if (validMarkers.isNotEmpty()) {
-            GeoPoint(validMarkers.map { it.waterLat }.average(), validMarkers.map { it.waterLng }.average())
-        } else {
-            GeoPoint(53.9, 27.5667)
-        }
-    }
 
     var localIsFavoritesSelected by remember { mutableStateOf(false) }
     var localIsTrophySelected by remember { mutableStateOf(false) }
@@ -90,22 +82,72 @@ fun MapScreen(
     val selectedCatch = viewModel?.mapSelectedCatch ?: localSelectedCatch
     val selectedMethod = viewModel?.mapSelectedMethod ?: localSelectedMethod
 
-    val uniqueFish = remember(markers) {
-        markers.flatMap { it.fishNames }.distinct().sorted()
+    LaunchedEffect(Unit) {
+        if (viewModel != null) {
+            viewModel.loadFilterFavoriteReports()
+        }
+    }
+
+    LaunchedEffect(isFavoritesSelected) {
+        if (isFavoritesSelected && viewModel != null && favoriteReports.isEmpty()) {
+            viewModel.loadFilterFavoriteReports(force = true)
+        }
+    }
+
+    val favoriteMarkers = remember(favoriteReports) {
+        favoriteReports.map { report ->
+            com.example.fishing.model.MarkerDomain(
+                id = report.id,
+                name = report.name,
+                waterName = report.water.waterName,
+                waterLat = report.water.latitude,
+                waterLng = report.water.longitude,
+                type = report.type,
+                fishingMethod = report.fishingMethod,
+                fishingStartAt = report.fishingStartAt,
+                isPublic = report.isPublic,
+                isPaidWater = report.water.isPaid,
+                fishNames = report.fish.map { it.name }
+            )
+        }
+    }
+
+    val favoriteIdSet = remember(favoriteReports) { favoriteReports.map { it.id }.toSet() }
+
+    val displayMarkers = remember(markers, favoriteMarkers, isFavoritesSelected) {
+        if (!isFavoritesSelected) {
+            markers
+        } else {
+            (markers + favoriteMarkers).distinctBy { it.id }
+        }
+    }
+
+    val fallbackCenter = remember(displayMarkers) {
+        val validMarkers = displayMarkers.filter { it.waterLat != 0.0 || it.waterLng != 0.0 }
+        if (validMarkers.isNotEmpty()) {
+            GeoPoint(validMarkers.map { it.waterLat }.average(), validMarkers.map { it.waterLng }.average())
+        } else {
+            GeoPoint(53.9, 27.5667)
+        }
+    }
+
+    val uniqueFish = remember(displayMarkers) {
+        displayMarkers.flatMap { it.fishNames }.distinct().sorted()
     }
 
     val filteredMarkers = remember(
-        markers,
+        displayMarkers,
         isFavoritesSelected,
         isTrophySelected,
         isPaidSelected,
         selectedCatch,
         selectedMethod,
-        favoriteReports
+        favoriteIdSet,
+        favoriteMarkers
     ) {
-        markers.filter { marker ->
+        displayMarkers.filter { marker ->
             val matchesFavorites = if (!isFavoritesSelected) true else {
-                favoriteReports.any { it.id == marker.id }
+                favoriteIdSet.contains(marker.id) || favoriteMarkers.any { it.id == marker.id }
             }
             
             val matchesTrophy = if (!isTrophySelected) true else marker.type == FishingType.HAUL
@@ -333,8 +375,15 @@ fun MapScreen(
                 FishingFilterChips(
                     isFavoritesSelected = isFavoritesSelected,
                     onFavoritesClick = {
-                        if (viewModel != null) viewModel.mapIsFavoritesSelected = !viewModel.mapIsFavoritesSelected
-                        else localIsFavoritesSelected = !localIsFavoritesSelected
+                        if (viewModel != null) {
+                            val newValue = !viewModel.mapIsFavoritesSelected
+                            viewModel.mapIsFavoritesSelected = newValue
+                            if (newValue) {
+                                viewModel.loadFilterFavoriteReports()
+                            }
+                        } else {
+                            localIsFavoritesSelected = !localIsFavoritesSelected
+                        }
                     },
                     isTrophySelected = isTrophySelected,
                     onTrophyClick = {

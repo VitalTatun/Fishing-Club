@@ -92,17 +92,22 @@ fun ReportSearchScreen(
         }
     }
 
+    val baseReports = remember(reports, favoriteReports, isFavoritesSelected) {
+        if (isFavoritesSelected) favoriteReports else reports
+    }
+
     val filteredReports = remember(
         query,
-        reports,
+        baseReports,
         selectedDate,
         isFavoritesSelected,
         isTrophySelected,
         isPaidSelected,
         selectedCatch,
-        selectedMethod
+        selectedMethod,
+        favoriteReports
     ) {
-        reports.filter { report ->
+        baseReports.filter { report ->
             // Text query filter
             val matchesQuery = if (query.isBlank()) {
                 true

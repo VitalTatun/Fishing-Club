@@ -70,6 +70,10 @@ class MainViewModel @Inject constructor(
     private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
     val favoriteReports: StateFlow<List<FishingReport>> = _favoriteReports.asStateFlow()
 
+    private val _filterFavoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
+    val filterFavoriteReports: StateFlow<List<FishingReport>> = _filterFavoriteReports.asStateFlow()
+    private var filterFavoritesLoadedForUserId: UUID? = null
+
     private val _reportSortOrder = MutableStateFlow(userPreferencesRepository.getSortOrder())
     val reportSortOrder: StateFlow<ReportSortOrder> = _reportSortOrder.asStateFlow()
 
@@ -271,6 +275,8 @@ class MainViewModel @Inject constructor(
 
         _reports.value = emptyList()
         _favoriteReports.value = emptyList()
+        _filterFavoriteReports.value = emptyList()
+        filterFavoritesLoadedForUserId = null
         _likeStates.value = emptyMap()
         baseLikeStates = emptyMap()
         optimisticLikeOverlay.clear()
@@ -408,11 +414,36 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun loadFilterFavoriteReports(force: Boolean = false) {
+        val userId = currentUserId ?: authRepository.currentUser()?.id ?: return
+        if (!force && filterFavoritesLoadedForUserId == userId && _filterFavoriteReports.value.isNotEmpty()) {
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val reports = repository.loadFavoriteReports(userId)
+                val cached = applyCachedPhotoUrls(reports)
+                _filterFavoriteReports.value = cached
+                val version = ++favoritePhotosVersion
+                val resolved = resolveReportsPhotoUrls(reports)
+                if (version == favoritePhotosVersion) {
+                    _filterFavoriteReports.value = resolved
+                }
+                filterFavoritesLoadedForUserId = userId
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     fun toggleFavorite(report: FishingReport) {
         if (!favoriteOpsInFlight.add(report.id)) return
 
         _favoriteError.value = null
-        val isFavorite = _favoriteReports.value.any { it.id == report.id }
+        val isFavorite = (_filterFavoriteReports.value.any { it.id == report.id } ||
+            _favoriteReports.value.any { it.id == report.id })
 
         viewModelScope.launch {
             try {
@@ -423,6 +454,9 @@ class MainViewModel @Inject constructor(
                 }
                 result.onFailure { e ->
                     _favoriteError.value = favoriteErrorMessage(e)
+                }
+                if (result.isSuccess && filterFavoritesLoadedForUserId != null) {
+                    loadFilterFavoriteReports(force = true)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -669,24 +703,7 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
             }
-            launch {
-                try {
-                    repository.getFavoriteReports(userId).collect { reports ->
-                        _favoriteReports.value = applyCachedPhotoUrls(reports)
-                        val version = ++favoritePhotosVersion
-                        launch {
-                            val resolved = resolveReportsPhotoUrls(reports)
-                            if (version == favoritePhotosVersion) {
-                                _favoriteReports.value = resolved
-                            }
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
+            _favoriteReports.value = emptyList()
             // Refresh from network → saves to Room → Flow auto-updates UI
             try {
                 val result = repository.refreshHomeReports(userId)
