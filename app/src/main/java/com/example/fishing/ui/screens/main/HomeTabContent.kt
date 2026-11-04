@@ -106,7 +106,7 @@ fun HomeTabContent(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         itemsIndexed(
                             items = myReports,
@@ -118,7 +118,6 @@ fun HomeTabContent(
                             }
                             HomeReportListItem(
                                 report = report,
-                                currentUserId = currentUserId,
                                 onClick = { onReportClick(report) }
                             )
                         }
