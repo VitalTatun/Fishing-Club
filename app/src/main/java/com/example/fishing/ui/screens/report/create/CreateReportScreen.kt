@@ -109,7 +109,6 @@ fun CreateReportScreen(
 
     val isSaveEnabled = viewModel.isSaveEnabled
     val isSaving = viewModel.isSaving
-    val saveProgress = viewModel.saveProgress
     val saveErrorMessage = viewModel.saveErrorMessage
     val formHasData = viewModel.formHasData
     val snackbarHostState = remember { SnackbarHostState() }
@@ -123,6 +122,9 @@ fun CreateReportScreen(
 
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showSavingDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(isSaving) {
+        showSavingDialog = isSaving
+    }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
@@ -448,8 +450,7 @@ fun CreateReportScreen(
             }
 
             if (isSaving) {
-                // Swallow taps so the form cannot be edited while an upload is in
-                // flight; the progress banner below stays interactive.
+                // Swallow taps so the form cannot be edited while saving is in flight
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -458,53 +459,6 @@ fun CreateReportScreen(
                             indication = null
                         ) {}
                 )
-                SaveProgressBanner(
-                    progress = saveProgress,
-                    onCancel = { viewModel.cancelSave() },
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SaveProgressBanner(
-    progress: ReportSaveProgress?,
-    onCancel: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val text = when {
-        progress == null -> stringResource(R.string.report_save_processing)
-        progress.totalPhotos == 0 || progress.uploadedPhotos >= progress.totalPhotos ->
-            stringResource(R.string.report_save_publishing)
-        else -> stringResource(
-            R.string.report_save_uploading,
-            progress.uploadedPhotos,
-            progress.totalPhotos
-        )
-    }
-
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 3.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-            Text(
-                text = text,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            TextButton(onClick = onCancel) {
-                Text(stringResource(R.string.cancel))
             }
         }
     }
