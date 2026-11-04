@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.fishing.data.local.entity.FavoriteReportEntity
+import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
 @Dao
@@ -20,6 +21,12 @@ interface FavoriteReportDao {
 
     @Query("DELETE FROM favorites WHERE userId = :userId")
     suspend fun deleteAllForUser(userId: UUID)
+
+    @Query("DELETE FROM favorites WHERE userId = :userId AND reportId NOT IN (:reportIds)")
+    suspend fun deleteNotIn(userId: UUID, reportIds: List<UUID>)
+
+    @Query("SELECT reportId FROM favorites WHERE userId = :userId")
+    fun getFavoriteIds(userId: UUID): Flow<List<UUID>>
 
     @Query("DELETE FROM favorites")
     suspend fun deleteAll()

@@ -131,7 +131,7 @@ class MainViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertTrue(vm.reports.value.isEmpty())
-        assertTrue(vm.favoriteReports.value.isEmpty())
+        assertTrue(vm.favoriteIds.value.isEmpty())
         assertTrue(vm.mapMarkers.value.isEmpty())
         assertEquals(ReportDetailUiState.Loading, vm.reportDetailUiState.value)
         assertNull(vm.error.value)
@@ -333,8 +333,46 @@ class MainViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, fakeFishingRepository.addFavoriteCallCount)
-        assertEquals(1, vm.favoriteReports.value.size)
-        assertEquals(report.id, vm.favoriteReports.value[0].id)
+        assertEquals(1, vm.favoriteIds.value.size)
+        assertTrue(vm.favoriteIds.value.contains(report.id))
+    }
+
+    @Test
+    fun `favorite state is known before the favorites screen is opened`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.favoriteReportsValue = listOf(report)
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.refreshFavoriteIdsCallCount)
+        assertTrue(vm.favoriteIds.value.contains(report.id))
+    }
+
+    @Test
+    fun `favorite toggle updates state optimistically`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        val addGate = CompletableDeferred<Unit>()
+        fakeFishingRepository.addFavoriteGate = addGate
+
+        vm.toggleFavorite(report)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        // The icon must flip before the backend answers.
+        assertTrue(vm.favoriteIds.value.contains(report.id))
+        assertTrue(vm.favoriteOpsInFlight.value.contains(report.id))
+
+        addGate.complete(Unit)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.favoriteIds.value.contains(report.id))
+        assertTrue(vm.favoriteOpsInFlight.value.isEmpty())
     }
 
     @Test
@@ -350,7 +388,7 @@ class MainViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(1, fakeFishingRepository.removeFavoriteCallCount)
-        assertTrue(vm.favoriteReports.value.isEmpty())
+        assertTrue(vm.favoriteIds.value.isEmpty())
     }
 
     @Test
@@ -373,20 +411,22 @@ class MainViewModelTest {
         vm.toggleFavorite(report)
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, fakeFishingRepository.addFavoriteCallCount)
-        assertTrue(vm.favoriteReports.value.isEmpty())
+        assertTrue(vm.favoriteOpsInFlight.value.contains(report.id))
+        // The optimistic state is already visible while the request is pending.
+        assertTrue(vm.favoriteIds.value.contains(report.id))
 
         // Release the gate — the first add completes and the guard is released.
         addGate.complete(Unit)
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(1, vm.favoriteReports.value.size)
-        assertEquals(report.id, vm.favoriteReports.value[0].id)
+        assertEquals(1, vm.favoriteIds.value.size)
+        assertTrue(vm.favoriteIds.value.contains(report.id))
 
         // A new tap after completion starts a fresh operation.
         vm.toggleFavorite(report)
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
         assertEquals(1, fakeFishingRepository.removeFavoriteCallCount)
-        assertTrue(vm.favoriteReports.value.isEmpty())
+        assertTrue(vm.favoriteIds.value.isEmpty())
     }
 
     @Test
@@ -409,7 +449,7 @@ class MainViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(2, fakeFishingRepository.addFavoriteCallCount)
-        assertEquals(2, vm.favoriteReports.value.size)
+        assertEquals(2, vm.favoriteIds.value.size)
     }
 
     @Test
@@ -428,7 +468,7 @@ class MainViewModelTest {
         assertNotNull(vm.favoriteError.value)
         assertTrue(vm.favoriteError.value!!.contains("Нет соединения с интернетом"))
         // No false success — the report must not appear as favorited.
-        assertTrue(vm.favoriteReports.value.isEmpty())
+        assertTrue(vm.favoriteIds.value.isEmpty())
 
         // Retry after clearing the failure must succeed.
         fakeFishingRepository.addFavoriteException = null
@@ -437,7 +477,7 @@ class MainViewModelTest {
 
         assertEquals(2, fakeFishingRepository.addFavoriteCallCount)
         assertNull(vm.favoriteError.value)
-        assertEquals(report.id, vm.favoriteReports.value[0].id)
+        assertTrue(vm.favoriteIds.value.contains(report.id))
     }
 
     @Test
@@ -457,7 +497,7 @@ class MainViewModelTest {
         assertNotNull(vm.favoriteError.value)
         assertTrue(vm.favoriteError.value!!.contains("Нет соединения с интернетом"))
         // No false success — the report must remain favorited.
-        assertEquals(1, vm.favoriteReports.value.size)
+        assertEquals(1, vm.favoriteIds.value.size)
 
         // Retry after clearing the failure must succeed.
         fakeFishingRepository.removeFavoriteException = null
@@ -466,7 +506,7 @@ class MainViewModelTest {
 
         assertEquals(2, fakeFishingRepository.removeFavoriteCallCount)
         assertNull(vm.favoriteError.value)
-        assertTrue(vm.favoriteReports.value.isEmpty())
+        assertTrue(vm.favoriteIds.value.isEmpty())
     }
 
     @Test

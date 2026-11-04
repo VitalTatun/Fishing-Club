@@ -74,6 +74,11 @@ class SupabaseFishingRepository @Inject constructor(
     private val likeMutationVersions = ConcurrentHashMap<UUID, Long>()
     private val likeOpsInFlight = ConcurrentHashMap.newKeySet<UUID>()
 
+    // Same protection for favorites: a refresh that snapshotted the server
+    // before a local toggle must not drop that toggle from the local cache.
+    private val favoriteMutationSeq = AtomicLong(0)
+    private val favoriteMutationVersions = ConcurrentHashMap<UUID, Long>()
+
     private companion object {
         const val PAGE_SIZE = 20
 
@@ -154,17 +159,65 @@ class SupabaseFishingRepository @Inject constructor(
     }
 
     override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
-        val (entities, _) = fetchFavoriteEntities(userId)
+        val snapshotSeq = favoriteMutationSeq.get()
+        val (entities, links) = fetchFavoriteEntities(userId)
+        persistFavoriteLinks(userId, links, snapshotSeq)
         return entities.map { it.toDomain() }
+    }
+
+    override fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>> =
+        favoriteReportDao.getFavoriteIds(userId)
+            .map { it.toSet() }
+            .distinctUntilChanged()
+
+    override suspend fun refreshFavoriteIds(userId: UUID) {
+        try {
+            val snapshotSeq = favoriteMutationSeq.get()
+            val links = fetchFavoriteLinks(userId)
+            persistFavoriteLinks(userId, links, snapshotSeq)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    private suspend fun fetchFavoriteLinks(userId: UUID): List<FavoriteReportEntity> =
+        supabase.postgrest["favorites"].select {
+            filter { eq("user_id", userId) }
+        }.decodeList<FavoriteDto>()
+            .map { FavoriteReportEntity(userId = userId, reportId = it.fishingId) }
+
+    /**
+     * Writes the freshness snapshot into Room. Ids mutated locally after the
+     * snapshot was taken are protected from the "not in remote list" cleanup.
+     */
+    private suspend fun persistFavoriteLinks(
+        userId: UUID,
+        links: List<FavoriteReportEntity>,
+        snapshotSeq: Long
+    ) {
+        val protectedIds = buildSet {
+            links.forEach { add(it.reportId) }
+            favoriteMutationVersions.forEach { (id, version) ->
+                if (version > snapshotSeq) add(id)
+            }
+        }
+        database.withTransaction {
+            favoriteReportDao.insertAll(links)
+            if (protectedIds.isEmpty()) {
+                favoriteReportDao.deleteAllForUser(userId)
+            } else {
+                favoriteReportDao.deleteNotIn(userId, protectedIds.toList())
+            }
+        }
     }
 
     private suspend fun fetchFavoriteEntities(
         userId: UUID
     ): Pair<List<ReportDetailsEntity>, List<FavoriteReportEntity>> {
-        val favoriteLinks = supabase.postgrest["favorites"].select {
-            filter { eq("user_id", userId) }
-        }.decodeList<FavoriteDto>()
-            .map { FavoriteReportEntity(userId = userId, reportId = it.fishingId) }
+        val favoriteLinks = fetchFavoriteLinks(userId)
 
         val ids = favoriteLinks.map { it.reportId }
         if (ids.isEmpty()) return emptyList<ReportDetailsEntity>() to favoriteLinks
@@ -493,6 +546,7 @@ class SupabaseFishingRepository @Inject constructor(
             ?: return Result.failure(IllegalStateException("Нет активной сессии"))
         return try {
             supabase.postgrest["favorites"].insert(FavoriteDto(userId = currentUser.id, fishingId = report.id))
+            favoriteMutationVersions[report.id] = favoriteMutationSeq.incrementAndGet()
             favoriteReportDao.insertAll(listOf(FavoriteReportEntity(currentUser.id, report.id)))
             Result.success(Unit)
         } catch (e: CancellationException) {
@@ -514,6 +568,7 @@ class SupabaseFishingRepository @Inject constructor(
             if (cachedReport != null && cachedReport.userId != currentUser.id) {
                 reportDetailsDao.deleteById(reportId)
             }
+            favoriteMutationVersions[reportId] = favoriteMutationSeq.incrementAndGet()
             favoriteReportDao.delete(currentUser.id, reportId)
             Result.success(Unit)
         } catch (e: CancellationException) {

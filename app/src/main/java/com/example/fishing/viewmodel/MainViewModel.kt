@@ -67,8 +67,11 @@ class MainViewModel @Inject constructor(
     private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
     val reports: StateFlow<List<FishingReport>> = _reports.asStateFlow()
 
-    private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
-    val favoriteReports: StateFlow<List<FishingReport>> = _favoriteReports.asStateFlow()
+    private val _favoriteIds = MutableStateFlow<Set<UUID>>(emptySet())
+    val favoriteIds: StateFlow<Set<UUID>> = _favoriteIds.asStateFlow()
+
+    private val _favoriteOpsInFlight = MutableStateFlow<Set<UUID>>(emptySet())
+    val favoriteOpsInFlight: StateFlow<Set<UUID>> = _favoriteOpsInFlight.asStateFlow()
 
     private val _filterFavoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
     val filterFavoriteReports: StateFlow<List<FishingReport>> = _filterFavoriteReports.asStateFlow()
@@ -159,7 +162,10 @@ class MainViewModel @Inject constructor(
     private val _favoriteError = MutableStateFlow<String?>(null)
     val favoriteError: StateFlow<String?> = _favoriteError.asStateFlow()
 
-    private val favoriteOpsInFlight = mutableSetOf<UUID>()
+    // Toggles are applied optimistically on top of the Room-confirmed set and
+    // rolled back on failure, mirroring the likes implementation.
+    private val optimisticFavoriteOverlay = mutableMapOf<UUID, Boolean>()
+    private var baseFavoriteIds: Set<UUID> = emptySet()
 
     private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
     val likeStates: StateFlow<Map<UUID, ReportLikeState>> = _likeStates.asStateFlow()
@@ -202,6 +208,7 @@ class MainViewModel @Inject constructor(
     private var reportDetailsJob: Job? = null
     private var deleteReportJob: Job? = null
     private var likesLoadJob: Job? = null
+    private var favoritesLoadJob: Job? = null
 
     private data class CachedSignedUrl(val url: String, val expiresAtMillis: Long)
 
@@ -232,6 +239,7 @@ class MainViewModel @Inject constructor(
                     loadReports(force = false)
                     loadMapMarkers(force = false)
                     refreshLikes()
+                    refreshFavorites()
                 }
         }
         viewModelScope.launch {
@@ -270,11 +278,15 @@ class MainViewModel @Inject constructor(
         reportDetailsJob?.cancel()
         deleteReportJob?.cancel()
         likesLoadJob?.cancel()
+        favoritesLoadJob?.cancel()
         currentUserId = null
         loadedForUserId = null
 
         _reports.value = emptyList()
-        _favoriteReports.value = emptyList()
+        _favoriteIds.value = emptySet()
+        baseFavoriteIds = emptySet()
+        optimisticFavoriteOverlay.clear()
+        _favoriteOpsInFlight.value = emptySet()
         _filterFavoriteReports.value = emptyList()
         filterFavoritesLoadedForUserId = null
         _likeStates.value = emptyMap()
@@ -288,7 +300,7 @@ class MainViewModel @Inject constructor(
         _isDeletingReport.value = false
         _deleteReportError.value = null
         _favoriteError.value = null
-        favoriteOpsInFlight.clear()
+        _favoriteOpsInFlight.value = emptySet()
         _deletedReportId.value = null
         _uploadNotice.value = null
         _isInitialLoading.value = true
@@ -416,7 +428,7 @@ class MainViewModel @Inject constructor(
 
     fun loadFilterFavoriteReports(force: Boolean = false) {
         val userId = currentUserId ?: authRepository.currentUser()?.id ?: return
-        if (!force && filterFavoritesLoadedForUserId == userId && _filterFavoriteReports.value.isNotEmpty()) {
+        if (!force && filterFavoritesLoadedForUserId == userId) {
             return
         }
         viewModelScope.launch {
@@ -439,20 +451,32 @@ class MainViewModel @Inject constructor(
     }
 
     fun toggleFavorite(report: FishingReport) {
-        if (!favoriteOpsInFlight.add(report.id)) return
+        val userId = currentUserId ?: authRepository.currentUser()?.id
+        if (userId == null) {
+            _favoriteError.value = "Нет активной сессии"
+            return
+        }
+        // Double-tap guard: no queue, the second tap is ignored while in flight.
+        if (report.id in _favoriteOpsInFlight.value) return
+        _favoriteOpsInFlight.value = _favoriteOpsInFlight.value + report.id
 
         _favoriteError.value = null
-        val isFavorite = (_filterFavoriteReports.value.any { it.id == report.id } ||
-            _favoriteReports.value.any { it.id == report.id })
+        val adding = report.id !in _favoriteIds.value
+        optimisticFavoriteOverlay[report.id] = adding
+        _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
 
         viewModelScope.launch {
             try {
-                val result = if (isFavorite) {
-                    repository.removeFavorite(report.id)
-                } else {
+                val result = if (adding) {
                     repository.addFavorite(report)
+                } else {
+                    repository.removeFavorite(report.id)
                 }
+                // Late results after logout/account switch must not restore state.
+                if (currentUserId != userId) return@launch
                 result.onFailure { e ->
+                    optimisticFavoriteOverlay.remove(report.id)
+                    _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
                     _favoriteError.value = favoriteErrorMessage(e)
                 }
                 if (result.isSuccess && filterFavoritesLoadedForUserId != null) {
@@ -461,9 +485,68 @@ class MainViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _favoriteError.value = favoriteErrorMessage(e)
+                if (currentUserId == userId) {
+                    optimisticFavoriteOverlay.remove(report.id)
+                    _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
+                    _favoriteError.value = favoriteErrorMessage(e)
+                }
             } finally {
-                favoriteOpsInFlight.remove(report.id)
+                _favoriteOpsInFlight.value = _favoriteOpsInFlight.value - report.id
+                _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
+            }
+        }
+    }
+
+    private fun applyFavoriteOverlay(base: Set<UUID>): Set<UUID> {
+        if (optimisticFavoriteOverlay.isEmpty()) return base
+        val result = base.toMutableSet()
+        val confirmed = mutableListOf<UUID>()
+        optimisticFavoriteOverlay.forEach { (id, favorite) ->
+            if ((id in base) == favorite) {
+                confirmed += id
+            } else if (favorite) {
+                result += id
+            } else {
+                result -= id
+            }
+        }
+        confirmed.forEach(optimisticFavoriteOverlay::remove)
+        return result
+    }
+
+    /**
+     * Observes the local favorites cache and refreshes it from the backend.
+     * Runs on every authenticated session, so the detail screen knows the
+     * bookmark state even when the user never opened the favorites filter.
+     */
+    fun refreshFavorites() {
+        val userId = currentUserId ?: authRepository.currentUser()?.id
+        if (userId == null) return
+        currentUserId = userId
+
+        // Cancel + relaunch: the collect child below never completes.
+        favoritesLoadJob?.cancel()
+        favoritesLoadJob = viewModelScope.launch {
+            launch {
+                try {
+                    repository.getFavoriteReportIds(userId).collect { base ->
+                        if (currentUserId != userId) return@collect
+                        baseFavoriteIds = base
+                        _favoriteIds.value = applyFavoriteOverlay(base)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            // A failed refresh keeps the cached ids untouched.
+            try {
+                repository.refreshFavoriteIds(userId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -703,7 +786,6 @@ class MainViewModel @Inject constructor(
                     e.printStackTrace()
                 }
             }
-            _favoriteReports.value = emptyList()
             // Refresh from network → saves to Room → Flow auto-updates UI
             try {
                 val result = repository.refreshHomeReports(userId)

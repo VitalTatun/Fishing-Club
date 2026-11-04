@@ -28,6 +28,15 @@ data class HomeRefreshResult(
 interface FishingRepository {
     fun getHomeReports(userId: UUID): Flow<List<FishingReport>>
     suspend fun loadFavoriteReports(userId: UUID): List<FishingReport>
+
+    /**
+     * Ids of the reports the user has bookmarked. Backed by the local cache, so
+     * the UI can render the correct state immediately and react to every write.
+     */
+    fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>>
+
+    /** Pulls bookmarked ids from the backend into the local cache. */
+    suspend fun refreshFavoriteIds(userId: UUID)
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
     /** Loads the first page of home reports, replacing the cache. */
@@ -61,6 +70,7 @@ class MockFishingRepository : FishingRepository {
     private val favoriteReports = mutableListOf<FishingReport>()
     private val reports = MockData.sampleReports.toMutableList()
     private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
+    private val _favoriteIds = MutableStateFlow<Set<UUID>>(emptySet())
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = flow {
         delay(1000)
@@ -104,6 +114,12 @@ class MockFishingRepository : FishingRepository {
         return favoriteReports.toList()
     }
 
+    override fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>> = _favoriteIds.asStateFlow()
+
+    override suspend fun refreshFavoriteIds(userId: UUID) {
+        _favoriteIds.value = favoriteReports.map { it.id }.toSet()
+    }
+
     override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
         return Result.success(reports.map { it.toMarkerDomain() })
     }
@@ -112,11 +128,13 @@ class MockFishingRepository : FishingRepository {
         if (favoriteReports.none { it.id == report.id }) {
             favoriteReports.add(report)
         }
+        _favoriteIds.value = favoriteReports.map { it.id }.toSet()
         return Result.success(Unit)
     }
 
     override suspend fun removeFavorite(reportId: UUID): Result<Unit> {
         favoriteReports.removeAll { it.id == reportId }
+        _favoriteIds.value = favoriteReports.map { it.id }.toSet()
         return Result.success(Unit)
     }
 
