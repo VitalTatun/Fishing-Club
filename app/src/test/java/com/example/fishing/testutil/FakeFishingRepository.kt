@@ -16,6 +16,7 @@ class FakeFishingRepository : FishingRepository {
 
     private val _homeReports = MutableStateFlow<List<FishingReport>>(emptyList())
     private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
+    private val _favoriteIds = MutableStateFlow<Set<UUID>>(emptySet())
     private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
     private val _reportDetails = MutableStateFlow<FishingReport?>(null)
     private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
@@ -26,7 +27,10 @@ class FakeFishingRepository : FishingRepository {
 
     var favoriteReportsValue: List<FishingReport>
         get() = _favoriteReports.value
-        set(value) { _favoriteReports.value = value }
+        set(value) {
+            _favoriteReports.value = value
+            _favoriteIds.value = value.map { it.id }.toSet()
+        }
 
     var mapMarkersValue: List<MarkerDomain>
         get() = _mapMarkers.value
@@ -64,6 +68,12 @@ class FakeFishingRepository : FishingRepository {
     var removeFavoriteException: Exception? = null
     var removeFavoriteGate: CompletableDeferred<Unit>? = null
 
+    var loadFavoriteReportsCallCount = 0
+    var loadFavoriteReportsException: Exception? = null
+
+    var refreshFavoriteIdsCallCount = 0
+    var refreshFavoriteIdsException: Exception? = null
+
     var deleteReportCallCount = 0
     var deleteReportException: Exception? = null
     var deleteReportGate: CompletableDeferred<Unit>? = null
@@ -92,7 +102,20 @@ class FakeFishingRepository : FishingRepository {
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = _homeReports.asStateFlow()
 
-    override fun getFavoriteReports(userId: UUID): Flow<List<FishingReport>> = _favoriteReports.asStateFlow()
+    override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
+        loadFavoriteReportsCallCount++
+        loadFavoriteReportsException?.let { throw it }
+        _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
+        return _favoriteReports.value
+    }
+
+    override fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>> = _favoriteIds.asStateFlow()
+
+    override suspend fun refreshFavoriteIds(userId: UUID) {
+        refreshFavoriteIdsCallCount++
+        refreshFavoriteIdsException?.let { throw it }
+        _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
+    }
 
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
 
@@ -127,6 +150,7 @@ class FakeFishingRepository : FishingRepository {
         addFavoriteGate?.await()
         addFavoriteException?.let { return Result.failure(it) }
         _favoriteReports.value = (_favoriteReports.value + report).distinctBy { it.id }
+        _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
         return Result.success(Unit)
     }
 
@@ -135,6 +159,7 @@ class FakeFishingRepository : FishingRepository {
         removeFavoriteGate?.await()
         removeFavoriteException?.let { return Result.failure(it) }
         _favoriteReports.value = _favoriteReports.value.filterNot { it.id == reportId }
+        _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
         return Result.success(Unit)
     }
 
@@ -156,6 +181,7 @@ class FakeFishingRepository : FishingRepository {
         deleteReportException?.let { return Result.failure(it) }
         _homeReports.value = _homeReports.value.filterNot { it.id == id }
         _favoriteReports.value = _favoriteReports.value.filterNot { it.id == id }
+        _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
         return Result.success(Unit)
     }
 

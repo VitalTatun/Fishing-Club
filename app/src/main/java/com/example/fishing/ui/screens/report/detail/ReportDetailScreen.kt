@@ -1,17 +1,19 @@
 package com.example.fishing.ui.screens.report.detail
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.ThumbUpOffAlt
-import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
@@ -20,6 +22,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +44,7 @@ fun ReportDetailScreen(
     onBackClick: () -> Unit,
     onMapClick: (GeoPoint) -> Unit = {},
     isFavorite: Boolean = false,
+    isFavoriteUpdating: Boolean = false,
     onToggleFavorite: () -> Unit = {},
     isOwnReport: Boolean = false,
     onDeleteReport: () -> Unit = {},
@@ -152,12 +157,39 @@ fun ReportDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onToggleFavorite) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = stringResource(R.string.favorites),
-                            tint = if (isFavorite) FishingTheme.colors.bookmarkRed else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    val haptic = LocalHapticFeedback.current
+                    val bookmarkTint by animateColorAsState(
+                        targetValue = if (isFavorite) {
+                            FishingTheme.colors.bookmarkRed
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        label = "bookmarkTint"
+                    )
+                    IconToggleButton(
+                        checked = isFavorite,
+                        onCheckedChange = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onToggleFavorite()
+                        },
+                        enabled = !isFavoriteUpdating
+                    ) {
+                        AnimatedContent(
+                            targetState = isFavorite,
+                            transitionSpec = {
+                                (scaleIn(initialScale = 0.75f) + fadeIn()) togetherWith
+                                    (scaleOut(targetScale = 0.75f) + fadeOut())
+                            },
+                            label = "favoriteIcon"
+                        ) { favorite ->
+                            Icon(
+                                imageVector = if (favorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = stringResource(
+                                    if (favorite) R.string.remove_from_favorites else R.string.add_to_favorites
+                                ),
+                                tint = bookmarkTint
+                            )
+                        }
                     }
 
                     if (isDeleting) {
@@ -402,7 +434,7 @@ fun ReportDetailScreenPreview() {
             fishingFromTheShore = true,
             isPublic = false
         )
-        ReportDetailScreen(report = sampleReport, onBackClick = {})
+        ReportDetailScreen(report = sampleReport, onBackClick = {}, isFavorite = true)
     }
 }
 

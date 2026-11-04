@@ -59,6 +59,8 @@
     <string name="draft">Не опубликован</string>
     <string name="published">Опубликован</string>
     <string name="in_favorites">В избранном</string>
+    <string name="add_to_favorites">Добавить в избранное</string>
+    <string name="remove_from_favorites">Убрать из избранного</string>
     <string name="favorites">Избранное</string>
     <string name="like">Нравится</string>
     <string name="unlike">Убрать лайк</string>
