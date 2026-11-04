@@ -194,6 +194,7 @@
     <string name="save_in_progress_title">Идёт сохранение</string>
     <string name="save_in_progress_message">Отчёт ещё загружается. Дождитесь завершения или отмените сохранение.</string>
     <string name="save_in_progress_wait">Подождать</string>
+    <string name="save_taking_too_long">Сохранение занимает больше времени, чем обычно. Возможно, проблемы с подключением к интернету.</string>
     <string name="cancel_saving">Отменить сохранение</string>
     <string name="report_save_processing">Обработка фотографий…</string>
     <string name="report_save_uploading">Загрузка фото: %1$d из %2$d</string>

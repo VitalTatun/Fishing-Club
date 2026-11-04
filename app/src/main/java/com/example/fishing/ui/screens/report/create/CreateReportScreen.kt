@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -122,8 +123,14 @@ fun CreateReportScreen(
 
     var showDiscardDialog by remember { mutableStateOf(false) }
     var showSavingDialog by remember { mutableStateOf(false) }
+    var isTakingTooLong by remember { mutableStateOf(false) }
     LaunchedEffect(isSaving) {
         showSavingDialog = isSaving
+        isTakingTooLong = false
+        if (isSaving) {
+            delay(20_000)
+            isTakingTooLong = true
+        }
     }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -232,6 +239,13 @@ fun CreateReportScreen(
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Text(stringResource(R.string.save_in_progress_message))
                     }
+                    if (isTakingTooLong) {
+                        Text(
+                            text = stringResource(R.string.save_taking_too_long),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -240,11 +254,6 @@ fun CreateReportScreen(
                     viewModel.cancelSave()
                 }) {
                     Text(stringResource(R.string.cancel_saving))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSavingDialog = false }) {
-                    Text(stringResource(R.string.save_in_progress_wait))
                 }
             }
         )
