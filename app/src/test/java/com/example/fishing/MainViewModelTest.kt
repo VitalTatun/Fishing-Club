@@ -876,6 +876,53 @@ class MainViewModelTest {
     // --- Pagination ---
 
     @Test
+    fun `home loading without a session ends loading with an error`() = runTest {
+        fakeAuthRepository.sessionUser = null
+
+        val vm = createViewModel()
+        val job = launch { vm.homeUiState.collect {} }
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.loadReportsIfNeeded()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        // The full-screen loader must not spin forever when no user is resolved.
+        assertFalse(vm.isInitialLoading.value)
+        assertNotNull(vm.error.value)
+        assertTrue(vm.homeUiState.value is HomeUiState.Error)
+        job.cancel()
+    }
+
+    @Test
+    fun `load more failure exposes an error and keeps the page for retry`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        fakeFishingRepository.refreshHomeReportsHasMore = true
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.hasMoreReports.value)
+
+        fakeFishingRepository.loadMoreHomeReportsException =
+            IllegalStateException("network down")
+        vm.loadMoreReports()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(vm.isLoadingMore.value)
+        assertNotNull(vm.loadMoreError.value)
+        // The page is still available, so the retry action can run it again.
+        assertTrue(vm.hasMoreReports.value)
+
+        fakeFishingRepository.loadMoreHomeReportsException = null
+        fakeFishingRepository.loadMoreHomeReportsHasMore = false
+        vm.loadMoreReports()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeFishingRepository.loadMoreHomeReportsCallCount)
+        assertNull(vm.loadMoreError.value)
+        assertFalse(vm.hasMoreReports.value)
+    }
+
+    @Test
     fun `refresh propagates hasMore flag from repository`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         fakeFishingRepository.refreshHomeReportsHasMore = true

@@ -118,6 +118,10 @@ class MainViewModel @Inject constructor(
     private val _isLoadingMore = MutableStateFlow(false)
     val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
 
+    /** Surfaced at the bottom of the home list when the next page fails to load. */
+    private val _loadMoreError = MutableStateFlow<String?>(null)
+    val loadMoreError: StateFlow<String?> = _loadMoreError.asStateFlow()
+
     private val _hasMoreReports = MutableStateFlow(false)
     val hasMoreReports: StateFlow<Boolean> = _hasMoreReports.asStateFlow()
 
@@ -306,6 +310,7 @@ class MainViewModel @Inject constructor(
         _isInitialLoading.value = true
         _isRefreshing.value = false
         _isLoadingMore.value = false
+        _loadMoreError.value = null
         _hasMoreReports.value = false
         _selectedTab.value = 0
         _mapIsLoading.value = true
@@ -748,12 +753,19 @@ class MainViewModel @Inject constructor(
         }
 
         val userId = currentUserId ?: authRepository.currentUser()?.id
-        if (userId == null) return
+        if (userId == null) {
+            // Without a session no data will ever arrive: resolve the loader and
+            // surface an error instead of spinning forever.
+            _isInitialLoading.value = false
+            _error.value = "Нет активной сессии. Войдите снова."
+            return
+        }
         currentUserId = userId
 
         reportsLoadJob?.cancel()
         reportsLoadJob = viewModelScope.launch {
             _error.value = null
+            _loadMoreError.value = null
             if (_reports.value.isEmpty()) {
                 _isInitialLoading.value = true
             } else {
@@ -813,6 +825,7 @@ class MainViewModel @Inject constructor(
         val userId = currentUserId ?: authRepository.currentUser()?.id ?: return
 
         _isLoadingMore.value = true
+        _loadMoreError.value = null
         viewModelScope.launch {
             try {
                 _hasMoreReports.value = repository.loadMoreHomeReports(userId)
@@ -820,6 +833,10 @@ class MainViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 e.printStackTrace()
+                // Keep hasMoreReports untouched so the retry action can re-run
+                // the same page instead of silently ending the list.
+                _loadMoreError.value =
+                    "Не удалось загрузить ещё отчёты: ${ErrorMapper.toUserFriendlyMessage(e)}"
             } finally {
                 _isLoadingMore.value = false
             }
