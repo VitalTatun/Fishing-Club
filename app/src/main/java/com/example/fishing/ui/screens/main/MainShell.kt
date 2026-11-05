@@ -14,8 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -144,7 +144,7 @@ fun MainShell(
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
                                 Icon(
-                                    Icons.Default.MoreVert,
+                                    Icons.Default.SwapVert,
                                     contentDescription = stringResource(R.string.sort)
                                 )
                             }
