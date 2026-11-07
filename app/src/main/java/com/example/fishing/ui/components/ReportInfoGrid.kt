@@ -11,7 +11,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.theme.FishingTheme
@@ -39,7 +38,10 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             else -> null
         }
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             InfoGridItem(
                 title = stringResource(R.string.date),
                 value = report.fishingStartAt?.let { dateFormatter.format(it) } ?: stringResource(R.string.not_specified),
@@ -61,7 +63,10 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             InfoGridItem(
                 title = stringResource(R.string.bait),
                 value = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
@@ -74,7 +79,10 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             )
         }
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
