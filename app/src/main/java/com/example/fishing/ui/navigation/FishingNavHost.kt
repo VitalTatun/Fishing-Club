@@ -1,5 +1,6 @@
 package com.example.fishing.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
@@ -404,6 +405,10 @@ fun FishingNavHost(
             }
 
             composable<ReportDetailRoute> { backStackEntry ->
+                // Consume the back gesture so the system predictive preview is not
+                // shown on this destination; the regular pop slide still plays.
+                BackHandler { navController.popBackStack() }
+
                 val reportId = runCatching {
                     UUID.fromString(backStackEntry.toRoute<ReportDetailRoute>().reportId)
                 }.getOrNull()
