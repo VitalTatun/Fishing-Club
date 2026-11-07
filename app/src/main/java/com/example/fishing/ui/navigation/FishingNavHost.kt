@@ -8,11 +8,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavType
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import com.example.fishing.model.*
 import com.example.fishing.ui.screens.main.MainScreen
 import com.example.fishing.ui.screens.profile.ChangeHistoryScreen
@@ -83,7 +83,7 @@ fun FishingNavHost(
 
     key(isAuthenticated) {
         val navController = rememberNavController()
-        val startDestination = if (isAuthenticated) "main" else "login"
+        val startDestination = if (isAuthenticated) MainRoute else LoginRoute
 
         NavHost(
             navController = navController,
@@ -94,17 +94,17 @@ fun FishingNavHost(
             popEnterTransition = FishingTransitions.defaultPopEnterTransition,
             popExitTransition = FishingTransitions.defaultPopExitTransition
         ) {
-            composable("login") {
+            composable<LoginRoute> {
                 val loginViewModel: LoginViewModel = hiltViewModel()
                 LoginScreen(
                     viewModel = loginViewModel,
                     onNavigateToRegistration = {
-                        navController.navigate("registration")
+                        navController.navigate(RegistrationRoute)
                     }
                 )
             }
 
-            composable("registration") {
+            composable<RegistrationRoute> {
                 val registrationViewModel: RegistrationViewModel = hiltViewModel()
                 RegistrationScreen(
                     viewModel = registrationViewModel,
@@ -113,7 +113,7 @@ fun FishingNavHost(
                 )
             }
 
-            composable("main") {
+            composable<MainRoute> {
                 MainScreen(
                     homeUiState = homeUiState,
                     isRefreshing = isRefreshing,
@@ -131,16 +131,16 @@ fun FishingNavHost(
                     repository = fishingRepository,
                     onTabSelected = { index -> viewModel.selectTab(index) },
                     onCreateReportClick = {
-                        navController.navigate("create_report")
+                        navController.navigate(CreateReportRoute)
                     },
                     onReportClick = { report ->
-                        navController.navigate("detail/${report.id}")
+                        navController.navigate(ReportDetailRoute(report.id.toString()))
                     },
                     onSearchClick = {
                         if (selectedTab == 0) {
-                            navController.navigate("report_list_search")
+                            navController.navigate(ReportListSearchRoute)
                         } else {
-                            navController.navigate("report_search")
+                            navController.navigate(LocationSearchRoute)
                         }
                     },
                     userEmail = currentUser?.email,
@@ -153,13 +153,13 @@ fun FishingNavHost(
                         }
                     },
                     onEditProfileClick = {
-                        navController.navigate("edit_profile")
+                        navController.navigate(EditProfileRoute)
                     },
                     onChangeHistoryClick = {
-                        navController.navigate("change_history")
+                        navController.navigate(ChangeHistoryRoute)
                     },
                     onAppearanceClick = {
-                        navController.navigate("appearance")
+                        navController.navigate(AppearanceRoute)
                     },
                     errorText = viewModel.error.collectAsState().value,
                     onErrorDismiss = { viewModel.refresh() },
@@ -177,7 +177,7 @@ fun FishingNavHost(
                 )
             }
 
-            composable("report_list_search") {
+            composable<ReportListSearchRoute> {
                 LaunchedEffect(viewModel.searchIsFavoritesSelected) {
                     if (viewModel.searchIsFavoritesSelected) {
                         viewModel.loadFilterFavoriteReports(force = true)
@@ -204,7 +204,7 @@ fun FishingNavHost(
                     selectedMethod = viewModel.searchSelectedMethod,
                     onMethodChange = { viewModel.searchSelectedMethod = it },
                     onReportClick = { report ->
-                        navController.navigate("detail/${report.id}")
+                        navController.navigate(ReportDetailRoute(report.id.toString()))
                     },
                     onBack = { navController.popBackStack() },
                     favoriteError = viewModel.favoriteError.collectAsState().value,
@@ -212,9 +212,10 @@ fun FishingNavHost(
                 )
             }
 
-            composable("report_search") {
+            composable<LocationSearchRoute> {
                 val isFromWaterEdit = navController.previousBackStackEntry
-                    ?.destination?.route == "water_edit"
+                    ?.destination
+                    ?.hasRoute<FishingLocationRoute>() == true
 
                 LocationSearchScreen(
                     onLocationSelected = { point, _, polygon ->
@@ -233,7 +234,7 @@ fun FishingNavHost(
                 )
             }
 
-            composable("create_report") {
+            composable<CreateReportRoute> {
                 val currentEntry = navController.currentBackStackEntry!!
 
                 currentEntry.savedStateHandle.get<FishingMethod>("method")?.let {
@@ -265,35 +266,38 @@ fun FishingNavHost(
                     onBackClick = { navController.popBackStack() },
                     onSaveComplete = {
                         viewModel.refresh()
-                        if (navController.currentDestination?.route == "create_report") {
+                        if (navController.currentBackStackEntry
+                                ?.destination
+                                ?.hasRoute<CreateReportRoute>() == true
+                        ) {
                             navController.popBackStack()
                         }
                     },
                     onNavigateToCatchEdit = {
                         currentEntry.savedStateHandle["fish"] = ArrayList(createReportViewModel.formSelectedFish)
                         currentEntry.savedStateHandle["weight"] = createReportViewModel.formWeight
-                        navController.navigate("catch_edit")
+                        navController.navigate(CatchEditRoute)
                     },
                     onNavigateToMethodAndBaitEdit = {
                         currentEntry.savedStateHandle["method"] = createReportViewModel.formSelectedMethod
                         currentEntry.savedStateHandle["baits"] = ArrayList(createReportViewModel.formSelectedBaits)
-                        navController.navigate("method_bait_edit")
+                        navController.navigate(MethodBaitEditRoute)
                     },
                     onNavigateToCommentEdit = {
                         currentEntry.savedStateHandle["comment"] = createReportViewModel.formComment
-                        navController.navigate("comment_edit")
+                        navController.navigate(CommentEditRoute)
                     },
                     onNavigateToWaterEdit = {
                         currentEntry.savedStateHandle["location"] = createReportViewModel.formLocation
-                        navController.navigate("water_edit")
+                        navController.navigate(FishingLocationRoute)
                     },
                     onNavigateToWaterNameEdit = {
-                        navController.navigate("water_name_edit")
+                        navController.navigate(WaterNameEditRoute)
                     }
                 )
             }
 
-            composable("water_edit") { backStackEntry ->
+            composable<FishingLocationRoute> { backStackEntry ->
                 val currentLocation = navController.previousBackStackEntry
                     ?.savedStateHandle
                     ?.get<GeoPoint>("location")
@@ -316,12 +320,12 @@ fun FishingNavHost(
                         navController.popBackStack()
                     },
                     onSearchClick = {
-                        navController.navigate("report_search")
+                        navController.navigate(LocationSearchRoute)
                     }
                 )
             }
 
-            composable("water_name_edit") {
+            composable<WaterNameEditRoute> {
                 WaterEditScreen(
                     viewModel = createReportViewModel,
                     reportsViewModel = viewModel,
@@ -330,7 +334,7 @@ fun FishingNavHost(
                 )
             }
 
-            composable("comment_edit") {
+            composable<CommentEditRoute> {
                 val currentComment = navController.previousBackStackEntry
                     ?.savedStateHandle
                     ?.get<String>("comment") ?: ""
@@ -347,7 +351,7 @@ fun FishingNavHost(
                 )
             }
 
-            composable("method_bait_edit") {
+            composable<MethodBaitEditRoute> {
                 val currentMethod = navController.previousBackStackEntry
                     ?.savedStateHandle
                     ?.get<FishingMethod>("method") ?: FishingMethod.NONE
@@ -371,7 +375,7 @@ fun FishingNavHost(
                 )
             }
 
-            composable("catch_edit") {
+            composable<CatchEditRoute> {
                 val currentFish = navController.previousBackStackEntry
                     ?.savedStateHandle
                     ?.get<List<Fish>>("fish") ?: emptyList()
@@ -397,13 +401,10 @@ fun FishingNavHost(
                 )
             }
 
-            composable(
-                route = "detail/{reportId}",
-                arguments = listOf(navArgument("reportId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val reportId = backStackEntry.arguments
-                    ?.getString("reportId")
-                    ?.let(UUID::fromString)
+            composable<ReportDetailRoute> { backStackEntry ->
+                val reportId = runCatching {
+                    UUID.fromString(backStackEntry.toRoute<ReportDetailRoute>().reportId)
+                }.getOrNull()
 
                 LaunchedEffect(reportId) {
                     reportId?.let { viewModel.loadReportDetails(it) }
@@ -435,7 +436,7 @@ fun FishingNavHost(
                                     onToggleFavorite = { viewModel.toggleFavorite(state.report) },
                                     onMapClick = { point ->
                                         viewModel.requestMapLocation(point)
-                                        navController.navigate("full_map/${state.report.id}")
+                                        navController.navigate(FullMapRoute(state.report.id.toString()))
                                     },
                                     isOwnReport = state.report.userId == currentUser?.id,
                                     isDeleting = isDeletingReport,
@@ -499,13 +500,11 @@ fun FishingNavHost(
                 }
             }
 
-            composable(
-                route = "full_map/{reportId}",
-                arguments = listOf(navArgument("reportId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val reportId = backStackEntry.arguments
-                    ?.getString("reportId")
-                    ?.let(UUID::fromString)
+            composable<FullMapRoute> { backStackEntry ->
+                val fullMapRoute = backStackEntry.toRoute<FullMapRoute>()
+                val reportId = runCatching {
+                    UUID.fromString(fullMapRoute.reportId)
+                }.getOrNull()
 
                 val singleMarker = reportId?.let { id ->
                     mapMarkers.firstOrNull { it.id == id }
@@ -523,8 +522,8 @@ fun FishingNavHost(
                         navController.popBackStack()
                     },
                     onMarkerClick = { marker ->
-                        navController.navigate("detail/${marker.id}") {
-                            popUpTo("full_map/$reportId") { inclusive = true }
+                        navController.navigate(ReportDetailRoute(marker.id.toString())) {
+                            popUpTo(fullMapRoute) { inclusive = true }
                         }
                     },
                     markersInteractive = false,
@@ -534,13 +533,13 @@ fun FishingNavHost(
                 )
             }
 
-            composable("change_history") {
+            composable<ChangeHistoryRoute> {
                 ChangeHistoryScreen(
                     onBackClick = { navController.popBackStack() }
                 )
             }
 
-            composable("edit_profile") {
+            composable<EditProfileRoute> {
                 val editProfileViewModel: EditProfileViewModel = hiltViewModel()
                 val user by editProfileViewModel.user.collectAsState()
                 val isLoading by editProfileViewModel.isLoading.collectAsState()
@@ -570,7 +569,7 @@ fun FishingNavHost(
                 )
             }
 
-            composable("appearance") {
+            composable<AppearanceRoute> {
                 AppearanceScreen(
                     currentMode = reportDisplayMode,
                     onModeSelected = { mode -> viewModel.setDisplayMode(mode) },
