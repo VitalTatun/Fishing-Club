@@ -92,7 +92,9 @@ fun FishingNavHost(
             enterTransition = FishingTransitions.defaultEnterTransition,
             exitTransition = FishingTransitions.defaultExitTransition,
             popEnterTransition = FishingTransitions.defaultPopEnterTransition,
-            popExitTransition = FishingTransitions.defaultPopExitTransition
+            popExitTransition = FishingTransitions.defaultPopExitTransition,
+            predictivePopEnterTransition = FishingTransitions.predictivePopEnterTransition,
+            predictivePopExitTransition = FishingTransitions.predictivePopExitTransition
         ) {
             composable<LoginRoute> {
                 val loginViewModel: LoginViewModel = hiltViewModel()
