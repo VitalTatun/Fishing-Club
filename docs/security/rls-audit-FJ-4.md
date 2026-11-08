@@ -7,7 +7,7 @@
 
 > Все проверки выполнялись в транзакциях с `rollback` — данные проекта не изменялись.
 >
-> **Статус внедрения (2026-11-08):** F-1, F-3, F-4, F-5 применены к проекту (`schema_migrations`: `20261108182818`, `20261108182831`, `20261108182836`) и повторно проверены harness-скриптом. F-2 (e-mail) **не применена** — требует обновления клиента на `profiles_public`.
+> **Статус внедрения (2026-11-08):** все миграции применены к проекту и записаны в `schema_migrations`: F-1 `20261108182818`, F-3 `20261108182831`, F-4/F-5 `20261108182836`, F-2 `20261108183430`. Клиент переведён на `profiles_public`; harness-скрипт повторно проверен — все сценарии зелёные.
 
 ## 1. Модель владения
 
@@ -97,7 +97,7 @@ Buckets: `avatars` — public, `fishing_photos` — **private** (контент 
 
 Подтверждение: сценарий A — 8 из 8 профилей и e-mail.
 
-Исправление (требует синхронного обновления клиента): `supabase/migrations/20261108190000_fj4_profiles_email_privacy.sql` — публичное представление `profiles_public` (`id, name, avatar_url, created_at`) и чтение `profiles` только своей строки. В клиенте заменить чтение авторов на `profiles_public`; запись профиля (upsert) оставить в `profiles`.
+Исправление: `supabase/migrations/20261108183430_fj4_profiles_email_privacy.sql` — публичное представление `profiles_public` (`id, name, avatar_url, created_at`) и чтение `profiles` только своей строки. В клиенте чтение авторов переведено на `profiles_public` (`SupabaseFishingRepository.kt`), запись профиля (upsert) осталась в `profiles`. **Применено.**
 
 ### F-3 (Medium) — подделка `likes_count`
 
@@ -142,8 +142,8 @@ RLS разрешает владельцу обновлять любые коло
 1. ✅ `20261108182818_fj4_photo_path_ownership.sql` — закрывает F-1, клиентских изменений не требует. Применено.
 2. ✅ `20261108182831_fj4_likes_count_integrity.sql` — закрывает F-3. Применено.
 3. ✅ `20261108182836_fj4_function_and_grants_hardening.sql` — F-4, F-5. Применено.
-4. ⏳ Обновить клиент на `profiles_public` и только затем применить `20261108190000_fj4_profiles_email_privacy.sql` (F-2).
-5. ✅ Повторно прогнать `supabase/tests/fj4_rls_checks.sql` — E/F/G дают 0/0/0; A остаётся 8 до шага 4. `publish_report`, `like_report`/`unlike_report` и загрузка фото по своему пути проверены — работают.
+4. ✅ Клиент переведён на `profiles_public`, применена `20261108183430_fj4_profiles_email_privacy.sql` (F-2). Применено.
+5. ✅ Повторно прогнан `supabase/tests/fj4_rls_checks.sql` — A = 1 (только свой профиль), `profiles_public` = 8, E/F/G = 0/0/0. `publish_report`, `like_report`/`unlike_report`, upsert профиля и загрузка фото по своему пути проверены — работают. `:app:compileDebugKotlin` — BUILD SUCCESSFUL.
 
 ## 7. Ограничения аудита
 

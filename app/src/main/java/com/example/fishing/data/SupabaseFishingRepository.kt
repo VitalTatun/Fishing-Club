@@ -256,7 +256,8 @@ class SupabaseFishingRepository @Inject constructor(
         }
         val profilesDeferred = async {
             val authorIds = fishings.map { it.userId }
-            supabase.postgrest["profiles"].select {
+            // Public projection: id, name, avatar_url, created_at (no email).
+            supabase.postgrest["profiles_public"].select {
                 filter { isIn("id", authorIds) }
             }.decodeList<ProfileDto>()
         }
@@ -339,7 +340,7 @@ class SupabaseFishingRepository @Inject constructor(
             filter { eq("fishing_id", id) }
             order("sort_order", Order.ASCENDING)
         }.decodeList<PhotoDto>()
-        val author = supabase.postgrest["profiles"].select {
+        val author = supabase.postgrest["profiles_public"].select {
             filter { eq("id", fishing.userId) }
         }.decodeList<ProfileDto>().firstOrNull()
 
@@ -716,7 +717,7 @@ class SupabaseFishingRepository @Inject constructor(
             order("sort_order", Order.ASCENDING)
         }.decodeList<PhotoDto>()
 
-        val author = supabase.postgrest["profiles"].select {
+        val author = supabase.postgrest["profiles_public"].select {
             filter { eq("id", fishing.userId) }
         }.decodeList<ProfileDto>().firstOrNull()
 

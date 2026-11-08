@@ -11,6 +11,7 @@
 -- Ожидаемые значения ПОСЛЕ применения миграций FJ-4:
 --   A_profiles_visible            = 1   (только свой профиль)
 --   A_emails_visible              = 1
+--   A_profiles_public_visible     = 8   (безопасная проекция для авторов)
 --   B_private_report_visible      = 0
 --   C_other_report_select         = 1   (публичный отчёт, by design)
 --   C_update_others               = 0
@@ -70,6 +71,7 @@ select set_config(
 
 insert into _fj4_results select 'A_profiles_visible', count(*)::int from public.profiles;
 insert into _fj4_results select 'A_emails_visible', count(email)::int from public.profiles;
+insert into _fj4_results select 'A_profiles_public_visible', count(*)::int from public.profiles_public;
 
 insert into _fj4_results
 select 'B_private_report_visible', count(*)::int
