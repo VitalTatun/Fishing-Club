@@ -100,38 +100,60 @@ select 'D_storage_direct_read', count(*)::int
 from storage.objects
 where name = (select victim_path from _fj4_ids);
 
--- F-1: строка рыбалки и фото с чужим storage_path
+-- F-1: строка рыбалки и фото с чужим storage_path.
+-- После миграции вставка отклоняется (42501), поэтому ожидаемый отказ ловим
+-- внутри DO-блока, чтобы не прерывать весь скрипт.
 insert into public.fishing (id, user_id, type, name, is_public)
 select 'f1000000-0000-4000-8000-000000000001', actor1, 'FISHING_LOG', 'fj4-rls-check', true
 from _fj4_ids;
 
-insert into public.fishing_photos (id, fishing_id, storage_path)
-select 'f1000000-0000-4000-8000-000000000002',
-       'f1000000-0000-4000-8000-000000000001',
-       victim_path
-from _fj4_ids;
+do $$
+begin
+  insert into public.fishing_photos (id, fishing_id, storage_path)
+  values (
+    'f1000000-0000-4000-8000-000000000002',
+    'f1000000-0000-4000-8000-000000000001',
+    (select victim_path from _fj4_ids)
+  );
+  insert into _fj4_results values ('E_pivot_row_inserted', 1);
+exception
+  when insufficient_privilege then
+    insert into _fj4_results values ('E_pivot_row_inserted', 0);
+end
+$$;
 
-insert into _fj4_results
-select 'E_pivot_row_inserted', count(*)::int
-from public.fishing_photos
-where id = 'f1000000-0000-4000-8000-000000000002';
+-- F-3: подделка счётчика лайков. После миграции UPDATE/INSERT колонки
+-- likes_count запрещены (42501).
+do $$
+begin
+  update public.fishing
+     set likes_count = 99999
+   where user_id = (select actor1 from _fj4_ids);
+  insert into _fj4_results
+  select 'G_update_own_likes_count', count(*)::int
+    from public.fishing
+   where user_id = (select actor1 from _fj4_ids)
+     and likes_count = 99999;
+exception
+  when insufficient_privilege then
+    insert into _fj4_results values ('G_update_own_likes_count', 0);
+end
+$$;
 
--- F-3: подделка счётчика лайков
-with u as (
-  update public.fishing set likes_count = 99999
-  where user_id = (select actor1 from _fj4_ids)
-  returning 1
-)
-insert into _fj4_results select 'G_update_own_likes_count', count(*)::int from u;
-
-insert into public.fishing (id, user_id, type, name, is_public, likes_count)
-select 'f1000000-0000-4000-8000-000000000003', actor1, 'FISHING_LOG', 'fj4-like-check', false, 123456
-from _fj4_ids;
-
-insert into _fj4_results
-select 'G_insert_fake_likes_count',
-       coalesce((select likes_count from public.fishing
-                 where id = 'f1000000-0000-4000-8000-000000000003'), -1);
+do $$
+begin
+  insert into public.fishing (id, user_id, type, name, is_public, likes_count)
+  values (
+    'f1000000-0000-4000-8000-000000000003',
+    (select actor1 from _fj4_ids),
+    'FISHING_LOG', 'fj4-like-check', false, 123456
+  );
+  insert into _fj4_results values ('G_insert_fake_likes_count', 123456);
+exception
+  when insufficient_privilege then
+    insert into _fj4_results values ('G_insert_fake_likes_count', 0);
+end
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Сценарии от имени anon

@@ -5,7 +5,9 @@
 **Задача:** [FJ-4](https://nibbbana36.atlassian.net/browse/FJ-4) — проверить и задокументировать RLS-политики Supabase
 **Метод:** инспекция `pg_policies` / `pg_tables` / `information_schema`, разбор `SECURITY DEFINER`-функций, SQL-сценарии под ролями `authenticated` и `anon` с откатом транзакции, сверка с клиентским кодом (`app/src/main/...`).
 
-> Все проверки выполнялись в транзакциях с `rollback` — данные проекта не изменялись. Миграции из этого PR **не применялись** к проекту.
+> Все проверки выполнялись в транзакциях с `rollback` — данные проекта не изменялись.
+>
+> **Статус внедрения (2026-11-08):** F-1, F-3, F-4, F-5 применены к проекту (`schema_migrations`: `20261108182818`, `20261108182831`, `20261108182836`) и повторно проверены harness-скриптом. F-2 (e-mail) **не применена** — требует обновления клиента на `profiles_public`.
 
 ## 1. Модель владения
 
@@ -87,7 +89,7 @@ Buckets: `avatars` — public, `fishing_photos` — **private** (контент 
 
 Подтверждение: сценарии E и F (0 → 1 доступный объект).
 
-Исправление: `supabase/migrations/20261108000000_fj4_photo_path_ownership.sql` — проверять, что первый сегмент `storage_path` равен `auth.uid()`, и требовать совпадения владельца пути в `public_fishing_photos_read`.
+Исправление: `supabase/migrations/20261108182818_fj4_photo_path_ownership.sql` — проверять, что первый сегмент `storage_path` равен `auth.uid()`, и требовать совпадения владельца пути в `public_fishing_photos_read`. **Применено.**
 
 ### F-2 (High) — любой авторизованный читает e-mail всех пользователей
 
@@ -95,7 +97,7 @@ Buckets: `avatars` — public, `fishing_photos` — **private** (контент 
 
 Подтверждение: сценарий A — 8 из 8 профилей и e-mail.
 
-Исправление (требует синхронного обновления клиента): `supabase/migrations/20261108020000_fj4_profiles_email_privacy.sql` — публичное представление `profiles_public` (`id, name, avatar_url, created_at`) и чтение `profiles` только своей строки. В клиенте заменить чтение авторов на `profiles_public`; запись профиля (upsert) оставить в `profiles`.
+Исправление (требует синхронного обновления клиента): `supabase/migrations/20261108190000_fj4_profiles_email_privacy.sql` — публичное представление `profiles_public` (`id, name, avatar_url, created_at`) и чтение `profiles` только своей строки. В клиенте заменить чтение авторов на `profiles_public`; запись профиля (upsert) оставить в `profiles`.
 
 ### F-3 (Medium) — подделка `likes_count`
 
@@ -103,19 +105,19 @@ RLS разрешает владельцу обновлять любые коло
 
 Подтверждение: сценарий G.
 
-Исправление: `supabase/migrations/20261108010000_fj4_likes_count_integrity.sql` — отозвать табличные `INSERT/UPDATE` и выдать колоночные права без `likes_count`. RPC остаются рабочими, так как `like_report`/`unlike_report` — `SECURITY DEFINER`.
+Исправление: `supabase/migrations/20261108182831_fj4_likes_count_integrity.sql` — отозвать табличные `INSERT/UPDATE` и выдать колоночные права без `likes_count`. RPC остаются рабочими, так как `like_report`/`unlike_report` — `SECURITY DEFINER`. **Применено.**
 
 ### F-4 (Low) — `handle_new_user`: mutable `search_path` и вызов через RPC
 
 `SECURITY DEFINER`-функция без фиксированного `search_path`, `EXECUTE` выдан `anon`/`authenticated`. Прямой вызов как trigger-функции падает, но это нарушение least privilege и рекомендаций Supabase linter (`function_search_path_mutable`, `anon_security_definer_function_executable`).
 
-Исправление: в `20261108030000_fj4_function_and_grants_hardening.sql` — `SET search_path = ''` и `REVOKE EXECUTE`.
+Исправление: в `20261108182836_fj4_function_and_grants_hardening.sql` — `SET search_path = ''` и `REVOKE EXECUTE`. **Применено.**
 
 ### F-5 (Low) — избыточные привилегии `anon`
 
 У `anon` есть табличные `INSERT/UPDATE/DELETE/TRUNCATE` на все таблицы `public`. RLS блокирует DML, но `TRUNCATE` RLS не покрывает, а сами гранты нарушают least privilege. Через PostgREST `TRUNCATE` недоступен, поэтому оценка — Low.
 
-Исправление: тот же файл `20261108030000_…` — отзыв write-грантов у `anon` и `TRUNCATE` у `anon`/`authenticated`.
+Исправление: тот же файл `20261108182836_…` — отзыв write-грантов у `anon` и `TRUNCATE` у `anon`/`authenticated`. **Применено.**
 
 ### F-6 (Info) — рекомендации без изменения схемы
 
@@ -137,11 +139,11 @@ RLS разрешает владельцу обновлять любые коло
 
 ## 6. Порядок внедрения
 
-1. Применить `20261108000000_fj4_photo_path_ownership.sql` — закрывает F-1, клиентских изменений не требует.
-2. Применить `20261108010000_fj4_likes_count_integrity.sql` — закрывает F-3.
-3. Применить `20261108030000_fj4_function_and_grants_hardening.sql` — F-4, F-5.
-4. Обновить клиент на `profiles_public` и только затем применить `20261108020000_fj4_profiles_email_privacy.sql` (F-2).
-5. Повторно прогнать `supabase/tests/fj4_rls_checks.sql` — сценарии E/F/G должны давать 0/0/0, A — только свой профиль.
+1. ✅ `20261108182818_fj4_photo_path_ownership.sql` — закрывает F-1, клиентских изменений не требует. Применено.
+2. ✅ `20261108182831_fj4_likes_count_integrity.sql` — закрывает F-3. Применено.
+3. ✅ `20261108182836_fj4_function_and_grants_hardening.sql` — F-4, F-5. Применено.
+4. ⏳ Обновить клиент на `profiles_public` и только затем применить `20261108190000_fj4_profiles_email_privacy.sql` (F-2).
+5. ✅ Повторно прогнать `supabase/tests/fj4_rls_checks.sql` — E/F/G дают 0/0/0; A остаётся 8 до шага 4. `publish_report`, `like_report`/`unlike_report` и загрузка фото по своему пути проверены — работают.
 
 ## 7. Ограничения аудита
 
