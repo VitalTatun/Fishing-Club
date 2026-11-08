@@ -121,7 +121,7 @@ RLS разрешает владельцу обновлять любые коло
 
 ### F-6 (Info) — рекомендации без изменения схемы
 
-- **Leaked password protection** выключена (Supabase Auth) — включить в Dashboard → Authentication → Providers.
+- **Leaked password protection** — недоступна на Free-плане (функция Pro+). Статус: **принятый риск**. Компенсационные меры: минимальная длина пароля 10, требования lowercase/uppercase/digits, CAPTCHA и rate limits на Auth, подтверждение e-mail. Пересмотреть при переходе на Pro (включить в Dashboard → Authentication → Providers → Email).
 - **49 orphan-объектов** в `fishing_photos` без строки в `fishing_photos` — не уязвимость, но стоит периодически чистить (`OrphanPhotoCleaner` чистит только локальные кандидаты).
 - `favorites` INSERT не проверяет видимость отчёта — можно добавить в избранное произвольный UUID. Утечки данных нет, поэтому оставлено как есть.
 - `likes_select_own` не даёт увидеть, кто лайкнул (только свой лайк). Функциональное ограничение, не безопасность.
