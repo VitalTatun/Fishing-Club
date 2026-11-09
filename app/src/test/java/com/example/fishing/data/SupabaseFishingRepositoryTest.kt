@@ -3,6 +3,7 @@ package com.example.fishing.data
 import android.app.Application
 import androidx.room.Room
 import com.example.fishing.data.local.AppDatabase
+import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.model.Bait
@@ -78,6 +79,14 @@ class SupabaseFishingRepositoryTest {
                 database = db,
                 reportDetailsDao = db.reportDetailsDao(),
                 likeDao = db.likeDao(),
+                reportRemoteQueries = mockk(relaxed = true)
+            ),
+            favoritesStore = SupabaseFavoritesStore(
+                supabase = mockk(relaxed = true),
+                authRepository = auth,
+                database = db,
+                reportDetailsDao = db.reportDetailsDao(),
+                favoriteReportDao = db.favoriteDao(),
                 reportRemoteQueries = mockk(relaxed = true)
             ),
             markerDao = db.markerDao(),

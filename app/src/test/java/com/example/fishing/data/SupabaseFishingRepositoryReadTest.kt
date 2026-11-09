@@ -7,6 +7,7 @@ import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.report.RemoteReport
 import com.example.fishing.data.report.RemoteReportPage
 import com.example.fishing.data.report.ReportRemoteQueries
+import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.data.supabase.FishingDto
@@ -68,6 +69,14 @@ class SupabaseFishingRepositoryReadTest {
                 database = db,
                 reportDetailsDao = db.reportDetailsDao(),
                 likeDao = db.likeDao(),
+                reportRemoteQueries = queries
+            ),
+            favoritesStore = SupabaseFavoritesStore(
+                supabase = mockk(relaxed = true),
+                authRepository = auth,
+                database = db,
+                reportDetailsDao = db.reportDetailsDao(),
+                favoriteReportDao = db.favoriteDao(),
                 reportRemoteQueries = queries
             ),
             markerDao = db.markerDao(),
@@ -137,6 +146,19 @@ class SupabaseFishingRepositoryReadTest {
         }
 
     @Test
+    fun `loadFavoriteReports persists server links and returns mapped reports`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val id = UUID.randomUUID()
+            queries.favorites = listOf(id)
+            queries.reportsById[id] = remoteReport(id)
+
+            val reports = repository.loadFavoriteReports(user.id)
+
+            assertEquals(listOf(id), reports.map { it.id })
+            assertEquals(setOf(id), repository.getFavoriteReportIds(user.id).first())
+        }
+
+    @Test
     fun `refreshReportDetails caches an existing report`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val id = UUID.randomUUID()
@@ -179,14 +201,21 @@ class SupabaseFishingRepositoryReadTest {
 
             val result = repository.refreshMapMarkers()
 
-            assertTrue(result.isSuccess)
+            assertTrue(
+                result.exceptionOrNull()?.stackTraceToString(),
+                result.isSuccess
+            )
             assertEquals(listOf(marker.id), repository.getMapMarkers().first().map { it.id })
         }
 
-    private fun remoteReport(id: UUID, likesCount: Int = 0): RemoteReport = RemoteReport(
+    private fun remoteReport(
+        id: UUID,
+        likesCount: Int = 0,
+        authorId: UUID = user.id
+    ): RemoteReport = RemoteReport(
         fishing = FishingDto(
             id = id,
-            userId = user.id,
+            userId = authorId,
             type = "FISHING_LOG",
             name = "Спиннинг • Щука",
             fishingStartAt = "2026-11-07T16:03:49Z",
@@ -195,7 +224,7 @@ class SupabaseFishingRepositoryReadTest {
         fish = emptyList(),
         baits = emptyList(),
         photos = emptyList(),
-        author = ProfileDto(id = user.id, name = "Test User")
+        author = ProfileDto(id = authorId, name = "Test User")
     )
 
     private fun marker(id: UUID): MarkerEntity = MarkerEntity(

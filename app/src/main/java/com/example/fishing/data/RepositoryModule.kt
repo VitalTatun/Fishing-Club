@@ -1,8 +1,10 @@
 package com.example.fishing.data
 
+import com.example.fishing.data.report.FavoritesStore
 import com.example.fishing.data.report.LikesStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportRemoteQueries
+import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.data.report.SupabaseReportRemoteQueries
@@ -51,4 +53,10 @@ abstract class RepositoryModule {
     abstract fun bindLikesStore(
         store: SupabaseLikesStore
     ): LikesStore
+
+    @Binds
+    @Singleton
+    abstract fun bindFavoritesStore(
+        store: SupabaseFavoritesStore
+    ): FavoritesStore
 }
