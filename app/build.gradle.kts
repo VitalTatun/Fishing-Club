@@ -94,6 +94,14 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockk)
+    // Compose UI tests run locally under Robolectric: no emulator is required,
+    // and the debug ui-test-manifest supplies the host ComponentActivity.
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.androidx.junit)
+    // ui-test-junit4 requests Espresso 3.5.0 transitively; keep the project on
+    // the version already used by androidTest so both source sets agree.
+    testImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -29,3 +29,15 @@ I have the following expert skills installed and active in this project:
 - `com.example.fishing.ui.viewmodel`: ViewModels.
 - `com.example.fishing.ui.components`: Reusable UI elements.
 - `com.example.fishing.data`: Repositories and Local DB.
+
+## 🧪 Testing
+- Run every unit and Compose UI test locally (no emulator, no Supabase):
+  `./gradlew :app:testDebugUnitTest`
+- Compose UI tests live in `app/src/test` and run through Robolectric with
+  `createComposeRule()`; screens are driven by fakes from
+  `app/src/test/java/com/example/fishing/testutil`.
+- Current UI suites: `LoginScreenUiTest`, `CreateReportScreenUiTest`,
+  `ReportDetailScreenUiTest`.
+- HTML report: `app/build/reports/tests/testDebugUnitTest/index.html`.
+- Full testing strategy, CI command and guidance for new tests:
+  [docs/testing.md](docs/testing.md).
