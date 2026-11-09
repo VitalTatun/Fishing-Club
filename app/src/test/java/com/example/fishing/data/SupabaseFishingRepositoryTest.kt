@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -270,6 +271,99 @@ class SupabaseFishingRepositoryTest {
         }
 
     @Test
+    fun `retry after a lost publish acknowledgement does not upload the photo again`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val photo = localPhoto("photo.jpg")
+            val report = report(listOf(photo))
+            val storagePath = expectedStoragePath(report, photo)
+            remote.publishFailure = IllegalStateException("timeout after commit")
+            remote.publishFailureAfterCommit = true
+
+            val first = repository.saveReport(report)
+
+            // The server committed, but the client only saw a timeout. The
+            // objects it references must not be compensated away.
+            assertTrue(first.isFailure)
+            assertEquals(1, remote.uploadCalls)
+            assertTrue(remote.exists)
+            assertEquals(setOf(storagePath), remote.attachedPaths)
+            assertTrue(remote.deletedPathBatches.isEmpty())
+            assertTrue(File(photo.url).exists())
+
+            remote.publishFailure = null
+            remote.publishFailureAfterCommit = false
+            val retry = repository.saveReport(report)
+
+            assertTrue(retry.isSuccess)
+            // The retry sees the object in Storage and skips the upload.
+            assertEquals(1, remote.uploadCalls)
+            assertEquals(2, remote.publishAttempts)
+            assertEquals(1, cachedReportCount())
+            assertEquals(1, markerCount())
+            assertEquals(storagePath, db.reportDetailsDao().getByIdOneShot(report.id)!!.imageUrls.single())
+        }
+
+    @Test
+    fun `a photo object left by an earlier attempt is not uploaded again`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val photo = localPhoto("photo.jpg")
+            val report = report(listOf(photo))
+            val storagePath = expectedStoragePath(report, photo)
+            // A previous attempt uploaded the object, then the RPC failed while
+            // the compensating delete could not reach Storage.
+            remote.objects += storagePath
+
+            val result = repository.saveReport(report)
+
+            assertTrue(result.isSuccess)
+            assertEquals(0, remote.uploadCalls)
+            assertEquals(1, remote.publishAttempts)
+            assertEquals(setOf(storagePath), remote.attachedPaths)
+        }
+
+    @Test
+    fun `an existing report without its photo still uploads the missing object`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val photo = localPhoto("photo.jpg")
+            val report = report(listOf(photo))
+            val storagePath = expectedStoragePath(report, photo)
+            // The report row survived an earlier partial attempt, but the photo
+            // object never reached Storage.
+            remote.exists = true
+
+            val result = repository.saveReport(report)
+
+            assertTrue(result.isSuccess)
+            assertEquals(1, remote.uploadCalls)
+            assertEquals(setOf(storagePath), remote.attachedPaths)
+            assertEquals(setOf(storagePath), remote.objects)
+        }
+
+    @Test
+    fun `isReportSynced requires the report, its attachment rows and the stored object`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val photo = localPhoto("photo.jpg")
+            val report = report(listOf(photo))
+            val storagePath = expectedStoragePath(report, photo)
+            remote.exists = true
+            remote.attachedPaths += storagePath
+            remote.objects += storagePath
+
+            assertTrue(repository.isReportSynced(report))
+
+            remote.attachedPaths.clear()
+            assertFalse(repository.isReportSynced(report))
+
+            remote.attachedPaths += storagePath
+            remote.objects.clear()
+            assertFalse(repository.isReportSynced(report))
+
+            remote.objects += storagePath
+            remote.exists = false
+            assertFalse(repository.isReportSynced(report))
+        }
+
+    @Test
     fun `retry after a failed publish reuses the same report id and does not duplicate rows`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val photo = localPhoto("photo.jpg")
@@ -400,10 +494,17 @@ class SupabaseFishingRepositoryTest {
 
     private class FakeReportRemoteDataSource : ReportRemoteDataSource {
         var exists = false
-        val uploadedPaths = mutableListOf<String>()
+        /** Storage objects currently present in the bucket. */
+        val objects = mutableSetOf<String>()
+        /** `fishing_photos` rows attached to the report. */
+        val attachedPaths = mutableSetOf<String>()
+        var uploadedPaths = mutableListOf<String>()
+        var uploadCalls = 0
         var uploadFailureAtCall: Int? = null
         var uploadFailure: Exception = IllegalStateException("upload failed")
         var publishFailure: Exception? = null
+        /** Simulates a timeout after the RPC already committed on the server. */
+        var publishFailureAfterCommit = false
         var publishAttempts = 0
         var publishedReportId: UUID? = null
         var removedPhotoPaths: List<String> = emptyList()
@@ -415,29 +516,50 @@ class SupabaseFishingRepositoryTest {
 
         override suspend fun reportExists(reportId: UUID): Boolean = exists
 
+        override suspend fun reportPhotoPaths(reportId: UUID): List<String> =
+            attachedPaths.toList()
+
+        override suspend fun photoExists(storagePath: String): Boolean =
+            storagePath in objects
+
         override suspend fun uploadPhoto(storagePath: String, bytes: ByteArray) {
-            if (uploadedPaths.size + 1 == uploadFailureAtCall) throw uploadFailure
+            uploadCalls++
+            if (uploadCalls == uploadFailureAtCall) throw uploadFailure
             // Storage upserts at deterministic paths, so a retry overwrites
             // the existing object instead of adding another one.
             uploadedPaths.remove(storagePath)
             uploadedPaths += storagePath
+            objects += storagePath
         }
 
         override suspend fun publishReport(payload: JsonObject): PublishReportResult {
             publishAttempts++
-            publishFailure?.let { throw it }
+            if (publishFailure != null && !publishFailureAfterCommit) {
+                throw publishFailure!!
+            }
             publishedPayloads += payload
+            // The RPC is atomic: once it commits, both the report row and every
+            // photo row are visible to the next read.
+            exists = true
+            attachedPaths.clear()
+            attachedPaths += payload["photos"]!!.jsonArray.map {
+                it.jsonObject.getValue("storage_path").jsonPrimitive.content
+            }
+            publishFailure?.let { throw it }
             return PublishReportResult(publishedReportId, removedPhotoPaths)
         }
 
         override suspend fun deletePhotos(paths: List<String>) {
             deleteFailure?.let { throw it }
             deletedPathBatches += paths
+            objects -= paths.toSet()
         }
 
         override suspend fun deleteReport(reportId: UUID) {
             deleteReportFailure?.let { throw it }
             deletedReportIds += reportId
+            exists = false
+            attachedPaths.clear()
         }
     }
 }

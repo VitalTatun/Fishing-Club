@@ -70,6 +70,9 @@ class SupabaseFishingRepository @Inject constructor(
         onPhotoUploaded: (suspend (uploaded: Int, total: Int) -> Unit)?
     ): Result<Unit> = reportWriter.saveReport(report, onPhotoUploaded)
 
+    override suspend fun isReportSynced(report: FishingReport): Boolean =
+        reportWriter.isReportSynced(report)
+
     override suspend fun deleteReport(id: UUID): Result<Unit> = reportWriter.deleteReport(id)
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? =

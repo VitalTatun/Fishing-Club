@@ -22,6 +22,24 @@ interface ReportRemoteDataSource {
     suspend fun reportExists(reportId: UUID): Boolean
 
     /**
+     * Storage paths of the photo rows currently attached to [reportId].
+     *
+     * A report row alone does not prove that its attachments are complete (a
+     * previous attempt may have uploaded every object before the RPC committed,
+     * or the opposite). Comparing this set with the expected paths is what makes
+     * a retry decide which photos are actually missing.
+     */
+    suspend fun reportPhotoPaths(reportId: UUID): List<String>
+
+    /**
+     * Whether an object already exists at [storagePath].
+     *
+     * This is deliberately per-path: a report-level check must never be used to
+     * skip photos that have not been uploaded yet.
+     */
+    suspend fun photoExists(storagePath: String): Boolean
+
+    /**
      * Uploads one photo to the private bucket at [storagePath]. Existing objects
      * are overwritten because paths are deterministic (`user/report/photo.ext`).
      */

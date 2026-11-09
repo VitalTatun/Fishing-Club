@@ -1,6 +1,7 @@
 package com.example.fishing.data
 
 import com.example.fishing.data.supabase.PhotoDto
+import com.example.fishing.data.supabase.PhotoPathDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -29,6 +30,14 @@ class SupabaseReportRemoteDataSource @Inject constructor(
             }
             .decodeList<JsonObject>()
             .isNotEmpty()
+
+    override suspend fun reportPhotoPaths(reportId: UUID): List<String> =
+        supabase.postgrest["fishing_photos"].select(Columns.list("storage_path")) {
+            filter { eq("fishing_id", reportId) }
+        }.decodeList<PhotoPathDto>().map { it.storagePath }
+
+    override suspend fun photoExists(storagePath: String): Boolean =
+        supabase.storage.from(BUCKET).exists(storagePath)
 
     override suspend fun uploadPhoto(storagePath: String, bytes: ByteArray) {
         supabase.storage.from(BUCKET).upload(storagePath, bytes) {

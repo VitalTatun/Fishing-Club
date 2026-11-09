@@ -91,6 +91,15 @@ class FakeFishingRepository : FishingRepository {
 
     var saveReportCallCount = 0
     var saveReportException: Exception? = null
+    /** Simulates a server that committed the report before the timeout. */
+    var saveReportPersistsBeforeFailure = false
+    /** Simulates a successful call that the server did not actually persist. */
+    var saveReportReturnsSuccessWithoutPersistence = false
+    /** Server-side report row, independent from its attachments. */
+    var serverHasReport = false
+    /** Server-side photo objects/rows for the report above. */
+    var serverHasAllPhotos = false
+    var isReportSyncedCallCount = 0
     val savedReports = mutableListOf<FishingReport>()
     val lastSavedReportId: UUID? get() = savedReports.lastOrNull()?.id
 
@@ -169,10 +178,25 @@ class FakeFishingRepository : FishingRepository {
     ): Result<Unit> {
         saveReportCallCount++
         savedReports.add(report)
-        saveReportException?.let { return Result.failure(it) }
+        saveReportException?.let { failure ->
+            if (saveReportPersistsBeforeFailure) {
+                serverHasReport = true
+                serverHasAllPhotos = true
+            }
+            return Result.failure(failure)
+        }
         onPhotoUploaded?.invoke(report.photos.size, report.photos.size)
         _homeReports.value = listOf(report) + _homeReports.value
+        if (!saveReportReturnsSuccessWithoutPersistence) {
+            serverHasReport = true
+            serverHasAllPhotos = true
+        }
         return Result.success(Unit)
+    }
+
+    override suspend fun isReportSynced(report: FishingReport): Boolean {
+        isReportSyncedCallCount++
+        return serverHasReport && serverHasAllPhotos
     }
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {

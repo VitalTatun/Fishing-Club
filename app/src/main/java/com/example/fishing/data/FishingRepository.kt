@@ -55,6 +55,16 @@ interface FishingRepository {
         report: FishingReport,
         onPhotoUploaded: (suspend (uploaded: Int, total: Int) -> Unit)? = null
     ): Result<Unit>
+
+    /**
+     * True only when the server holds [report] **and every photo it references**.
+     *
+     * Used by the upload queue to recover a report whose publish response was
+     * lost, and to refuse to drop the queue row when an attachment is missing.
+     * A report-level existence check alone is not enough.
+     */
+    suspend fun isReportSynced(report: FishingReport): Boolean
+
     suspend fun deleteReport(id: UUID): Result<Unit>
     suspend fun getPhotoSignedUrl(storagePath: String): String?
     /** Resolves many storage paths in as few requests as possible. */
@@ -97,6 +107,9 @@ class MockFishingRepository : FishingRepository {
         onPhotoUploaded?.invoke(report.photos.size, report.photos.size)
         return Result.success(Unit)
     }
+
+    override suspend fun isReportSynced(report: FishingReport): Boolean =
+        reports.any { it.id == report.id }
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {
         reports.removeAll { it.id == id }

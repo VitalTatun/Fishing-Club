@@ -11,6 +11,7 @@ import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.supabase.BaitDto
 import com.example.fishing.data.supabase.PhotoDto
+import com.example.fishing.model.FishingPhoto
 import com.example.fishing.model.FishingReport
 import java.io.File
 import java.util.Date
@@ -37,6 +38,16 @@ interface ReportWriter {
         report: FishingReport,
         onPhotoUploaded: (suspend (uploaded: Int, total: Int) -> Unit)? = null
     ): Result<Unit>
+
+    /**
+     * Confirms that the server holds [report] **and every photo it references**.
+     *
+     * The upload queue calls this before dropping its local row: a published
+     * report with a missing attachment must stay queued so the next attempt can
+     * upload it. Conversely, a lower-level `reportExists` check is never enough
+     * on its own — it says nothing about the photos.
+     */
+    suspend fun isReportSynced(report: FishingReport): Boolean
 
     suspend fun deleteReport(id: UUID): Result<Unit>
 }
@@ -69,6 +80,9 @@ class SupabaseReportWriter @Inject constructor(
             // the RPC does the same with coalesce(f.published_at, excluded.published_at).
             publishedAt = if (report.isPublic) (dto.publishedAt ?: now) else null
         )
+        // Deterministic paths are what make a retry idempotent: the same photo
+        // always maps to the same Storage object, whichever attempt uploads it.
+        val expectedPaths = report.photos.map { storagePathFor(report, it) }
         val uploadedPaths = mutableListOf<String>()
         var reportExistedOnServer = false
         var publishedOnServer = false
@@ -81,8 +95,9 @@ class SupabaseReportWriter @Inject constructor(
                 throw IllegalStateException("Cannot save a report for another user")
             }
 
-            // 2. Upload only new photos. Storage is not transactional, so doing this
-            // before the report is written lets us compensate a failure safely.
+            // 2. Upload only photos that are not in Storage yet. Checking each
+            // object (instead of "the report exists") means a partially uploaded
+            // retry still uploads every missing photo.
             val hasNewPhotos = report.photos.any { !photoUrlProvider.isStoragePath(it.url) }
             if (hasNewPhotos) {
                 // Uploading with upsert=true may overwrite objects that an existing
@@ -92,20 +107,20 @@ class SupabaseReportWriter @Inject constructor(
                     reportRemoteDataSource.reportExists(report.id)
                 }.getOrDefault(true)
             }
-            val storagePaths = report.photos.map { photo ->
+            val storagePaths = report.photos.mapIndexed { index, photo ->
                 ensureActive()
                 if (photoUrlProvider.isStoragePath(photo.url)) {
                     photo.url
                 } else {
-                    val ext = File(photo.url).extension.ifEmpty { "jpg" }
-                    // Deterministic storage path using stable photo.id
-                    val storagePath = "${report.userId}/${report.id}/${photo.id}.$ext"
-                    val file = File(photo.url)
-                    if (!file.exists()) {
-                        throw IllegalStateException("Photo file not found: ${photo.url}")
+                    val storagePath = expectedPaths[index]
+                    if (!photoExists(storagePath)) {
+                        val file = File(photo.url)
+                        if (!file.exists()) {
+                            throw IllegalStateException("Photo file not found: ${photo.url}")
+                        }
+                        reportRemoteDataSource.uploadPhoto(storagePath, file.readBytes())
+                        uploadedPaths.add(storagePath)
                     }
-                    reportRemoteDataSource.uploadPhoto(storagePath, file.readBytes())
-                    uploadedPaths.add(storagePath)
                     uploadedPhotos++
                     onPhotoUploaded?.invoke(uploadedPhotos, totalPhotos)
                     storagePath
@@ -160,20 +175,77 @@ class SupabaseReportWriter @Inject constructor(
                 }
             }
 
+            // The RPC returning means the database transaction committed. The
+            // upload queue still verifies the report and its attachments with
+            // [isReportSynced] before it drops its payload: a lost response must
+            // not be mistaken for a lost report, and a missing photo must keep
+            // the row retryable.
+
             Result.success(Unit)
         } catch (e: CancellationException) {
             // Cancelling a save is not an error. Never delete files here: the user
             // may retry, and deterministic paths overwrite previous uploads.
             throw e
         } catch (e: Exception) {
+            // A timeout after the RPC committed leaves a report that references
+            // the objects uploaded in this very call. Re-check existence instead
+            // of trusting the exception, otherwise compensation would delete
+            // photos the server already points at.
+            val existsOnServer = runCatching {
+                reportRemoteDataSource.reportExists(report.id)
+            }.getOrDefault(true)
             // Only delete files uploaded in THIS call, and only when the server
             // holds no report that may already reference those deterministic paths.
-            if (!reportExistedOnServer && !publishedOnServer && uploadedPaths.isNotEmpty()) {
+            if (!reportExistedOnServer && !publishedOnServer && !existsOnServer &&
+                uploadedPaths.isNotEmpty()
+            ) {
                 runCatching { reportRemoteDataSource.deletePhotos(uploadedPaths) }
             }
             Result.failure(e)
         }
     }
+
+    override suspend fun isReportSynced(report: FishingReport): Boolean =
+        withContext(ioDispatcher) {
+            val expectedPaths = report.photos.map { storagePathFor(report, it) }
+            try {
+                if (!reportRemoteDataSource.reportExists(report.id)) {
+                    return@withContext false
+                }
+                val attached = reportRemoteDataSource.reportPhotoPaths(report.id).toSet()
+                // Attachments are what the report actually shows; objects prove
+                // the bytes are still in Storage.
+                expectedPaths.all { it in attached } &&
+                    expectedPaths.all { reportRemoteDataSource.photoExists(it) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Unknown state is not confirmation: keep the queue row.
+                false
+            }
+        }
+
+    /** Stable Storage path for a photo; a local file keeps its deterministic name. */
+    private fun storagePathFor(report: FishingReport, photo: FishingPhoto): String =
+        if (photoUrlProvider.isStoragePath(photo.url)) {
+            photo.url
+        } else {
+            val extension = File(photo.url).extension.ifEmpty { "jpg" }
+            "${report.userId}/${report.id}/${photo.id}.$extension"
+        }
+
+    /**
+     * Conservative per-object probe: if Storage cannot be asked, the caller
+     * uploads the photo (upsert is idempotent) instead of skipping it.
+     */
+    private suspend fun photoExists(storagePath: String): Boolean =
+        try {
+            reportRemoteDataSource.photoExists(storagePath)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            false
+        }
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {
         return try {

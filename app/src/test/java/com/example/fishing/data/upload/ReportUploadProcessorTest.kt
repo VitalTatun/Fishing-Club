@@ -155,6 +155,81 @@ class ReportUploadProcessorTest {
     }
 
     @Test
+    fun `retry after the server saved the report but the acknowledgement was lost`() = runTest {
+        val photo = photoFile("one.jpg")
+        val paths = listOf(photo.absolutePath)
+        dao.rows[reportId] = entity(
+            report = report(photos = paths),
+            localPhotoPaths = paths
+        )
+        repository.saveReportException = RuntimeException("timeout after commit")
+        repository.saveReportPersistsBeforeFailure = true
+
+        val first = processor.process(reportId)
+
+        // The client cannot tell that the server committed, so it keeps the row.
+        assertTrue(first is ReportUploadOutcome.Retry)
+        assertEquals(1, repository.saveReportCallCount)
+        assertEquals(ReportUploadState.QUEUED.name, dao.rows.getValue(reportId).state)
+        assertTrue(photo.exists())
+
+        repository.saveReportException = null
+        val retry = processor.process(reportId)
+
+        assertEquals(ReportUploadOutcome.Success(isPublic = true), retry)
+        // The report and every photo were already confirmed, so the retry must
+        // not upload the same report again.
+        assertEquals(1, repository.saveReportCallCount)
+        assertEquals(reportId, repository.savedReports.single().id)
+        assertEquals(null, dao.rows[reportId])
+        assertFalse(photo.exists())
+    }
+
+    @Test
+    fun `an existing report with missing photos still goes through the upload`() = runTest {
+        val photo = photoFile("one.jpg")
+        val paths = listOf(photo.absolutePath)
+        dao.rows[reportId] = entity(
+            report = report(photos = paths),
+            localPhotoPaths = paths,
+            attempts = 1
+        )
+        // The report row exists on the server, but its attachment was never
+        // uploaded. An existence-only check would lose this photo.
+        repository.serverHasReport = true
+        repository.serverHasAllPhotos = false
+
+        val outcome = processor.process(reportId)
+
+        assertEquals(ReportUploadOutcome.Success(isPublic = true), outcome)
+        assertEquals(1, repository.saveReportCallCount)
+        assertEquals(null, dao.rows[reportId])
+        assertFalse(photo.exists())
+    }
+
+    @Test
+    fun `row is kept when the server does not confirm all attachments`() = runTest {
+        val photo = photoFile("one.jpg")
+        val paths = listOf(photo.absolutePath)
+        dao.rows[reportId] = entity(
+            report = report(photos = paths),
+            localPhotoPaths = paths
+        )
+        // The RPC returned, but the end state is not visible yet.
+        repository.saveReportReturnsSuccessWithoutPersistence = true
+
+        val outcome = processor.process(reportId)
+
+        assertTrue(outcome is ReportUploadOutcome.Retry)
+        assertEquals(UNCONFIRMED_UPLOAD_MESSAGE, (outcome as ReportUploadOutcome.Retry).message)
+        val row = dao.rows.getValue(reportId)
+        assertEquals(ReportUploadState.QUEUED.name, row.state)
+        assertEquals(1, row.attempts)
+        assertEquals(UNCONFIRMED_UPLOAD_MESSAGE, row.lastError)
+        assertTrue(photo.exists())
+    }
+
+    @Test
     fun `failed upload below the attempt limit is queued for retry`() = runTest {
         repository.saveReportException = RuntimeException("timeout")
         val photo = photoFile("one.jpg")
