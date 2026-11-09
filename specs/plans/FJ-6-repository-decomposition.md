@@ -89,3 +89,34 @@ data/report/
 - Существующие тесты `SupabaseFishingRepositoryTest` проходят без изменения
   сценариев.
 - Добавлены тесты на маппинг, даты и изоляцию новых компонентов.
+
+## 6. Статус выполнения
+
+Все этапы 1–8 выполнены отдельными коммитами:
+
+| Шаг | Коммит | Содержание |
+|---|---|---|
+| 1 | `c9a8d05` | `ReportMapper`, `SupabaseDateFormats`, удалён мёртвый код |
+| 2 | `4653247` | `PhotoUrlProvider` |
+| 3 | `d703c7c` | `ReportRemoteQueries` + герметичные read-тесты |
+| 4 | `03c4202` | `LikesStore` с версионированием мутаций |
+| 5 | `d395bed` | `FavoritesStore` + `loadFavoriteReports` |
+| 6 | (в составе `b1c4c14`) | `HomeFeedStore`, `ReportDetailsStore`, `MarkerStore` |
+| 7 | `b1c4c14` | `ReportWriter`; удаление отчёта перенесено в `ReportRemoteDataSource` |
+| 8 | `b1c4c14` | тонкий фасад, `@Binds` для всех компонентов |
+
+Итог:
+
+- `SupabaseFishingRepository`: 1044 → 98 строк, без обращений к `postgrest` и
+  `storage`; только делегирование.
+- Публичный контракт `FishingRepository` не изменён. `refreshReportDetails`
+  остаётся конкретным методом фасада, поэтому downcast в `MainViewModel`
+  сохраняется до отдельного согласования контракта.
+- Hilt: для каждого нового интерфейса добавлен `@Binds` в `RepositoryModule`,
+  циклических зависимостей нет (`LikesStore`/`FavoritesStore` зависят только от
+  `ReportRemoteQueries`).
+- Тесты: `./gradlew :app:testDebugUnitTest` — 196 тестов, зелёные;
+  `./gradlew :app:assembleDebug` — успешно.
+- Добавлены: `ReportMapperTest`, `PhotoUrlProviderTest`,
+  `SupabaseFishingRepositoryReadTest`, тесты удаления отчёта (успех и отказ
+  remote-слоя с сохранением кэша для повтора).
