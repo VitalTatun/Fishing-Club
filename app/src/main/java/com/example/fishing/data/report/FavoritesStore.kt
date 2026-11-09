@@ -7,6 +7,7 @@ import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.entity.FavoriteReportEntity
 import com.example.fishing.data.supabase.FavoriteDto
+import com.example.fishing.model.FishingReport
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import java.util.UUID
@@ -26,6 +27,9 @@ import kotlinx.coroutines.flow.map
  */
 interface FavoritesStore {
     fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>>
+
+    /** Loads bookmarked reports and refreshes the cached id set. */
+    suspend fun loadFavoriteReports(userId: UUID): List<FishingReport>
 
     /** Pulls bookmarked ids from the backend into the local cache. */
     suspend fun refreshFavoriteIds(userId: UUID)
@@ -63,6 +67,16 @@ class SupabaseFavoritesStore @Inject constructor(
         favoriteReportDao.getFavoriteIds(userId)
             .map { it.toSet() }
             .distinctUntilChanged()
+
+    override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
+        val snapshotSeq = currentMutationVersion()
+        val ids = reportRemoteQueries.fetchFavoriteReportIds(userId)
+        persistServerLinks(userId, ids, snapshotSeq)
+        if (ids.isEmpty()) return emptyList()
+        return reportRemoteQueries.fetchReportsByIds(ids).map { remote ->
+            remote.toReportDetailsEntity(authRepository::resolveImageUrl).toDomain()
+        }
+    }
 
     override suspend fun refreshFavoriteIds(userId: UUID) {
         try {

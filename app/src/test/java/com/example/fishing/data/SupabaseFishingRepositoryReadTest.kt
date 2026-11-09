@@ -7,15 +7,18 @@ import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.report.RemoteReport
 import com.example.fishing.data.report.RemoteReportPage
 import com.example.fishing.data.report.ReportRemoteQueries
+import com.example.fishing.data.report.RoomHomeFeedStore
+import com.example.fishing.data.report.RoomMarkerStore
+import com.example.fishing.data.report.RoomReportDetailsStore
 import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
+import com.example.fishing.data.report.SupabaseReportWriter
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.data.supabase.FishingDto
 import com.example.fishing.data.supabase.ProfileDto
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.MainDispatcherRule
-import io.github.jan.supabase.SupabaseClient
 import io.mockk.mockk
 import java.util.UUID
 import kotlinx.coroutines.flow.first
@@ -58,18 +61,35 @@ class SupabaseFishingRepositoryReadTest {
             .build()
         auth = FakeAuthRepository().apply { sessionUser = user }
         queries = FakeQueries()
-        repository = SupabaseFishingRepository(
-            supabase = mockk<SupabaseClient>(relaxed = true),
+        val likesStore = SupabaseLikesStore(
+            supabase = mockk(relaxed = true),
             authRepository = auth,
-            reportRemoteDataSource = mockk(relaxed = true),
-            reportRemoteQueries = queries,
-            likesStore = SupabaseLikesStore(
-                supabase = mockk(relaxed = true),
-                authRepository = auth,
-                database = db,
+            database = db,
+            reportDetailsDao = db.reportDetailsDao(),
+            likeDao = db.likeDao(),
+            reportRemoteQueries = queries
+        )
+        val photoUrlProvider = SupabasePhotoUrlProvider(supabase = mockk(relaxed = true))
+        repository = SupabaseFishingRepository(
+            homeFeedStore = RoomHomeFeedStore(
+                reportRemoteQueries = queries,
+                likesStore = likesStore,
                 reportDetailsDao = db.reportDetailsDao(),
-                likeDao = db.likeDao(),
-                reportRemoteQueries = queries
+                database = db,
+                authRepository = auth
+            ),
+            reportDetailsStore = RoomReportDetailsStore(
+                reportRemoteQueries = queries,
+                likesStore = likesStore,
+                reportDetailsDao = db.reportDetailsDao(),
+                database = db,
+                authRepository = auth
+            ),
+            markerStore = RoomMarkerStore(
+                reportRemoteQueries = queries,
+                markerDao = db.markerDao(),
+                database = db,
+                authRepository = auth
             ),
             favoritesStore = SupabaseFavoritesStore(
                 supabase = mockk(relaxed = true),
@@ -79,13 +99,19 @@ class SupabaseFishingRepositoryReadTest {
                 favoriteReportDao = db.favoriteDao(),
                 reportRemoteQueries = queries
             ),
-            markerDao = db.markerDao(),
-            reportDetailsDao = db.reportDetailsDao(),
-            favoriteReportDao = db.favoriteDao(),
-            likeDao = db.likeDao(),
-            database = db,
-            photoUrlProvider = SupabasePhotoUrlProvider(mockk(relaxed = true)),
-            ioDispatcher = mainDispatcherRule.testDispatcher
+            likesStore = likesStore,
+            reportWriter = SupabaseReportWriter(
+                authRepository = auth,
+                reportRemoteDataSource = mockk(relaxed = true),
+                reportDetailsDao = db.reportDetailsDao(),
+                markerDao = db.markerDao(),
+                favoriteReportDao = db.favoriteDao(),
+                likeDao = db.likeDao(),
+                database = db,
+                photoUrlProvider = photoUrlProvider,
+                ioDispatcher = mainDispatcherRule.testDispatcher
+            ),
+            photoUrlProvider = photoUrlProvider
         )
     }
 

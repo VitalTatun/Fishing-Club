@@ -32,4 +32,13 @@ interface ReportRemoteDataSource {
 
     /** Best-effort removal of photo objects; failures are the caller's concern. */
     suspend fun deletePhotos(paths: List<String>)
+
+    /**
+     * Deletes the report row and the storage objects it owns.
+     *
+     * Photos are removed first so a failed storage call leaves the row in place
+     * and the operation can be retried. Objects that are already gone are
+     * treated as success; any other storage error aborts the deletion.
+     */
+    suspend fun deleteReport(reportId: UUID)
 }

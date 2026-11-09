@@ -3,9 +3,14 @@ package com.example.fishing.data
 import android.app.Application
 import androidx.room.Room
 import com.example.fishing.data.local.AppDatabase
+import com.example.fishing.data.report.ReportRemoteQueries
+import com.example.fishing.data.report.RoomHomeFeedStore
+import com.example.fishing.data.report.RoomMarkerStore
+import com.example.fishing.data.report.RoomReportDetailsStore
 import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
+import com.example.fishing.data.report.SupabaseReportWriter
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
@@ -16,7 +21,6 @@ import com.example.fishing.model.User
 import com.example.fishing.model.Water
 import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.MainDispatcherRule
-import io.github.jan.supabase.SupabaseClient
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
@@ -68,18 +72,36 @@ class SupabaseFishingRepositoryTest {
             .build()
         auth = FakeAuthRepository().apply { sessionUser = user }
         remote = FakeReportRemoteDataSource()
-        repository = SupabaseFishingRepository(
-            supabase = mockk<SupabaseClient>(relaxed = true),
+        val queries = mockk<ReportRemoteQueries>(relaxed = true)
+        val likesStore = SupabaseLikesStore(
+            supabase = mockk(relaxed = true),
             authRepository = auth,
-            reportRemoteDataSource = remote,
-            reportRemoteQueries = mockk(relaxed = true),
-            likesStore = SupabaseLikesStore(
-                supabase = mockk(relaxed = true),
-                authRepository = auth,
-                database = db,
+            database = db,
+            reportDetailsDao = db.reportDetailsDao(),
+            likeDao = db.likeDao(),
+            reportRemoteQueries = queries
+        )
+        val photoUrlProvider = SupabasePhotoUrlProvider(supabase = mockk(relaxed = true))
+        repository = SupabaseFishingRepository(
+            homeFeedStore = RoomHomeFeedStore(
+                reportRemoteQueries = queries,
+                likesStore = likesStore,
                 reportDetailsDao = db.reportDetailsDao(),
-                likeDao = db.likeDao(),
-                reportRemoteQueries = mockk(relaxed = true)
+                database = db,
+                authRepository = auth
+            ),
+            reportDetailsStore = RoomReportDetailsStore(
+                reportRemoteQueries = queries,
+                likesStore = likesStore,
+                reportDetailsDao = db.reportDetailsDao(),
+                database = db,
+                authRepository = auth
+            ),
+            markerStore = RoomMarkerStore(
+                reportRemoteQueries = queries,
+                markerDao = db.markerDao(),
+                database = db,
+                authRepository = auth
             ),
             favoritesStore = SupabaseFavoritesStore(
                 supabase = mockk(relaxed = true),
@@ -87,15 +109,21 @@ class SupabaseFishingRepositoryTest {
                 database = db,
                 reportDetailsDao = db.reportDetailsDao(),
                 favoriteReportDao = db.favoriteDao(),
-                reportRemoteQueries = mockk(relaxed = true)
+                reportRemoteQueries = queries
             ),
-            markerDao = db.markerDao(),
-            reportDetailsDao = db.reportDetailsDao(),
-            favoriteReportDao = db.favoriteDao(),
-            likeDao = db.likeDao(),
-            database = db,
-            photoUrlProvider = SupabasePhotoUrlProvider(supabase = mockk(relaxed = true)),
-            ioDispatcher = mainDispatcherRule.testDispatcher
+            likesStore = likesStore,
+            reportWriter = SupabaseReportWriter(
+                authRepository = auth,
+                reportRemoteDataSource = remote,
+                reportDetailsDao = db.reportDetailsDao(),
+                markerDao = db.markerDao(),
+                favoriteReportDao = db.favoriteDao(),
+                likeDao = db.likeDao(),
+                database = db,
+                photoUrlProvider = photoUrlProvider,
+                ioDispatcher = mainDispatcherRule.testDispatcher
+            ),
+            photoUrlProvider = photoUrlProvider
         )
     }
 
@@ -342,6 +370,34 @@ class SupabaseFishingRepositoryTest {
             assertNull(db.reportDetailsDao().getByIdOneShot(report.id)!!.publishedAt)
         }
 
+    @Test
+    fun `deleteReport removes the remote report and the local cache rows`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val report = report(listOf(FishingPhoto(UUID.randomUUID(), "user/report/photo.jpg")))
+            assertTrue(repository.saveReport(report).isSuccess)
+
+            val result = repository.deleteReport(report.id)
+
+            assertTrue(result.isSuccess)
+            assertEquals(listOf(report.id), remote.deletedReportIds)
+            assertNull(db.reportDetailsDao().getByIdOneShot(report.id))
+            assertEquals(0, markerCount())
+        }
+
+    @Test
+    fun `failed remote deletion keeps the local cache for a retry`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val report = report(listOf(FishingPhoto(UUID.randomUUID(), "user/report/photo.jpg")))
+            assertTrue(repository.saveReport(report).isSuccess)
+            remote.deleteReportFailure = IllegalStateException("offline")
+
+            val result = repository.deleteReport(report.id)
+
+            assertTrue(result.isFailure)
+            assertNotNull(db.reportDetailsDao().getByIdOneShot(report.id))
+            assertEquals(1, markerCount())
+        }
+
     private class FakeReportRemoteDataSource : ReportRemoteDataSource {
         var exists = false
         val uploadedPaths = mutableListOf<String>()
@@ -353,7 +409,9 @@ class SupabaseFishingRepositoryTest {
         var removedPhotoPaths: List<String> = emptyList()
         val publishedPayloads = mutableListOf<JsonObject>()
         val deletedPathBatches = mutableListOf<List<String>>()
+        val deletedReportIds = mutableListOf<UUID>()
         var deleteFailure: Exception? = null
+        var deleteReportFailure: Exception? = null
 
         override suspend fun reportExists(reportId: UUID): Boolean = exists
 
@@ -375,6 +433,11 @@ class SupabaseFishingRepositoryTest {
         override suspend fun deletePhotos(paths: List<String>) {
             deleteFailure?.let { throw it }
             deletedPathBatches += paths
+        }
+
+        override suspend fun deleteReport(reportId: UUID) {
+            deleteReportFailure?.let { throw it }
+            deletedReportIds += reportId
         }
     }
 }
