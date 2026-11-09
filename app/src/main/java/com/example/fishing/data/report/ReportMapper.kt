@@ -77,6 +77,7 @@ internal fun RemoteReport.toReportDetailsEntity(
 internal fun FishingDto.toMarkerEntity(fishNames: List<String>): MarkerEntity {
     return MarkerEntity(
         id = id,
+        userId = userId,
         name = name,
         waterName = waterName ?: "",
         waterLat = waterLat ?: 0.0,

@@ -161,6 +161,9 @@ class MainViewModel @Inject constructor(
                     session.set(userId)
                     home.onUserChanged(userId)
                     home.loadReports(force = false)
+                    // Another account may have its own camera/filters state and
+                    // own private markers; drop both before loading the map.
+                    map.clear()
                     map.loadMapMarkers(force = false)
                     likes.refresh()
                     favorites.refresh()

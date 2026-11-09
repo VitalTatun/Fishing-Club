@@ -4,11 +4,16 @@ import androidx.room.withTransaction
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.dao.MarkerDao
+import com.example.fishing.model.AuthState
 import com.example.fishing.model.MarkerDomain
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /**
@@ -29,8 +34,26 @@ class RoomMarkerStore @Inject constructor(
     private val authRepository: AuthRepository
 ) : MarkerStore {
 
+    /**
+     * Follows the signed-in user: the cache holds reports of several authors
+     * (all public ones plus the viewer's private ones), so the visible subset
+     * is resolved per viewer. Re-subscribing on a user change makes another
+     * account's private markers disappear immediately, before any refresh.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun getMapMarkers(): Flow<List<MarkerDomain>> =
-        markerDao.getAll().map { entities -> entities.map { it.toDomain() } }
+        authRepository.authState
+            .map { (it as? AuthState.Authenticated)?.user?.id }
+            .distinctUntilChanged()
+            .flatMapLatest { viewerId ->
+                if (viewerId == null) {
+                    flowOf(emptyList())
+                } else {
+                    markerDao.getVisibleForUser(viewerId).map { entities ->
+                        entities.map { it.toDomain() }
+                    }
+                }
+            }
 
     override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
         val userId = authRepository.currentUser()?.id

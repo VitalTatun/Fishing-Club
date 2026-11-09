@@ -11,8 +11,14 @@ import java.util.UUID
 
 @Dao
 interface MarkerDao {
-    @Query("SELECT * FROM markers")
-    fun getAll(): Flow<List<MarkerEntity>>
+    /**
+     * Markers visible to [viewerId]: every public report plus the viewer's own
+     * reports. Mirrors the server rule (`is_public = true OR user_id = viewer`)
+     * so a stale cache can never expose another user's private markers.
+     * There is intentionally no "all markers" query.
+     */
+    @Query("SELECT * FROM markers WHERE isPublic = 1 OR userId = :viewerId")
+    fun getVisibleForUser(viewerId: UUID): Flow<List<MarkerEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(markers: List<MarkerEntity>)

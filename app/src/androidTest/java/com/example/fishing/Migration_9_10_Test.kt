@@ -70,11 +70,16 @@ class Migration_9_10_Test {
     @Test
     fun migratingFromV9ToV10_succeeds_preservesData_andDropsLegacyColumn() {
         val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
-            .addMigrations(AppDatabase.MIGRATION_9_10, AppDatabase.MIGRATION_10_11)
+            .addMigrations(
+                AppDatabase.MIGRATION_9_10,
+                AppDatabase.MIGRATION_10_11,
+                AppDatabase.MIGRATION_11_12,
+                AppDatabase.MIGRATION_12_13
+            )
             .build()
 
         db.openHelper.writableDatabase.use { sqlite ->
-            check(sqlite.version == 11) { "expected user_version 11, was ${sqlite.version}" }
+            check(sqlite.version == 13) { "expected user_version 13, was ${sqlite.version}" }
 
             sqlite.query("PRAGMA table_info(markers)").use { cursor ->
                 val columns = buildSet { while (cursor.moveToNext()) add(cursor.getString(1)) }

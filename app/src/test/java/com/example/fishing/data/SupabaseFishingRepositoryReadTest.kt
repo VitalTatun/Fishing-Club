@@ -255,6 +255,7 @@ class SupabaseFishingRepositoryReadTest {
 
     private fun marker(id: UUID): MarkerEntity = MarkerEntity(
         id = id,
+        userId = user.id,
         name = "Спиннинг",
         waterName = "Озеро",
         waterLat = 54.0,

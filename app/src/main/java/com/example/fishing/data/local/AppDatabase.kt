@@ -25,7 +25,7 @@ import com.example.fishing.data.local.entity.ReportDetailsEntity
         LikeEntity::class,
         PendingReportUploadEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -86,6 +86,38 @@ abstract class AppDatabase : RoomDatabase() {
                         `uploadedPhotos` INTEGER NOT NULL,
                         `totalPhotos` INTEGER NOT NULL,
                         `lastError` TEXT,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /**
+         * Adds the marker author so the shared cache can filter by visibility.
+         * Legacy rows have no owner recorded, and the correct author cannot be
+         * recovered: guessing one would either hide public markers or leak
+         * private ones. Markers are a disposable projection of the reports
+         * cache, so the table is recreated empty and refilled from the server.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `markers`")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `markers` (
+                        `id` BLOB NOT NULL,
+                        `userId` BLOB NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `waterName` TEXT NOT NULL,
+                        `waterLat` REAL NOT NULL,
+                        `waterLng` REAL NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `fishingMethod` TEXT NOT NULL,
+                        `fishingStartAt` TEXT,
+                        `isPublic` INTEGER NOT NULL,
+                        `isPaidWater` INTEGER NOT NULL,
+                        `fishNames` TEXT NOT NULL,
                         PRIMARY KEY(`id`)
                     )
                     """.trimIndent()

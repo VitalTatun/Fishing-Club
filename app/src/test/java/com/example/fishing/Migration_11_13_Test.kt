@@ -19,16 +19,18 @@ import org.robolectric.annotation.Config
 import java.util.UUID
 
 /**
- * Stage 3 upload queue: a v11 database has no `pending_report_uploads` table.
- * Opening it with Room 12 must run [AppDatabase.MIGRATION_11_12], keep the
- * existing reports and create a table the DAO can actually use.
+ * Stage 3 upload queue: a v11 database has no `pending_report_uploads` table and
+ * its markers have no author. Opening it with current Room must run
+ * [AppDatabase.MIGRATION_11_12] (adds the upload queue, keeps reports) and
+ * [AppDatabase.MIGRATION_12_13] (rebuilds markers with an author), so the whole
+ * legacy chain still opens without schema validation errors.
  *
  * The legacy schema below is the v11 part of the Room-generated DDL (see
  * `AppDatabase_Impl.createAllTables`), so schema validation runs for real.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class)
-class Migration_11_12_Test {
+class Migration_11_13_Test {
 
     private val context get() = RuntimeEnvironment.getApplication()
 
@@ -67,14 +69,14 @@ class Migration_11_12_Test {
     }
 
     @Test
-    fun migratingFromV11ToV12_createsPendingUploads_preservesReports() {
+    fun migratingFromV11ToV13_createsPendingUploads_preservesReports() {
         val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
-            .addMigrations(AppDatabase.MIGRATION_11_12)
+            .addMigrations(AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13)
             .allowMainThreadQueries()
             .build()
 
         db.openHelper.writableDatabase.use { sqlite ->
-            check(sqlite.version == 12) { "expected user_version 12, was ${sqlite.version}" }
+            check(sqlite.version == 13) { "expected user_version 13, was ${sqlite.version}" }
 
             sqlite.query("PRAGMA table_info(pending_report_uploads)").use { cursor ->
                 val columns = buildMap {
@@ -138,7 +140,7 @@ class Migration_11_12_Test {
     }
 
     companion object {
-        private const val DB_NAME = "migration_11_12_test.db"
+        private const val DB_NAME = "migration_11_13_test.db"
 
         private const val V11_MARKERS_DDL =
             "CREATE TABLE `markers` (`id` BLOB NOT NULL, `name` TEXT NOT NULL, `waterName` TEXT NOT NULL, " +

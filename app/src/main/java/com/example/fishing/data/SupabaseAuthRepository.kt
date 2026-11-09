@@ -8,6 +8,7 @@ import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.LikeDao
 import com.example.fishing.data.local.dao.MarkerDao
+import com.example.fishing.data.cleanup.MarkerCacheCleaner
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -46,6 +47,7 @@ class SupabaseAuthRepository @Inject constructor(
     private val likeDao: LikeDao,
     private val markerDao: MarkerDao,
     private val reportUploadQueue: ReportUploadQueue,
+    private val markerCacheCleaner: MarkerCacheCleaner,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : AuthRepository {
 
@@ -79,6 +81,13 @@ class SupabaseAuthRepository @Inject constructor(
             }
         }
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), AuthState.Loading)
+
+    init {
+        // AUD-02: marker rows are not user-scoped yet, so they may not outlive
+        // the session that produced them. Keeping authState collected also
+        // makes sure the drop happens even when no screen is observing it.
+        markerCacheCleaner.clearWhenUnauthenticated(authState)
+    }
 
     override suspend fun loadSession() {
         supabase.auth.awaitInitialization()

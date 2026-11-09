@@ -13,8 +13,8 @@ import org.junit.runner.RunWith
 
 /**
  * P0 Likes: an on-device DB at version 10 (without `likes` / `likesCount`)
- * must migrate to version 11, preserving existing rows and defaulting the
- * counter mirror to 0.
+ * must migrate through to the current version, preserving existing rows and
+ * defaulting the counter mirror to 0.
  */
 @RunWith(AndroidJUnit4::class)
 class Migration_10_11_Test {
@@ -65,11 +65,15 @@ class Migration_10_11_Test {
     @Test
     fun migratingFromV10ToV11_createsLikes_addsLikesCount_preservesData() {
         val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
-            .addMigrations(AppDatabase.MIGRATION_10_11)
+            .addMigrations(
+                AppDatabase.MIGRATION_10_11,
+                AppDatabase.MIGRATION_11_12,
+                AppDatabase.MIGRATION_12_13
+            )
             .build()
 
         db.openHelper.writableDatabase.use { sqlite ->
-            check(sqlite.version == 11) { "expected user_version 11, was ${sqlite.version}" }
+            check(sqlite.version == 13) { "expected user_version 13, was ${sqlite.version}" }
 
             sqlite.query("PRAGMA table_info(likes)").use { cursor ->
                 val columns = buildMap {

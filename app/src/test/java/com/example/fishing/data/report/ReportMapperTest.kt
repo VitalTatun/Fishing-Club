@@ -199,6 +199,8 @@ class ReportMapperTest {
         val marker = dto.toMarkerEntity(fishNames = listOf("Щука"))
 
         assertEquals(reportId, marker.id)
+        // The cache row is tagged with the report author, not the viewer.
+        assertEquals(userId, marker.userId)
         assertEquals("Озеро Нарочь", marker.waterName)
         assertEquals(listOf("Щука"), marker.fishNames)
         assertTrue(marker.isPublic)
@@ -208,6 +210,7 @@ class ReportMapperTest {
     fun `marker entity to domain maps enums and instants`() {
         val marker = MarkerEntity(
             id = reportId,
+            userId = userId,
             name = "Спиннинг",
             waterName = "Озеро",
             waterLat = 54.0,
