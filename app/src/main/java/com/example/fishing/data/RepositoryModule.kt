@@ -1,7 +1,9 @@
 package com.example.fishing.data
 
+import com.example.fishing.data.report.LikesStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportRemoteQueries
+import com.example.fishing.data.report.SupabaseLikesStore
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.data.report.SupabaseReportRemoteQueries
 import dagger.Binds
@@ -43,4 +45,10 @@ abstract class RepositoryModule {
     abstract fun bindReportRemoteQueries(
         queries: SupabaseReportRemoteQueries
     ): ReportRemoteQueries
+
+    @Binds
+    @Singleton
+    abstract fun bindLikesStore(
+        store: SupabaseLikesStore
+    ): LikesStore
 }

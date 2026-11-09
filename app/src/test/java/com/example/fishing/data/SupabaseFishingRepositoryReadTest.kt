@@ -7,6 +7,7 @@ import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.report.RemoteReport
 import com.example.fishing.data.report.RemoteReportPage
 import com.example.fishing.data.report.ReportRemoteQueries
+import com.example.fishing.data.report.SupabaseLikesStore
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.data.supabase.FishingDto
 import com.example.fishing.data.supabase.ProfileDto
@@ -61,6 +62,14 @@ class SupabaseFishingRepositoryReadTest {
             authRepository = auth,
             reportRemoteDataSource = mockk(relaxed = true),
             reportRemoteQueries = queries,
+            likesStore = SupabaseLikesStore(
+                supabase = mockk(relaxed = true),
+                authRepository = auth,
+                database = db,
+                reportDetailsDao = db.reportDetailsDao(),
+                likeDao = db.likeDao(),
+                reportRemoteQueries = queries
+            ),
             markerDao = db.markerDao(),
             reportDetailsDao = db.reportDetailsDao(),
             favoriteReportDao = db.favoriteDao(),

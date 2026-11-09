@@ -6,9 +6,9 @@ import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.entity.FavoriteReportEntity
-import com.example.fishing.data.local.entity.LikeEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import com.example.fishing.data.report.buildPublishPayload
+import com.example.fishing.data.report.LikesStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.RemoteReport
 import com.example.fishing.data.report.ReportRemoteQueries
@@ -31,8 +31,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import java.io.File
 import java.util.Date
 import java.util.UUID
@@ -47,6 +45,7 @@ class SupabaseFishingRepository @Inject constructor(
     private val authRepository: AuthRepository,
     private val reportRemoteDataSource: ReportRemoteDataSource,
     private val reportRemoteQueries: ReportRemoteQueries,
+    private val likesStore: LikesStore,
     private val markerDao: MarkerDao,
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
@@ -60,12 +59,6 @@ class SupabaseFishingRepository @Inject constructor(
     // current user's own reports already cached (bookmarks are always loaded whole).
     private var homeLoadedOwnCount = 0
     private var homeHasMore = false
-
-    // Like mutations are versioned so a slow refresh that fetched likesCount
-    // before the mutation cannot overwrite the authoritative value afterwards.
-    private val likeMutationSeq = AtomicLong(0)
-    private val likeMutationVersions = ConcurrentHashMap<UUID, Long>()
-    private val likeOpsInFlight = ConcurrentHashMap.newKeySet<UUID>()
 
     // Same protection for favorites: a refresh that snapshotted the server
     // before a local toggle must not drop that toggle from the local cache.
@@ -83,11 +76,11 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
         try {
-            val likesSnapshotSeq = likeMutationSeq.get()
+            val likesSnapshotSeq = likesStore.currentMutationVersion()
             val page = reportRemoteQueries.fetchOwnReportPage(userId, offset = 0, limit = PAGE_SIZE)
 
             database.withTransaction {
-                val entities = preserveRecentLikes(page.reports.map { it.toEntity() }, likesSnapshotSeq)
+                val entities = likesStore.preserveRecentLikes(page.reports.map { it.toEntity() }, likesSnapshotSeq)
                 reportDetailsDao.deleteAll()
                 reportDetailsDao.insertAll(entities)
             }
@@ -105,14 +98,14 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun loadMoreHomeReports(userId: UUID): Boolean {
         if (!homeHasMore) return false
-        val likesSnapshotSeq = likeMutationSeq.get()
+        val likesSnapshotSeq = likesStore.currentMutationVersion()
         val page = reportRemoteQueries.fetchOwnReportPage(
             userId,
             offset = homeLoadedOwnCount,
             limit = PAGE_SIZE
         )
         database.withTransaction {
-            reportDetailsDao.insertAll(preserveRecentLikes(page.reports.map { it.toEntity() }, likesSnapshotSeq))
+            reportDetailsDao.insertAll(likesStore.preserveRecentLikes(page.reports.map { it.toEntity() }, likesSnapshotSeq))
         }
         homeLoadedOwnCount += page.reports.size
         homeHasMore = page.hasMore
@@ -204,12 +197,12 @@ class SupabaseFishingRepository @Inject constructor(
 
     suspend fun refreshReportDetails(id: UUID): Boolean {
         if (authRepository.currentUser() == null) return false
-        val likesSnapshotSeq = likeMutationSeq.get()
+        val likesSnapshotSeq = likesStore.currentMutationVersion()
 
         val remote = reportRemoteQueries.fetchReport(id) ?: return false
         val entity = remote.toEntity()
         database.withTransaction {
-            reportDetailsDao.insert(preserveRecentLikes(listOf(entity), likesSnapshotSeq).single())
+            reportDetailsDao.insert(likesStore.preserveRecentLikes(listOf(entity), likesSnapshotSeq).single())
         }
         return true
     }
@@ -424,120 +417,13 @@ class SupabaseFishingRepository @Inject constructor(
     }
 
     override fun getLikeStates(userId: UUID): Flow<Map<UUID, ReportLikeState>> =
-        // Single atomic query so isLiked and likesCount always come from the
-        // same snapshot. Combining two separate Room flows emitted an
-        // intermediate (new isLiked, stale likesCount) that flickered the count.
-        reportDetailsDao.getLikeStates(userId)
-            .map { rows -> rows.associate { it.id to ReportLikeState(it.id, it.isLiked, it.likesCount) } }
-            .distinctUntilChanged()
+        likesStore.getLikeStates(userId)
 
-    override suspend fun refreshLikes(userId: UUID) {
-        try {
-            val likesSnapshotSeq = likeMutationSeq.get()
-            // Single batched query — never one request per report.
-            val likedIds = reportRemoteQueries.fetchLikedReportIds(userId)
-            val entities = likedIds.map { LikeEntity(userId = userId, reportId = it) }
-            // Never drop a local like that was written by an operation which
-            // started after this network snapshot was taken.
-            val protectedIds = buildSet {
-                entities.forEach { add(it.reportId) }
-                addAll(likeOpsInFlight)
-                likeMutationVersions.forEach { (id, version) ->
-                    if (version > likesSnapshotSeq) add(id)
-                }
-            }
-            database.withTransaction {
-                likeDao.insertAll(entities)
-                if (protectedIds.isEmpty()) {
-                    likeDao.deleteAllForUser(userId)
-                } else {
-                    likeDao.deleteNotIn(userId, protectedIds.toList())
-                }
-            }
-            // Counters are not counted here: they arrive as fishing.likes_count
-            // inside the existing fishing selects (refreshHomeReports /
-            // refreshReportDetails) mapped to ReportDetailsEntity.likesCount.
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
-        }
-    }
+    override suspend fun refreshLikes(userId: UUID) = likesStore.refreshLikes(userId)
 
-    override suspend fun addLike(reportId: UUID): Result<Unit> {
-        val currentUser = authRepository.currentUser()
-            ?: return Result.failure(IllegalStateException("Нет активной сессии"))
-        // Local pre-checks before the RPC (the RPC/RLS enforce authoritatively).
-        val cached = try {
-            reportDetailsDao.getByIdOneShot(reportId)
-        } catch (e: Exception) {
-            return Result.failure(e)
-        }
-        if (cached != null && cached.userId != currentUser.id && !cached.isPublic) {
-            return Result.failure(IllegalStateException("Cannot like private report"))
-        }
-        return mutateLike(reportId, currentUser.id, "like_report")
-    }
+    override suspend fun addLike(reportId: UUID): Result<Unit> = likesStore.addLike(reportId)
 
-    override suspend fun removeLike(reportId: UUID): Result<Unit> {
-        val currentUser = authRepository.currentUser()
-            ?: return Result.failure(IllegalStateException("Нет активной сессии"))
-        return mutateLike(reportId, currentUser.id, "unlike_report")
-    }
-
-    private suspend fun mutateLike(reportId: UUID, userId: UUID, rpcName: String): Result<Unit> {
-        likeOpsInFlight.add(reportId)
-        return try {
-            // The RPC returns the authoritative {liked, likes_count}. Writing that
-            // value instead of a blind +1/-1 keeps Room in sync even when the RPC
-            // is a no-op or the local membership cache was stale.
-            val state = supabase.postgrest.rpc(
-                rpcName,
-                buildJsonObject { put("fid", reportId.toString()) }
-            ).decodeList<LikeStateDto>().firstOrNull()
-                ?: return Result.failure(IllegalStateException("Unexpected like response"))
-
-            likeMutationVersions[reportId] = likeMutationSeq.incrementAndGet()
-            database.withTransaction {
-                if (state.liked) {
-                    likeDao.insertAll(listOf(LikeEntity(userId, reportId)))
-                } else {
-                    likeDao.delete(userId, reportId)
-                }
-                reportDetailsDao.updateLikesCount(reportId, state.likesCount)
-            }
-            Result.success(Unit)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
-        } finally {
-            likeOpsInFlight.remove(reportId)
-        }
-    }
-
-    private suspend fun preserveRecentLikes(
-        entities: List<ReportDetailsEntity>,
-        likesSnapshotSeq: Long
-    ): List<ReportDetailsEntity> {
-        if (entities.isEmpty()) return entities
-        val changedIds = entities.map { it.id }.filter { id ->
-            likeOpsInFlight.contains(id) || likeVersion(id) > likesSnapshotSeq
-        }
-        if (changedIds.isEmpty()) return entities
-
-        val existingCounts = reportDetailsDao.getLikesCounts(changedIds)
-            .associate { it.id to it.likesCount }
-        val changed = changedIds.toHashSet()
-        return entities.map { entity ->
-            if (entity.id in changed) {
-                existingCounts[entity.id]?.let { entity.copy(likesCount = it) } ?: entity
-            } else {
-                entity
-            }
-        }
-    }
-
-    private fun likeVersion(id: UUID): Long = likeMutationVersions[id] ?: 0L
+    override suspend fun removeLike(reportId: UUID): Result<Unit> = likesStore.removeLike(reportId)
 
     override suspend fun getPhotoSignedUrl(storagePath: String): String? =
         photoUrlProvider.getSignedUrl(storagePath)
