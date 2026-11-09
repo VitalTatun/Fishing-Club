@@ -10,6 +10,8 @@ import com.example.fishing.data.local.entity.LikeEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import com.example.fishing.data.report.buildPublishPayload
 import com.example.fishing.data.report.PhotoUrlProvider
+import com.example.fishing.data.report.RemoteReport
+import com.example.fishing.data.report.ReportRemoteQueries
 import com.example.fishing.data.report.SupabaseDateFormats
 import com.example.fishing.data.report.toDomain
 import com.example.fishing.data.report.toFishDto
@@ -20,16 +22,12 @@ import com.example.fishing.data.supabase.*
 import com.example.fishing.model.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.postgrest.query.Columns
-import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
@@ -48,6 +46,7 @@ class SupabaseFishingRepository @Inject constructor(
     private val supabase: SupabaseClient,
     private val authRepository: AuthRepository,
     private val reportRemoteDataSource: ReportRemoteDataSource,
+    private val reportRemoteQueries: ReportRemoteQueries,
     private val markerDao: MarkerDao,
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
@@ -85,18 +84,18 @@ class SupabaseFishingRepository @Inject constructor(
     override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
         try {
             val likesSnapshotSeq = likeMutationSeq.get()
-            val (ownEntities, hasMore) = fetchReportPage(userId, offset = 0, limit = PAGE_SIZE)
+            val page = reportRemoteQueries.fetchOwnReportPage(userId, offset = 0, limit = PAGE_SIZE)
 
             database.withTransaction {
-                val entities = preserveRecentLikes(ownEntities, likesSnapshotSeq)
+                val entities = preserveRecentLikes(page.reports.map { it.toEntity() }, likesSnapshotSeq)
                 reportDetailsDao.deleteAll()
                 reportDetailsDao.insertAll(entities)
             }
-            homeLoadedOwnCount = ownEntities.size
-            homeHasMore = hasMore
+            homeLoadedOwnCount = page.reports.size
+            homeHasMore = page.hasMore
             return HomeRefreshResult(
-                hasMore = hasMore,
-                loadedCount = ownEntities.size
+                hasMore = page.hasMore,
+                loadedCount = page.reports.size
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -107,42 +106,26 @@ class SupabaseFishingRepository @Inject constructor(
     override suspend fun loadMoreHomeReports(userId: UUID): Boolean {
         if (!homeHasMore) return false
         val likesSnapshotSeq = likeMutationSeq.get()
-        val (entities, hasMore) = fetchReportPage(userId, offset = homeLoadedOwnCount, limit = PAGE_SIZE)
+        val page = reportRemoteQueries.fetchOwnReportPage(
+            userId,
+            offset = homeLoadedOwnCount,
+            limit = PAGE_SIZE
+        )
         database.withTransaction {
-            reportDetailsDao.insertAll(preserveRecentLikes(entities, likesSnapshotSeq))
+            reportDetailsDao.insertAll(preserveRecentLikes(page.reports.map { it.toEntity() }, likesSnapshotSeq))
         }
-        homeLoadedOwnCount += entities.size
-        homeHasMore = hasMore
-        return hasMore
-    }
-
-    /**
-     * Loads one page of the given user's reports (ordered by fishing time, newest first)
-     * together with only the child rows that belong to that page. One extra row is
-     * requested to detect whether a further page exists.
-     */
-    private suspend fun fetchReportPage(
-        userId: UUID,
-        offset: Int,
-        limit: Int
-    ): Pair<List<ReportDetailsEntity>, Boolean> {
-        val fetched = supabase.postgrest["fishing"].select {
-            filter { eq("user_id", userId) }
-            order("fishing_start_at", Order.DESCENDING)
-            range(offset.toLong(), (offset + limit).toLong())
-        }.decodeList<FishingDto>()
-
-        val hasMore = fetched.size > limit
-        val page = if (hasMore) fetched.take(limit) else fetched
-        if (page.isEmpty()) return emptyList<ReportDetailsEntity>() to false
-        return buildReportEntities(page, page.map { it.id }) to hasMore
+        homeLoadedOwnCount += page.reports.size
+        homeHasMore = page.hasMore
+        return page.hasMore
     }
 
     override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
         val snapshotSeq = favoriteMutationSeq.get()
-        val (entities, links) = fetchFavoriteEntities(userId)
+        val ids = reportRemoteQueries.fetchFavoriteReportIds(userId)
+        val links = ids.map { FavoriteReportEntity(userId = userId, reportId = it) }
         persistFavoriteLinks(userId, links, snapshotSeq)
-        return entities.map { it.toDomain() }
+        if (ids.isEmpty()) return emptyList()
+        return reportRemoteQueries.fetchReportsByIds(ids).map { it.toEntity().toDomain() }
     }
 
     override fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>> =
@@ -153,7 +136,8 @@ class SupabaseFishingRepository @Inject constructor(
     override suspend fun refreshFavoriteIds(userId: UUID) {
         try {
             val snapshotSeq = favoriteMutationSeq.get()
-            val links = fetchFavoriteLinks(userId)
+            val ids = reportRemoteQueries.fetchFavoriteReportIds(userId)
+            val links = ids.map { FavoriteReportEntity(userId = userId, reportId = it) }
             persistFavoriteLinks(userId, links, snapshotSeq)
         } catch (e: CancellationException) {
             throw e
@@ -162,12 +146,6 @@ class SupabaseFishingRepository @Inject constructor(
             throw e
         }
     }
-
-    private suspend fun fetchFavoriteLinks(userId: UUID): List<FavoriteReportEntity> =
-        supabase.postgrest["favorites"].select {
-            filter { eq("user_id", userId) }
-        }.decodeList<FavoriteDto>()
-            .map { FavoriteReportEntity(userId = userId, reportId = it.fishingId) }
 
     /**
      * Writes the freshness snapshot into Room. Ids mutated locally after the
@@ -194,70 +172,8 @@ class SupabaseFishingRepository @Inject constructor(
         }
     }
 
-    private suspend fun fetchFavoriteEntities(
-        userId: UUID
-    ): Pair<List<ReportDetailsEntity>, List<FavoriteReportEntity>> {
-        val favoriteLinks = fetchFavoriteLinks(userId)
-
-        val ids = favoriteLinks.map { it.reportId }
-        if (ids.isEmpty()) return emptyList<ReportDetailsEntity>() to favoriteLinks
-
-        val fishings = supabase.postgrest["fishing"].select {
-            filter { isIn("id", ids) }
-            order("fishing_start_at", Order.DESCENDING)
-        }.decodeList<FishingDto>()
-
-        return buildReportEntities(fishings, ids) to favoriteLinks
-    }
-
-    /**
-     * Resolves child rows only for the given report ids so the payload scales with the
-     * page size instead of the whole database. All four child queries run concurrently.
-     */
-    private suspend fun buildReportEntities(
-        fishings: List<FishingDto>,
-        fishingIds: List<UUID>
-    ): List<ReportDetailsEntity> = coroutineScope {
-        val fishDeferred = async {
-            supabase.postgrest["fishing_fish"].select {
-                filter { isIn("fishing_id", fishingIds) }
-            }.decodeList<FishDto>()
-        }
-        val baitsDeferred = async {
-            supabase.postgrest["fishing_baits"].select {
-                filter { isIn("fishing_id", fishingIds) }
-            }.decodeList<BaitDto>()
-        }
-        val photosDeferred = async {
-            supabase.postgrest["fishing_photos"].select {
-                filter { isIn("fishing_id", fishingIds) }
-                order("sort_order", Order.ASCENDING)
-            }.decodeList<PhotoDto>()
-        }
-        val profilesDeferred = async {
-            val authorIds = fishings.map { it.userId }
-            // Public projection: id, name, avatar_url, created_at (no email).
-            supabase.postgrest["profiles_public"].select {
-                filter { isIn("id", authorIds) }
-            }.decodeList<ProfileDto>()
-        }
-
-        val fishByFishing = fishDeferred.await().groupBy { it.fishingId }
-        val baitsByFishing = baitsDeferred.await().groupBy { it.fishingId }
-        val photosByFishing = photosDeferred.await().groupBy { it.fishingId }
-        val profilesById = profilesDeferred.await().associateBy { it.id }
-
-        fishings.map { dto ->
-            val author = profilesById[dto.userId]
-            dto.toReportDetailsEntity(
-                fish = fishByFishing[dto.id] ?: emptyList(),
-                baits = baitsByFishing[dto.id] ?: emptyList(),
-                photos = photosByFishing[dto.id] ?: emptyList(),
-                authorName = author?.name,
-                authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl)
-            )
-        }
-    }
+    private fun RemoteReport.toEntity(): ReportDetailsEntity =
+        toReportDetailsEntity(authRepository::resolveImageUrl)
 
     override fun getMapMarkers(): Flow<List<MarkerDomain>> = markerDao.getAll().map { entities ->
         entities.map { it.toDomain() }
@@ -271,23 +187,7 @@ class SupabaseFishingRepository @Inject constructor(
         val userId = authRepository.currentUser()?.id
             ?: return Result.failure(IllegalStateException("Нет активной сессии"))
         return try {
-            val fishings = supabase.postgrest["fishing"].select(
-                columns = Columns.raw("*, fishing_fish(*)")
-            ) {
-                filter {
-                    or {
-                        eq("is_public", true)
-                        eq("user_id", userId)
-                    }
-                }
-                order("fishing_start_at", Order.DESCENDING)
-            }.decodeList<FishingDto>()
-
-            val entities = fishings.map { dto ->
-                dto.toMarkerEntity(
-                    fishNames = dto.fish.map { it.name }
-                )
-            }
+            val entities = reportRemoteQueries.fetchMapMarkers(userId)
             // Cache is replaced atomically so a mid-refresh failure cannot wipe
             // previously cached markers out from under the user.
             database.withTransaction {
@@ -306,33 +206,8 @@ class SupabaseFishingRepository @Inject constructor(
         if (authRepository.currentUser() == null) return false
         val likesSnapshotSeq = likeMutationSeq.get()
 
-        val fishing = supabase.postgrest["fishing"].select {
-            filter { eq("id", id) }
-        }.decodeList<FishingDto>().firstOrNull() ?: return false
-
-        val fish = supabase.postgrest["fishing_fish"].select {
-            filter { eq("fishing_id", id) }
-        }.decodeList<FishDto>()
-
-        val baits = supabase.postgrest["fishing_baits"].select {
-            filter { eq("fishing_id", id) }
-        }.decodeList<BaitDto>()
-
-        val photos = supabase.postgrest["fishing_photos"].select {
-            filter { eq("fishing_id", id) }
-            order("sort_order", Order.ASCENDING)
-        }.decodeList<PhotoDto>()
-        val author = supabase.postgrest["profiles_public"].select {
-            filter { eq("id", fishing.userId) }
-        }.decodeList<ProfileDto>().firstOrNull()
-
-        val entity = fishing.toReportDetailsEntity(
-            fish = fish,
-            baits = baits,
-            photos = photos,
-            authorName = author?.name,
-            authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl)
-        )
+        val remote = reportRemoteQueries.fetchReport(id) ?: return false
+        val entity = remote.toEntity()
         database.withTransaction {
             reportDetailsDao.insert(preserveRecentLikes(listOf(entity), likesSnapshotSeq).single())
         }
@@ -560,12 +435,8 @@ class SupabaseFishingRepository @Inject constructor(
         try {
             val likesSnapshotSeq = likeMutationSeq.get()
             // Single batched query — never one request per report.
-            val likes = supabase.postgrest["likes"].select {
-                filter { eq("user_id", userId) }
-            }.decodeList<LikeDto>()
-            val entities = likes
-                .filter { it.userId == userId }
-                .map { LikeEntity(userId = it.userId, reportId = it.fishingId) }
+            val likedIds = reportRemoteQueries.fetchLikedReportIds(userId)
+            val entities = likedIds.map { LikeEntity(userId = userId, reportId = it) }
             // Never drop a local like that was written by an operation which
             // started after this network snapshot was taken.
             val protectedIds = buildSet {

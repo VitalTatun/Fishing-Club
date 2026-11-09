@@ -70,6 +70,7 @@ class SupabaseFishingRepositoryTest {
             supabase = mockk<SupabaseClient>(relaxed = true),
             authRepository = auth,
             reportRemoteDataSource = remote,
+            reportRemoteQueries = mockk(relaxed = true),
             markerDao = db.markerDao(),
             reportDetailsDao = db.reportDetailsDao(),
             favoriteReportDao = db.favoriteDao(),

@@ -64,6 +64,16 @@ internal fun FishingDto.toReportDetailsEntity(
     )
 }
 
+internal fun RemoteReport.toReportDetailsEntity(
+    resolveImageUrl: (String) -> String
+): ReportDetailsEntity = fishing.toReportDetailsEntity(
+    fish = fish,
+    baits = baits,
+    photos = photos,
+    authorName = author?.name,
+    authorAvatar = author?.avatarUrl?.let(resolveImageUrl)
+)
+
 internal fun FishingDto.toMarkerEntity(fishNames: List<String>): MarkerEntity {
     return MarkerEntity(
         id = id,
