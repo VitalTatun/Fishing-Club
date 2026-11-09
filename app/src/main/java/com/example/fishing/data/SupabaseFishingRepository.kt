@@ -9,6 +9,7 @@ import com.example.fishing.data.local.entity.FavoriteReportEntity
 import com.example.fishing.data.local.entity.LikeEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import com.example.fishing.data.report.buildPublishPayload
+import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.SupabaseDateFormats
 import com.example.fishing.data.report.toDomain
 import com.example.fishing.data.report.toFishDto
@@ -35,7 +36,6 @@ import androidx.room.withTransaction
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.io.File
-import kotlin.time.Duration.Companion.hours
 import java.util.Date
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -53,6 +53,7 @@ class SupabaseFishingRepository @Inject constructor(
     private val favoriteReportDao: FavoriteReportDao,
     private val likeDao: LikeDao,
     private val database: AppDatabase,
+    private val photoUrlProvider: PhotoUrlProvider,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : FishingRepository {
 
@@ -74,9 +75,6 @@ class SupabaseFishingRepository @Inject constructor(
 
     private companion object {
         const val PAGE_SIZE = 20
-
-        // Supabase Storage accepts a limited number of paths per signed-url call.
-        const val SIGNED_URL_BATCH_SIZE = 50
     }
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> =
@@ -670,46 +668,11 @@ class SupabaseFishingRepository @Inject constructor(
 
     private fun likeVersion(id: UUID): Long = likeMutationVersions[id] ?: 0L
 
-    override suspend fun getPhotoSignedUrl(storagePath: String): String? {
-        return try {
-            if (storagePath.startsWith("http") || storagePath.startsWith("/")) {
-                return storagePath
-            }
-            val signedUrl = supabase.storage.from("fishing_photos").createSignedUrl(
-                path = storagePath,
-                expiresIn = 24.hours
-            )
-            // createSignedUrl may return a relative path — prepend project URL
-            if (signedUrl.startsWith("http")) signedUrl
-            else SupabaseConfig.URL.trimEnd('/') + signedUrl
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
+    override suspend fun getPhotoSignedUrl(storagePath: String): String? =
+        photoUrlProvider.getSignedUrl(storagePath)
 
-    override suspend fun getPhotoSignedUrls(storagePaths: List<String>): Map<String, String> {
-        val paths = storagePaths.filter { isStoragePath(it) }.distinct()
-        if (paths.isEmpty()) return emptyMap()
+    override suspend fun getPhotoSignedUrls(storagePaths: List<String>): Map<String, String> =
+        photoUrlProvider.getSignedUrls(storagePaths)
 
-        val result = mutableMapOf<String, String>()
-        paths.chunked(SIGNED_URL_BATCH_SIZE).forEach { chunk ->
-            val signedUrls = supabase.storage.from("fishing_photos")
-                .createSignedUrls(24.hours, chunk)
-            signedUrls.forEach { signed ->
-                if (signed.error == null) {
-                    result[signed.path] = if (signed.signedURL.startsWith("http")) {
-                        signed.signedURL
-                    } else {
-                        SupabaseConfig.URL.trimEnd('/') + signed.signedURL
-                    }
-                }
-            }
-        }
-        return result
-    }
-
-    override fun isStoragePath(path: String): Boolean {
-        return !path.startsWith("http") && !path.startsWith("/")
-    }
+    override fun isStoragePath(path: String): Boolean = photoUrlProvider.isStoragePath(path)
 }

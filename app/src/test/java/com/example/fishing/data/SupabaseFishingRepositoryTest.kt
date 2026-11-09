@@ -3,6 +3,7 @@ package com.example.fishing.data
 import android.app.Application
 import androidx.room.Room
 import com.example.fishing.data.local.AppDatabase
+import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
@@ -74,6 +75,7 @@ class SupabaseFishingRepositoryTest {
             favoriteReportDao = db.favoriteDao(),
             likeDao = db.likeDao(),
             database = db,
+            photoUrlProvider = SupabasePhotoUrlProvider(supabase = mockk(relaxed = true)),
             ioDispatcher = mainDispatcherRule.testDispatcher
         )
     }

@@ -1,5 +1,7 @@
 package com.example.fishing.data
 
+import com.example.fishing.data.report.PhotoUrlProvider
+import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -27,4 +29,10 @@ abstract class RepositoryModule {
     abstract fun bindReportRemoteDataSource(
         dataSource: SupabaseReportRemoteDataSource
     ): ReportRemoteDataSource
+
+    @Binds
+    @Singleton
+    abstract fun bindPhotoUrlProvider(
+        provider: SupabasePhotoUrlProvider
+    ): PhotoUrlProvider
 }
