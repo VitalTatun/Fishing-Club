@@ -15,9 +15,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.fishing.R
 import com.example.fishing.data.FishingRepository
-import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MarkerDomain
@@ -26,6 +26,7 @@ import com.example.fishing.ui.components.MarkerDrawableUtils
 import com.example.fishing.ui.components.MarkerShape
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.MainViewModel
+import com.example.fishing.viewmodel.filter.ReportFilters
 import java.util.UUID
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
@@ -57,7 +58,8 @@ fun MapScreen(
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
 
-    val highlightedPolygon by viewModel?.highlightedPolygon?.collectAsState() ?: remember { mutableStateOf(null) }
+    val highlightedPolygon by viewModel?.highlightedPolygon?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(null) }
 
     BackHandler(enabled = onBackClick != null) {
         onBackClick?.invoke()
@@ -68,19 +70,26 @@ fun MapScreen(
     var lastZoom by remember { mutableDoubleStateOf(viewModel?.mapLastZoom ?: 6.0) }
     var hasInitialLocationBeenSet by remember { mutableStateOf(false) }
 
-    val requestedLocation by viewModel?.mapRequestedLocation?.collectAsState() ?: remember { mutableStateOf(null) }
+    val requestedLocation by viewModel?.mapRequestedLocation?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(null) }
 
-    var localIsFavoritesSelected by remember { mutableStateOf(false) }
-    var localIsTrophySelected by remember { mutableStateOf(false) }
-    var localIsPaidSelected by remember { mutableStateOf(false) }
-    var localSelectedCatch by remember { mutableStateOf<String?>(null) }
-    var localSelectedMethod by remember { mutableStateOf<FishingMethod?>(null) }
+    val viewModelFilters by viewModel?.mapFilters?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(ReportFilters()) }
+    var localFilters by remember { mutableStateOf(ReportFilters()) }
+    val filters = if (viewModel != null) viewModelFilters else localFilters
+    val onFiltersChange: ((ReportFilters) -> ReportFilters) -> Unit = { transform ->
+        if (viewModel != null) {
+            viewModel.updateMapFilters(transform)
+        } else {
+            localFilters = transform(localFilters)
+        }
+    }
 
-    val isFavoritesSelected = viewModel?.mapIsFavoritesSelected ?: localIsFavoritesSelected
-    val isTrophySelected = viewModel?.mapIsTrophySelected ?: localIsTrophySelected
-    val isPaidSelected = viewModel?.mapIsPaidSelected ?: localIsPaidSelected
-    val selectedCatch = viewModel?.mapSelectedCatch ?: localSelectedCatch
-    val selectedMethod = viewModel?.mapSelectedMethod ?: localSelectedMethod
+    val isFavoritesSelected = filters.isFavoritesSelected
+    val isTrophySelected = filters.isTrophySelected
+    val isPaidSelected = filters.isPaidSelected
+    val selectedCatch = filters.selectedCatch
+    val selectedMethod = filters.selectedMethod
 
     LaunchedEffect(Unit) {
         if (viewModel != null) {
@@ -137,30 +146,13 @@ fun MapScreen(
 
     val filteredMarkers = remember(
         displayMarkers,
-        isFavoritesSelected,
-        isTrophySelected,
-        isPaidSelected,
-        selectedCatch,
-        selectedMethod,
-        favoriteIdSet,
-        favoriteMarkers
+        filters,
+        favoriteIdSet
     ) {
-        displayMarkers.filter { marker ->
-            val matchesFavorites = if (!isFavoritesSelected) true else {
-                favoriteIdSet.contains(marker.id) || favoriteMarkers.any { it.id == marker.id }
-            }
-            
-            val matchesTrophy = if (!isTrophySelected) true else marker.type == FishingType.HAUL
-            val matchesPaid = if (!isPaidSelected) true else marker.isPaidWater
-            val matchesCatch = if (selectedCatch == null) true else marker.fishNames.contains(selectedCatch)
-            val matchesMethod = if (selectedMethod == null) true else marker.fishingMethod == selectedMethod
-
-            matchesFavorites && matchesTrophy && matchesPaid && matchesCatch && matchesMethod
-        }
+        displayMarkers.filter { marker -> filters.matches(marker, favoriteIdSet) }
     }
 
-    val isFilterActive = isFavoritesSelected || isTrophySelected || isPaidSelected ||
-        selectedCatch != null || selectedMethod != null
+    val isFilterActive = filters.isActive
 
     DisposableEffect(mapView) {
         mapView.onResume()
@@ -375,43 +367,49 @@ fun MapScreen(
                 FishingFilterChips(
                     isFavoritesSelected = isFavoritesSelected,
                     onFavoritesClick = {
-                        if (viewModel != null) {
-                            val newValue = !viewModel.mapIsFavoritesSelected
-                            viewModel.mapIsFavoritesSelected = newValue
-                            if (newValue) {
-                                viewModel.loadFilterFavoriteReports()
-                            }
-                        } else {
-                            localIsFavoritesSelected = !localIsFavoritesSelected
+                        val newValue = !filters.isFavoritesSelected
+                        onFiltersChange { current ->
+                            current.copy(
+                                isFavoritesSelected = !current.isFavoritesSelected
+                            )
+                        }
+                        if (newValue) {
+                            viewModel?.loadFilterFavoriteReports()
                         }
                     },
                     isTrophySelected = isTrophySelected,
                     onTrophyClick = {
-                        if (viewModel != null) viewModel.mapIsTrophySelected = !viewModel.mapIsTrophySelected
-                        else localIsTrophySelected = !localIsTrophySelected
+                        onFiltersChange { current ->
+                            current.copy(isTrophySelected = !current.isTrophySelected)
+                        }
                     },
                     isPaidSelected = isPaidSelected,
                     onPaidClick = {
-                        if (viewModel != null) viewModel.mapIsPaidSelected = !viewModel.mapIsPaidSelected
-                        else localIsPaidSelected = !localIsPaidSelected
+                        onFiltersChange { current ->
+                            current.copy(isPaidSelected = !current.isPaidSelected)
+                        }
                     },
                     selectedCatch = selectedCatch,
-                    onCatchSelected = {
-                        if (viewModel != null) viewModel.mapSelectedCatch = it
-                        else localSelectedCatch = it
+                    onCatchSelected = { catch ->
+                        onFiltersChange { current ->
+                            current.copy(selectedCatch = catch)
+                        }
                     },
                     onClearCatch = {
-                        if (viewModel != null) viewModel.mapSelectedCatch = null
-                        else localSelectedCatch = null
+                        onFiltersChange { current ->
+                            current.copy(selectedCatch = null)
+                        }
                     },
                     selectedMethod = selectedMethod,
-                    onMethodSelected = {
-                        if (viewModel != null) viewModel.mapSelectedMethod = it
-                        else localSelectedMethod = it
+                    onMethodSelected = { method ->
+                        onFiltersChange { current ->
+                            current.copy(selectedMethod = method)
+                        }
                     },
                     onClearMethod = {
-                        if (viewModel != null) viewModel.mapSelectedMethod = null
-                        else localSelectedMethod = null
+                        onFiltersChange { current ->
+                            current.copy(selectedMethod = null)
+                        }
                     },
                     uniqueFish = uniqueFish
                 )

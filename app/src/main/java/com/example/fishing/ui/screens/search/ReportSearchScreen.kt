@@ -27,6 +27,7 @@ import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingFilterChips
 import com.example.fishing.ui.components.FishingReportCardItem
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.filter.ReportSearchState
 import java.util.Calendar
 import java.util.UUID
 
@@ -35,20 +36,8 @@ import java.util.UUID
 fun ReportSearchScreen(
     reports: List<FishingReport>,
     favoriteReports: List<FishingReport> = emptyList(),
-    query: String,
-    onQueryChange: (String) -> Unit,
-    selectedDate: Long?,
-    onDateChange: (Long?) -> Unit,
-    isFavoritesSelected: Boolean,
-    onFavoritesChange: (Boolean) -> Unit,
-    isTrophySelected: Boolean,
-    onTrophyChange: (Boolean) -> Unit,
-    isPaidSelected: Boolean,
-    onPaidChange: (Boolean) -> Unit,
-    selectedCatch: String?,
-    onCatchChange: (String?) -> Unit,
-    selectedMethod: FishingMethod?,
-    onMethodChange: (FishingMethod?) -> Unit,
+    state: ReportSearchState,
+    onStateChange: ((ReportSearchState) -> ReportSearchState) -> Unit,
     onReportClick: (FishingReport) -> Unit,
     onBack: () -> Unit,
     favoriteError: String? = null,
@@ -65,7 +54,9 @@ fun ReportSearchScreen(
     }
 
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = state.selectedDateMillis
+    )
 
     val uniqueFish = remember(reports) {
         reports.flatMap { it.fish }.map { it.name }.distinct().sorted()
@@ -76,7 +67,8 @@ fun ReportSearchScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    onDateChange(datePickerState.selectedDateMillis)
+                    val selectedDateMillis = datePickerState.selectedDateMillis
+                    onStateChange { it.copy(selectedDateMillis = selectedDateMillis) }
                     showDatePicker = false
                 }) {
                     Text(stringResource(R.string.ok))
@@ -92,83 +84,18 @@ fun ReportSearchScreen(
         }
     }
 
-    val baseReports = remember(reports, favoriteReports, isFavoritesSelected) {
-        if (isFavoritesSelected) favoriteReports else reports
+    val favoriteIds = remember(favoriteReports) { favoriteReports.map { it.id }.toSet() }
+
+    val baseReports = remember(reports, favoriteReports, state.filters.isFavoritesSelected) {
+        if (state.filters.isFavoritesSelected) favoriteReports else reports
     }
 
-    val filteredReports = remember(
-        query,
-        baseReports,
-        selectedDate,
-        isFavoritesSelected,
-        isTrophySelected,
-        isPaidSelected,
-        selectedCatch,
-        selectedMethod,
-        favoriteReports
-    ) {
-        baseReports.filter { report ->
-            // Text query filter
-            val matchesQuery = if (query.isBlank()) {
-                true
-            } else {
-                report.name.contains(query, ignoreCase = true) ||
-                        report.water.waterName.contains(query, ignoreCase = true) ||
-                        report.comment.contains(query, ignoreCase = true) ||
-                        report.fish.any { it.name.contains(query, ignoreCase = true) }
-            }
-
-            // Date filter
-            val matchesDate = if (selectedDate == null) {
-                true
-            } else {
-                val reportInstant = report.fishingStartAt
-                if (reportInstant == null) {
-                    false
-                } else {
-                    val calendar = Calendar.getInstance().apply { timeInMillis = reportInstant.toEpochMilli() }
-                    val reportDay = calendar.get(Calendar.DAY_OF_YEAR)
-                    val reportYear = calendar.get(Calendar.YEAR)
-
-                    val filterCalendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
-                    val filterDay = filterCalendar.get(Calendar.DAY_OF_YEAR)
-                    val filterYear = filterCalendar.get(Calendar.YEAR)
-
-                    reportDay == filterDay && reportYear == filterYear
-                }
-            }
-
-            // Favorites filter
-            val isFavorite = favoriteReports.any { it.id == report.id }
-            val matchesFavorites = if (!isFavoritesSelected) true else isFavorite
-
-            // Trophy filter
-            val matchesTrophy = if (!isTrophySelected) true else report.type == FishingType.HAUL
-
-            // Paid water filter
-            val matchesPaid = if (!isPaidSelected) true else report.water.isPaid
-
-            // Catch (fish species) filter
-            val matchesCatch = if (selectedCatch == null) {
-                true
-            } else {
-                report.fish.any { it.name == selectedCatch }
-            }
-
-            // Fishing method filter
-            val matchesMethod = if (selectedMethod == null) {
-                true
-            } else {
-                report.fishingMethod == selectedMethod
-            }
-
-            matchesQuery && matchesDate && matchesFavorites && matchesTrophy && matchesPaid && matchesCatch && matchesMethod
-        }
+    val filteredReports = remember(baseReports, state, favoriteIds) {
+        baseReports.filter { report -> state.matches(report, favoriteIds) }
     }
 
-    val showEmptyPlaceholder = remember(query, selectedDate, isFavoritesSelected, isTrophySelected, isPaidSelected, selectedCatch, selectedMethod) {
-        query.isBlank() && selectedDate == null && !isFavoritesSelected && !isTrophySelected && !isPaidSelected && selectedCatch == null && selectedMethod == null
-    }
+    val showEmptyPlaceholder = state.isEmpty
+    val filters = state.filters
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -176,28 +103,78 @@ fun ReportSearchScreen(
         topBar = {
             Column(modifier = Modifier.statusBarsPadding()) {
                 ReportSearchHeader(
-                    query = query,
-                    onQueryChange = onQueryChange,
+                    query = state.query,
+                    onQueryChange = { query ->
+                        onStateChange { current -> current.copy(query = query) }
+                    },
                     onBack = onBack,
                     focusRequester = focusRequester,
                 )
                 FishingFilterChips(
-                    isFavoritesSelected = isFavoritesSelected,
-                    onFavoritesClick = { onFavoritesChange(!isFavoritesSelected) },
-                    isTrophySelected = isTrophySelected,
-                    onTrophyClick = { onTrophyChange(!isTrophySelected) },
-                    isPaidSelected = isPaidSelected,
-                    onPaidClick = { onPaidChange(!isPaidSelected) },
-                    selectedCatch = selectedCatch,
-                    onCatchSelected = { onCatchChange(it) },
-                    onClearCatch = { onCatchChange(null) },
-                    selectedMethod = selectedMethod,
-                    onMethodSelected = { onMethodChange(it) },
-                    onClearMethod = { onMethodChange(null) },
+                    isFavoritesSelected = filters.isFavoritesSelected,
+                    onFavoritesClick = {
+                        onStateChange { current ->
+                            current.copy(
+                                filters = current.filters.copy(
+                                    isFavoritesSelected = !current.filters.isFavoritesSelected
+                                )
+                            )
+                        }
+                    },
+                    isTrophySelected = filters.isTrophySelected,
+                    onTrophyClick = {
+                        onStateChange { current ->
+                            current.copy(
+                                filters = current.filters.copy(
+                                    isTrophySelected = !current.filters.isTrophySelected
+                                )
+                            )
+                        }
+                    },
+                    isPaidSelected = filters.isPaidSelected,
+                    onPaidClick = {
+                        onStateChange { current ->
+                            current.copy(
+                                filters = current.filters.copy(
+                                    isPaidSelected = !current.filters.isPaidSelected
+                                )
+                            )
+                        }
+                    },
+                    selectedCatch = filters.selectedCatch,
+                    onCatchSelected = { catch ->
+                        onStateChange { current ->
+                            current.copy(
+                                filters = current.filters.copy(selectedCatch = catch)
+                            )
+                        }
+                    },
+                    onClearCatch = {
+                        onStateChange { current ->
+                            current.copy(filters = current.filters.copy(selectedCatch = null))
+                        }
+                    },
+                    selectedMethod = filters.selectedMethod,
+                    onMethodSelected = { method ->
+                        onStateChange { current ->
+                            current.copy(
+                                filters = current.filters.copy(selectedMethod = method)
+                            )
+                        }
+                    },
+                    onClearMethod = {
+                        onStateChange { current ->
+                            current.copy(filters = current.filters.copy(selectedMethod = null))
+                        }
+                    },
                     uniqueFish = uniqueFish,
-                    selectedDate = selectedDate,
+                    selectedDate = state.selectedDateMillis,
                     onDateClick = { showDatePicker = true },
-                    onClearDate = { onDateChange(null) }
+                    onClearDate = {
+                        onStateChange { current ->
+                            current.copy(selectedDateMillis = null)
+                        }
+                    }
                 )
             }
         },
@@ -372,20 +349,8 @@ fun ReportSearchScreenPreview() {
         ReportSearchScreen(
             reports = sampleReports,
             favoriteReports = listOf(sampleReports.first()),
-            query = "",
-            onQueryChange = {},
-            selectedDate = null,
-            onDateChange = {},
-            isFavoritesSelected = false,
-            onFavoritesChange = {},
-            isTrophySelected = false,
-            onTrophyChange = {},
-            isPaidSelected = false,
-            onPaidChange = {},
-            selectedCatch = null,
-            onCatchChange = {},
-            selectedMethod = null,
-            onMethodChange = {},
+            state = ReportSearchState(),
+            onStateChange = {},
             onReportClick = {},
             onBack = {}
         )

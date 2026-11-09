@@ -181,31 +181,17 @@ fun FishingNavHost(
             }
 
             composable<ReportListSearchRoute> {
-                LaunchedEffect(viewModel.searchIsFavoritesSelected) {
-                    if (viewModel.searchIsFavoritesSelected) {
+                val searchState by viewModel.searchState.collectAsStateWithLifecycle()
+                LaunchedEffect(searchState.filters.isFavoritesSelected) {
+                    if (searchState.filters.isFavoritesSelected) {
                         viewModel.loadFilterFavoriteReports(force = true)
                     }
                 }
                 ReportSearchScreen(
                     reports = reports,
                     favoriteReports = filterFavoriteReports,
-                    query = viewModel.searchQuery,
-                    onQueryChange = { viewModel.searchQuery = it },
-                    selectedDate = viewModel.searchSelectedDate,
-                    onDateChange = { viewModel.searchSelectedDate = it },
-                    isFavoritesSelected = viewModel.searchIsFavoritesSelected,
-                    onFavoritesChange = { 
-                        viewModel.searchIsFavoritesSelected = it
-                        if (it) viewModel.loadFilterFavoriteReports(force = true)
-                    },
-                    isTrophySelected = viewModel.searchIsTrophySelected,
-                    onTrophyChange = { viewModel.searchIsTrophySelected = it },
-                    isPaidSelected = viewModel.searchIsPaidSelected,
-                    onPaidChange = { viewModel.searchIsPaidSelected = it },
-                    selectedCatch = viewModel.searchSelectedCatch,
-                    onCatchChange = { viewModel.searchSelectedCatch = it },
-                    selectedMethod = viewModel.searchSelectedMethod,
-                    onMethodChange = { viewModel.searchSelectedMethod = it },
+                    state = searchState,
+                    onStateChange = viewModel::updateSearchState,
                     onReportClick = { report ->
                         navController.navigate(ReportDetailRoute(report.id.toString()))
                     },
@@ -517,8 +503,9 @@ fun FishingNavHost(
                     mapMarkers.firstOrNull { it.id == id }
                 }
 
-                LaunchedEffect(viewModel.mapIsFavoritesSelected) {
-                    if (viewModel.mapIsFavoritesSelected) {
+                val mapFilters by viewModel.mapFilters.collectAsStateWithLifecycle()
+                LaunchedEffect(mapFilters.isFavoritesSelected) {
+                    if (mapFilters.isFavoritesSelected) {
                         viewModel.loadFilterFavoriteReports(force = true)
                     }
                 }

@@ -1,189 +1,142 @@
 package com.example.fishing.viewmodel
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
-import com.example.fishing.data.ErrorMapper
 import com.example.fishing.data.FishingRepository
-import com.example.fishing.data.SupabaseFishingRepository
 import com.example.fishing.data.UserPreferencesSource
 import com.example.fishing.data.upload.ReportUploadQueue
+import com.example.fishing.model.AuthState
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
+import com.example.fishing.model.PendingReportUpload
+import com.example.fishing.model.ReportDisplayMode
+import com.example.fishing.model.ReportLikeState
+import com.example.fishing.model.ReportSortOrder
+import com.example.fishing.model.ReportUploadNotice
+import com.example.fishing.viewmodel.detail.ReportDetailCoordinator
+import com.example.fishing.viewmodel.favorites.FavoritesCoordinator
+import com.example.fishing.viewmodel.filter.ReportFilters
+import com.example.fishing.viewmodel.filter.ReportSearchState
+import com.example.fishing.viewmodel.home.HomeFeedCoordinator
+import com.example.fishing.viewmodel.likes.LikesCoordinator
+import com.example.fishing.viewmodel.map.MapCoordinator
+import com.example.fishing.viewmodel.photos.PhotoUrlResolver
+import com.example.fishing.viewmodel.search.SearchCoordinator
+import com.example.fishing.viewmodel.session.UserSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.osmdroid.util.GeoPoint
-import javax.inject.Inject
-import java.util.Date
-import com.example.fishing.model.*
 import java.util.UUID
+import javax.inject.Inject
 
-sealed interface ReportDetailUiState {
-    data object Loading : ReportDetailUiState
-
-    data class Success(val report: FishingReport) : ReportDetailUiState
-
-    // Report is confirmed absent in the backend, not merely not-yet-loaded.
-    data class Empty(val reportId: UUID) : ReportDetailUiState
-
-    data class Error(val reportId: UUID, val message: String) : ReportDetailUiState
-}
-
-sealed interface HomeUiState {
-    data object Loading : HomeUiState
-    data class Success(val reports: List<FishingReport>) : HomeUiState
-    data object Empty : HomeUiState
-    data class Error(val message: String) : HomeUiState
-}
-
+/**
+ * Binding point between the Compose navigation graph and the per-scenario
+ * coordinators. It owns only session orchestration, cross-scenario refresh and
+ * upload-queue notices; all scenario logic lives in the coordinators.
+ *
+ * The public surface is intentionally kept stable so the existing screens and
+ * MainViewModelTest continue to work without changes.
+ */
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val repository: FishingRepository,
     private val authRepository: AuthRepository,
-    private val userPreferencesRepository: UserPreferencesSource,
+    userPreferencesRepository: UserPreferencesSource,
     private val reportUploadQueue: ReportUploadQueue
 ) : ViewModel() {
 
-    private companion object {
-        const val SIGNED_URL_TTL_MILLIS = 24L * 60 * 60 * 1000
-        const val SIGNED_URL_REFRESH_BEFORE_MILLIS = 5L * 60 * 1000
-    }
+    private val session = UserSession(authRepository)
+    private val photoUrls = PhotoUrlResolver(repository)
 
-    private val _reports = MutableStateFlow<List<FishingReport>>(emptyList())
-    val reports: StateFlow<List<FishingReport>> = _reports.asStateFlow()
+    private val home = HomeFeedCoordinator(
+        repository = repository,
+        userPreferencesRepository = userPreferencesRepository,
+        session = session,
+        photoUrls = photoUrls,
+        scope = viewModelScope
+    )
+    private val favorites = FavoritesCoordinator(
+        repository = repository,
+        session = session,
+        photoUrls = photoUrls,
+        scope = viewModelScope
+    )
+    private val likes = LikesCoordinator(
+        repository = repository,
+        session = session,
+        scope = viewModelScope
+    )
+    private val map = MapCoordinator(
+        repository = repository,
+        scope = viewModelScope
+    )
+    private val search = SearchCoordinator()
+    private val detail = ReportDetailCoordinator(
+        repository = repository,
+        photoUrls = photoUrls,
+        scope = viewModelScope
+    )
 
-    private val _favoriteIds = MutableStateFlow<Set<UUID>>(emptySet())
-    val favoriteIds: StateFlow<Set<UUID>> = _favoriteIds.asStateFlow()
+    val reports: StateFlow<List<FishingReport>> = home.reports
+    val sortedReports: StateFlow<List<FishingReport>> = home.sortedReports
+    val homeUiState: StateFlow<HomeUiState> = home.homeUiState
+    val reportSortOrder: StateFlow<ReportSortOrder> = home.reportSortOrder
+    val reportDisplayMode: StateFlow<ReportDisplayMode> = home.reportDisplayMode
+    val isInitialLoading: StateFlow<Boolean> = home.isInitialLoading
+    val isRefreshing: StateFlow<Boolean> = home.isRefreshing
+    val isLoadingMore: StateFlow<Boolean> = home.isLoadingMore
+    val loadMoreError: StateFlow<String?> = home.loadMoreError
+    val hasMoreReports: StateFlow<Boolean> = home.hasMoreReports
+    val error: StateFlow<String?> = home.error
 
-    private val _favoriteOpsInFlight = MutableStateFlow<Set<UUID>>(emptySet())
-    val favoriteOpsInFlight: StateFlow<Set<UUID>> = _favoriteOpsInFlight.asStateFlow()
+    val favoriteIds: StateFlow<Set<UUID>> = favorites.favoriteIds
+    val favoriteOpsInFlight: StateFlow<Set<UUID>> = favorites.favoriteOpsInFlight
+    val filterFavoriteReports: StateFlow<List<FishingReport>> = favorites.filterFavoriteReports
+    val favoriteError: StateFlow<String?> = favorites.favoriteError
 
-    private val _filterFavoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
-    val filterFavoriteReports: StateFlow<List<FishingReport>> = _filterFavoriteReports.asStateFlow()
-    private var filterFavoritesLoadedForUserId: UUID? = null
+    val likeStates: StateFlow<Map<UUID, ReportLikeState>> = likes.likeStates
+    val likeError: StateFlow<String?> = likes.likeError
 
-    private val _reportSortOrder = MutableStateFlow(userPreferencesRepository.getSortOrder())
-    val reportSortOrder: StateFlow<ReportSortOrder> = _reportSortOrder.asStateFlow()
+    val mapMarkers: StateFlow<List<MarkerDomain>> = map.mapMarkers
+    val mapIsLoading: StateFlow<Boolean> = map.mapIsLoading
+    val mapIsRefreshing: StateFlow<Boolean> = map.mapIsRefreshing
+    val mapRefreshError: StateFlow<String?> = map.mapRefreshError
+    val mapFilters: StateFlow<ReportFilters> = map.mapFilters
+    val mapRequestedLocation: StateFlow<GeoPoint?> = map.mapRequestedLocation
+    val highlightedPolygon: StateFlow<List<GeoPoint>?> = map.highlightedPolygon
 
-    private val _reportDisplayMode = MutableStateFlow(userPreferencesRepository.getDisplayMode())
-    val reportDisplayMode: StateFlow<ReportDisplayMode> = _reportDisplayMode.asStateFlow()
-
-    val sortedReports: StateFlow<List<FishingReport>> = combine(
-        reports,
-        reportSortOrder
-    ) { reports, order ->
-        when (order) {
-            ReportSortOrder.BY_PUBLISH_DATE -> reports.sortedByDescending { it.createdAt ?: it.publishedAt }
-            ReportSortOrder.BY_FISHING_TIME -> reports.sortedByDescending { it.fishingStartAt ?: it.createdAt?.toInstant() }
+    var mapLastCenterLat: Double?
+        get() = map.mapLastCenterLat
+        set(value) {
+            map.mapLastCenterLat = value
         }
-    }.distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    var mapLastCenterLon: Double?
+        get() = map.mapLastCenterLon
+        set(value) {
+            map.mapLastCenterLon = value
+        }
+    var mapLastZoom: Double
+        get() = map.mapLastZoom
+        set(value) {
+            map.mapLastZoom = value
+        }
 
-    private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
-    val mapMarkers: StateFlow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
-
-    private val _mapIsLoading = MutableStateFlow(false)
-    val mapIsLoading: StateFlow<Boolean> = _mapIsLoading.asStateFlow()
-
-    private val _mapIsRefreshing = MutableStateFlow(false)
-    val mapIsRefreshing: StateFlow<Boolean> = _mapIsRefreshing.asStateFlow()
-
-    private val _mapRefreshError = MutableStateFlow<String?>(null)
-    val mapRefreshError: StateFlow<String?> = _mapRefreshError.asStateFlow()
-
-    private val _reportDetailUiState = MutableStateFlow<ReportDetailUiState>(ReportDetailUiState.Loading)
-    val reportDetailUiState: StateFlow<ReportDetailUiState> = _reportDetailUiState.asStateFlow()
-
-    private val _isInitialLoading = MutableStateFlow(true)
-    val isInitialLoading: StateFlow<Boolean> = _isInitialLoading.asStateFlow()
-
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
-
-    private val _isLoadingMore = MutableStateFlow(false)
-    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
-
-    /** Surfaced at the bottom of the home list when the next page fails to load. */
-    private val _loadMoreError = MutableStateFlow<String?>(null)
-    val loadMoreError: StateFlow<String?> = _loadMoreError.asStateFlow()
-
-    private val _hasMoreReports = MutableStateFlow(false)
-    val hasMoreReports: StateFlow<Boolean> = _hasMoreReports.asStateFlow()
+    val searchState: StateFlow<ReportSearchState> = search.state
 
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
 
-    private val _mapRequestedLocation = MutableStateFlow<GeoPoint?>(null)
-    val mapRequestedLocation: StateFlow<GeoPoint?> = _mapRequestedLocation.asStateFlow()
-
-    private val _highlightedPolygon = MutableStateFlow<List<GeoPoint>?>(null)
-    val highlightedPolygon: StateFlow<List<GeoPoint>?> = _highlightedPolygon.asStateFlow()
-
-    var mapLastCenterLat: Double? = null
-    var mapLastCenterLon: Double? = null
-    var mapLastZoom: Double = 6.0
-
-    // Search state (persists across navigation)
-    var searchQuery by mutableStateOf("")
-    var searchSelectedDate by mutableStateOf<Long?>(null)
-    var searchIsFavoritesSelected by mutableStateOf(false)
-    var searchIsTrophySelected by mutableStateOf(false)
-    var searchIsPaidSelected by mutableStateOf(false)
-    var searchSelectedCatch by mutableStateOf<String?>(null)
-    var searchSelectedMethod by mutableStateOf<FishingMethod?>(null)
-
-    // Map Search state (persists across navigation)
-    var mapIsFavoritesSelected by mutableStateOf(false)
-    var mapIsTrophySelected by mutableStateOf(false)
-    var mapIsPaidSelected by mutableStateOf(false)
-    var mapSelectedCatch by mutableStateOf<String?>(null)
-    var mapSelectedMethod by mutableStateOf<FishingMethod?>(null)
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _isDeletingReport = MutableStateFlow(false)
-    val isDeletingReport: StateFlow<Boolean> = _isDeletingReport.asStateFlow()
-
-    private val _deleteReportError = MutableStateFlow<String?>(null)
-    val deleteReportError: StateFlow<String?> = _deleteReportError.asStateFlow()
-
-    private val _favoriteError = MutableStateFlow<String?>(null)
-    val favoriteError: StateFlow<String?> = _favoriteError.asStateFlow()
-
-    // Toggles are applied optimistically on top of the Room-confirmed set and
-    // rolled back on failure, mirroring the likes implementation.
-    private val optimisticFavoriteOverlay = mutableMapOf<UUID, Boolean>()
-    private var baseFavoriteIds: Set<UUID> = emptySet()
-
-    private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
-    val likeStates: StateFlow<Map<UUID, ReportLikeState>> = _likeStates.asStateFlow()
-
-    private val _likeError = MutableStateFlow<String?>(null)
-    val likeError: StateFlow<String?> = _likeError.asStateFlow()
-
-    private val likeOpsInFlight = mutableSetOf<UUID>()
-    private data class LikeOverlay(val liked: Boolean, val fallbackCount: Int)
-    private val optimisticLikeOverlay = mutableMapOf<UUID, LikeOverlay>()
-    private var baseLikeStates: Map<UUID, ReportLikeState> = emptyMap()
-
-    private val _deletedReportId = MutableStateFlow<UUID?>(null)
-    val deletedReportId: StateFlow<UUID?> = _deletedReportId.asStateFlow()
+    val reportDetailUiState: StateFlow<ReportDetailUiState> = detail.reportDetailUiState
+    val isDeletingReport: StateFlow<Boolean> = detail.isDeletingReport
+    val deleteReportError: StateFlow<String?> = detail.deleteReportError
+    val deletedReportId: StateFlow<UUID?> = detail.deletedReportId
 
     /** Reports waiting for upload; the banner in [MainScreen] is driven by this. */
     val pendingUploads: StateFlow<List<PendingReportUpload>> =
@@ -193,38 +146,6 @@ class MainViewModel @Inject constructor(
     private val _uploadNotice = MutableStateFlow<ReportUploadNotice?>(null)
     val uploadNotice: StateFlow<ReportUploadNotice?> = _uploadNotice.asStateFlow()
 
-    val homeUiState: StateFlow<HomeUiState> = combine(
-        sortedReports,
-        isInitialLoading,
-        error
-    ) { reportsList, initialLoading, currentError ->
-        when {
-            initialLoading && reportsList.isEmpty() && currentError == null -> HomeUiState.Loading
-            reportsList.isEmpty() && currentError != null -> HomeUiState.Error(currentError)
-            reportsList.isEmpty() -> HomeUiState.Empty
-            else -> HomeUiState.Success(reportsList)
-        }
-    }.distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState.Loading)
-
-    private var reportsLoadJob: Job? = null
-    private var mapMarkersLoadJob: Job? = null
-    private var reportDetailsJob: Job? = null
-    private var deleteReportJob: Job? = null
-    private var likesLoadJob: Job? = null
-    private var favoritesLoadJob: Job? = null
-
-    private data class CachedSignedUrl(val url: String, val expiresAtMillis: Long)
-
-    // Signed URLs are valid for 24h. Refresh slightly early so an image request
-    // never races the expiry, and never cache failures — the next render retries.
-    private val signedPhotoUrlCache = mutableMapOf<String, CachedSignedUrl>()
-    private val signedPhotoUrlMutex = Mutex()
-    private var homePhotosVersion = 0
-    private var favoritePhotosVersion = 0
-    private var detailPhotosVersion = 0
-
-    private var currentUserId: UUID? = null
     // Remembers which user the home state was already loaded for, so repeated
     // Authenticated emissions (e.g. token refreshes) don't restart every load.
     private var loadedForUserId: UUID? = null
@@ -237,13 +158,12 @@ class MainViewModel @Inject constructor(
                     val userId = authState.user.id
                     if (userId == loadedForUserId) return@collect
                     loadedForUserId = userId
-                    currentUserId = userId
-                    _reportSortOrder.value = userPreferencesRepository.getSortOrder(userId)
-                    _reportDisplayMode.value = userPreferencesRepository.getDisplayMode(userId)
-                    loadReports(force = false)
-                    loadMapMarkers(force = false)
-                    refreshLikes()
-                    refreshFavorites()
+                    session.set(userId)
+                    home.onUserChanged(userId)
+                    home.loadReports(force = false)
+                    map.loadMapMarkers(force = false)
+                    likes.refresh()
+                    favorites.refresh()
                 }
         }
         viewModelScope.launch {
@@ -277,717 +197,109 @@ class MainViewModel @Inject constructor(
     }
 
     private fun clearUserContent() {
-        reportsLoadJob?.cancel()
-        mapMarkersLoadJob?.cancel()
-        reportDetailsJob?.cancel()
-        deleteReportJob?.cancel()
-        likesLoadJob?.cancel()
-        favoritesLoadJob?.cancel()
-        currentUserId = null
+        session.clear()
         loadedForUserId = null
 
-        _reports.value = emptyList()
-        _favoriteIds.value = emptySet()
-        baseFavoriteIds = emptySet()
-        optimisticFavoriteOverlay.clear()
-        _favoriteOpsInFlight.value = emptySet()
-        _filterFavoriteReports.value = emptyList()
-        filterFavoritesLoadedForUserId = null
-        _likeStates.value = emptyMap()
-        baseLikeStates = emptyMap()
-        optimisticLikeOverlay.clear()
-        likeOpsInFlight.clear()
-        _likeError.value = null
-        _mapMarkers.value = emptyList()
-        _reportDetailUiState.value = ReportDetailUiState.Loading
-        _error.value = null
-        _isDeletingReport.value = false
-        _deleteReportError.value = null
-        _favoriteError.value = null
-        _favoriteOpsInFlight.value = emptySet()
-        _deletedReportId.value = null
-        _uploadNotice.value = null
-        _isInitialLoading.value = true
-        _isRefreshing.value = false
-        _isLoadingMore.value = false
-        _loadMoreError.value = null
-        _hasMoreReports.value = false
+        home.clear()
+        favorites.clear()
+        likes.clear()
+        map.clear()
+        search.clear()
+        detail.clear()
+
         _selectedTab.value = 0
-        _mapIsLoading.value = true
-        _mapIsRefreshing.value = false
-        _mapRefreshError.value = null
-        _reportDisplayMode.value = ReportDisplayMode.CARD
-
-        searchQuery = ""
-        searchSelectedDate = null
-        searchIsFavoritesSelected = false
-        searchIsTrophySelected = false
-        searchIsPaidSelected = false
-        searchSelectedCatch = null
-        searchSelectedMethod = null
-
-        mapIsFavoritesSelected = false
-        mapIsTrophySelected = false
-        mapIsPaidSelected = false
-        mapSelectedCatch = null
-        mapSelectedMethod = null
-        mapLastCenterLat = null
-        mapLastCenterLon = null
-        mapLastZoom = 6.0
-
-        homePhotosVersion++
-        favoritePhotosVersion++
-        detailPhotosVersion++
-        synchronized(signedPhotoUrlCache) { signedPhotoUrlCache.clear() }
+        _uploadNotice.value = null
+        photoUrls.clear()
     }
 
     fun refresh() {
-        loadReports(force = true)
-        loadMapMarkers(force = true)
-        refreshLikes()
+        home.loadReports(force = true)
+        map.loadMapMarkers(force = true)
+        likes.refresh()
     }
 
     fun selectTab(index: Int) {
         _selectedTab.value = index
-        if (index == 1) loadMapMarkers(force = false)
+        if (index == 1) map.loadMapMarkers(force = false)
     }
 
     fun setSortOrder(order: ReportSortOrder) {
-        _reportSortOrder.value = order
-        currentUserId?.let { userPreferencesRepository.setSortOrder(it, order) }
+        home.setSortOrder(order)
     }
 
     fun setDisplayMode(mode: ReportDisplayMode) {
-        _reportDisplayMode.value = mode
-        currentUserId?.let { userPreferencesRepository.setDisplayMode(it, mode) }
+        home.setDisplayMode(mode)
     }
 
     fun requestMapLocation(point: GeoPoint?) {
-        _mapRequestedLocation.value = point
+        map.requestMapLocation(point)
     }
 
     fun setHighlightedPolygon(points: List<GeoPoint>?) {
-        _highlightedPolygon.value = points
+        map.setHighlightedPolygon(points)
+    }
+
+    fun updateMapFilters(transform: (ReportFilters) -> ReportFilters) {
+        map.updateMapFilters(transform)
+    }
+
+    fun updateSearchState(transform: (ReportSearchState) -> ReportSearchState) {
+        search.update(transform)
     }
 
     fun loadReportsIfNeeded() {
-        loadReports(force = false)
+        home.loadReports(force = false)
     }
 
     fun loadMapMarkers(force: Boolean = false) {
-        if (!force && (_mapMarkers.value.isNotEmpty() || (mapMarkersLoadJob?.isActive == true))) {
-            return
-        }
-
-        mapMarkersLoadJob?.cancel()
-        mapMarkersLoadJob = viewModelScope.launch {
-            if (_mapMarkers.value.isEmpty()) {
-                _mapIsLoading.value = true
-            }
-            _mapIsRefreshing.value = false
-            _mapRefreshError.value = null
-
-            // Observe Room cache (never completes — updates UI on every DB change)
-            launch {
-                try {
-                    repository.getMapMarkers().collect { markers ->
-                        _mapMarkers.value = markers
-                        if (markers.isNotEmpty()) {
-                            _mapIsLoading.value = false
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            // Refresh from network → saves to Room → Flow auto-updates UI.
-            // Errors are propagated so the ViewModel can distinguish "no data yet",
-            // "cache kept + refresh failed" and "nothing loaded at all".
-            if (_mapMarkers.value.isNotEmpty()) {
-                _mapIsRefreshing.value = true
-            }
-            try {
-                val result = repository.refreshMapMarkers()
-                if (result.isSuccess) {
-                    val fresh = result.getOrNull()
-                    if (!fresh.isNullOrEmpty()) {
-                        _mapMarkers.value = fresh
-                    }
-                    _mapRefreshError.value = null
-                } else {
-                    _mapRefreshError.value =
-                        "Не удалось загрузить отчёты: ${ErrorMapper.toUserFriendlyMessage(result.exceptionOrNull() ?: Exception("неизвестная ошибка"))}"
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _mapRefreshError.value = "Не удалось загрузить отчёты: ${ErrorMapper.toUserFriendlyMessage(e)}"
-            } finally {
-                _mapIsRefreshing.value = false
-                _mapIsLoading.value = false
-            }
-        }
+        map.loadMapMarkers(force)
     }
 
     fun loadFilterFavoriteReports(force: Boolean = false) {
-        val userId = currentUserId ?: authRepository.currentUser()?.id ?: return
-        if (!force && filterFavoritesLoadedForUserId == userId) {
-            return
-        }
-        viewModelScope.launch {
-            try {
-                val reports = repository.loadFavoriteReports(userId)
-                val cached = applyCachedPhotoUrls(reports)
-                _filterFavoriteReports.value = cached
-                val version = ++favoritePhotosVersion
-                val resolved = resolveReportsPhotoUrls(reports)
-                if (version == favoritePhotosVersion) {
-                    _filterFavoriteReports.value = resolved
-                }
-                filterFavoritesLoadedForUserId = userId
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        favorites.loadFilterFavoriteReports(force)
     }
 
     fun toggleFavorite(report: FishingReport) {
-        val userId = currentUserId ?: authRepository.currentUser()?.id
-        if (userId == null) {
-            _favoriteError.value = "Нет активной сессии"
-            return
-        }
-        // Double-tap guard: no queue, the second tap is ignored while in flight.
-        if (report.id in _favoriteOpsInFlight.value) return
-        _favoriteOpsInFlight.value = _favoriteOpsInFlight.value + report.id
-
-        _favoriteError.value = null
-        val adding = report.id !in _favoriteIds.value
-        optimisticFavoriteOverlay[report.id] = adding
-        _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
-
-        viewModelScope.launch {
-            try {
-                val result = if (adding) {
-                    repository.addFavorite(report)
-                } else {
-                    repository.removeFavorite(report.id)
-                }
-                // Late results after logout/account switch must not restore state.
-                if (currentUserId != userId) return@launch
-                result.onFailure { e ->
-                    optimisticFavoriteOverlay.remove(report.id)
-                    _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
-                    _favoriteError.value = favoriteErrorMessage(e)
-                }
-                if (result.isSuccess && filterFavoritesLoadedForUserId != null) {
-                    loadFilterFavoriteReports(force = true)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (currentUserId == userId) {
-                    optimisticFavoriteOverlay.remove(report.id)
-                    _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
-                    _favoriteError.value = favoriteErrorMessage(e)
-                }
-            } finally {
-                _favoriteOpsInFlight.value = _favoriteOpsInFlight.value - report.id
-                _favoriteIds.value = applyFavoriteOverlay(baseFavoriteIds)
-            }
-        }
+        favorites.toggleFavorite(report)
     }
 
-    private fun applyFavoriteOverlay(base: Set<UUID>): Set<UUID> {
-        if (optimisticFavoriteOverlay.isEmpty()) return base
-        val result = base.toMutableSet()
-        val confirmed = mutableListOf<UUID>()
-        optimisticFavoriteOverlay.forEach { (id, favorite) ->
-            if ((id in base) == favorite) {
-                confirmed += id
-            } else if (favorite) {
-                result += id
-            } else {
-                result -= id
-            }
-        }
-        confirmed.forEach(optimisticFavoriteOverlay::remove)
-        return result
-    }
-
-    /**
-     * Observes the local favorites cache and refreshes it from the backend.
-     * Runs on every authenticated session, so the detail screen knows the
-     * bookmark state even when the user never opened the favorites filter.
-     */
     fun refreshFavorites() {
-        val userId = currentUserId ?: authRepository.currentUser()?.id
-        if (userId == null) return
-        currentUserId = userId
-
-        // Cancel + relaunch: the collect child below never completes.
-        favoritesLoadJob?.cancel()
-        favoritesLoadJob = viewModelScope.launch {
-            launch {
-                try {
-                    repository.getFavoriteReportIds(userId).collect { base ->
-                        if (currentUserId != userId) return@collect
-                        baseFavoriteIds = base
-                        _favoriteIds.value = applyFavoriteOverlay(base)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            // A failed refresh keeps the cached ids untouched.
-            try {
-                repository.refreshFavoriteIds(userId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    private fun favoriteErrorMessage(e: Throwable): String {
-        return "Не удалось изменить избранное: ${ErrorMapper.toUserFriendlyMessage(e)}"
+        favorites.refresh()
     }
 
     fun clearFavoriteError() {
-        _favoriteError.value = null
+        favorites.clearFavoriteError()
     }
 
     fun refreshLikes() {
-        val userId = currentUserId ?: authRepository.currentUser()?.id
-        if (userId == null) return
-        currentUserId = userId
-
-        // Cancel + relaunch (same as loadReports(force = true)): the collect
-        // child below never completes, so an isActive guard would block every
-        // later refresh, including pull-to-refresh. In-flight toggles survive
-        // because they run in viewModelScope, not in this job.
-        likesLoadJob?.cancel()
-        likesLoadJob = viewModelScope.launch {
-            // Observe Room-confirmed states; network refresh runs concurrently
-            // and its result lands in Room → the flow below re-emits.
-            launch {
-                try {
-                    repository.getLikeStates(userId).collect { base ->
-                        // Stale emission after logout/account switch must not restore state.
-                        if (currentUserId != userId) return@collect
-                        baseLikeStates = base
-                        _likeStates.value = applyLikeOverlay(base)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            // Reads are cache-first: a failed refresh keeps the existing states.
-            try {
-                repository.refreshLikes(userId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        likes.refresh()
     }
 
     fun toggleLike(report: FishingReport) {
-        val userId = currentUserId ?: authRepository.currentUser()?.id
-        if (userId == null) {
-            _likeError.value = "Нет активной сессии"
-            return
-        }
-        // Double-tap guard: no queue, the second tap is ignored while in flight.
-        if (!likeOpsInFlight.add(report.id)) return
-
-        _likeError.value = null
-        val current = _likeStates.value[report.id]
-            ?: baseLikeStates[report.id]
-            ?: ReportLikeState(report.id)
-        val liking = !current.isLiked
-        // The overlay stores intent only; the displayed count is derived from
-        // the latest Room-confirmed count so a newer authoritative snapshot is
-        // never masked by a stale absolute value.
-        optimisticLikeOverlay[report.id] = LikeOverlay(liking, current.likesCount)
-        _likeStates.value = applyLikeOverlay(baseLikeStates)
-
-        viewModelScope.launch {
-            try {
-                val result = if (liking) {
-                    repository.addLike(report.id)
-                } else {
-                    repository.removeLike(report.id)
-                }
-                // Late results after logout/account switch must not restore state.
-                if (currentUserId != userId) return@launch
-                result.onFailure { e ->
-                    optimisticLikeOverlay.remove(report.id)
-                    _likeStates.value = applyLikeOverlay(baseLikeStates)
-                    _likeError.value = likeErrorMessage(e)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (currentUserId != userId) return@launch
-                optimisticLikeOverlay.remove(report.id)
-                _likeStates.value = applyLikeOverlay(baseLikeStates)
-                _likeError.value = likeErrorMessage(e)
-            } finally {
-                likeOpsInFlight.remove(report.id)
-                _likeStates.value = applyLikeOverlay(baseLikeStates)
-            }
-        }
-    }
-
-    private fun applyLikeOverlay(base: Map<UUID, ReportLikeState>): Map<UUID, ReportLikeState> {
-        if (optimisticLikeOverlay.isEmpty()) return base
-        val result = base.toMutableMap()
-        val confirmed = mutableListOf<UUID>()
-        optimisticLikeOverlay.forEach { (id, overlay) ->
-            val current = base[id]
-            when {
-                current == null -> {
-                    result[id] = ReportLikeState(
-                        reportId = id,
-                        isLiked = overlay.liked,
-                        likesCount = (overlay.fallbackCount + if (overlay.liked) 1 else -1)
-                            .coerceAtLeast(0)
-                    )
-                }
-                current.isLiked == overlay.liked -> confirmed += id
-                else -> {
-                    result[id] = current.copy(
-                        isLiked = overlay.liked,
-                        likesCount = (current.likesCount + if (overlay.liked) 1 else -1)
-                            .coerceAtLeast(0)
-                    )
-                }
-            }
-        }
-        confirmed.forEach(optimisticLikeOverlay::remove)
-        return result
-    }
-
-    private fun likeErrorMessage(e: Throwable): String {
-        return "Не удалось изменить лайк: ${ErrorMapper.toUserFriendlyMessage(e)}"
+        likes.toggleLike(report)
     }
 
     fun clearLikeError() {
-        _likeError.value = null
+        likes.clearLikeError()
     }
 
     fun loadReportDetails(id: UUID) {
-        reportDetailsJob?.cancel()
-        _deleteReportError.value = null
-        _reportDetailUiState.value = ReportDetailUiState.Loading
-
-        reportDetailsJob = viewModelScope.launch {
-            // Observe Room cache and publish Success the moment the report is available.
-            launch {
-                try {
-                    repository.getReportDetails(id).collect { report ->
-                        if (report != null) {
-                            // Render immediately with raw paths, then swap in signed
-                            // URLs. Network work never blocks the Room collector.
-                            _reportDetailUiState.value = ReportDetailUiState.Success(
-                                applyCachedPhotoUrls(listOf(report)).single()
-                            )
-                            val version = ++detailPhotosVersion
-                            launch {
-                                val resolved = report.copy(
-                                    photos = resolvePhotoUrls(report.photos)
-                                )
-                                if (version == detailPhotosVersion) {
-                                    _reportDetailUiState.value = ReportDetailUiState.Success(resolved)
-                                }
-                            }
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    if (_reportDetailUiState.value !is ReportDetailUiState.Success) {
-                        _reportDetailUiState.value = reportDetailError(id, e)
-                    }
-                }
-            }
-            // Authoritative network refresh: it knows whether the report actually exists,
-            // so Empty can be decided without racing Room's async emission.
-            try {
-                val found = repository is SupabaseFishingRepository &&
-                    repository.refreshReportDetails(id)
-                if (!found && _reportDetailUiState.value == ReportDetailUiState.Loading) {
-                    _reportDetailUiState.value = ReportDetailUiState.Empty(id)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (_reportDetailUiState.value !is ReportDetailUiState.Success) {
-                    _reportDetailUiState.value = reportDetailError(id, e)
-                }
-            }
-        }
-    }
-
-    private fun reportDetailError(id: UUID, e: Exception): ReportDetailUiState.Error {
-        return ReportDetailUiState.Error(
-            reportId = id,
-            message = "Ошибка загрузки отчета: ${ErrorMapper.toUserFriendlyMessage(e)}"
-        )
-    }
-
-    private fun loadReports(force: Boolean) {
-        if (!force && (_reports.value.isNotEmpty() || reportsLoadJob?.isActive == true)) {
-            return
-        }
-
-        val userId = currentUserId ?: authRepository.currentUser()?.id
-        if (userId == null) {
-            // Without a session no data will ever arrive: resolve the loader and
-            // surface an error instead of spinning forever.
-            _isInitialLoading.value = false
-            _error.value = "Нет активной сессии. Войдите снова."
-            return
-        }
-        currentUserId = userId
-
-        reportsLoadJob?.cancel()
-        reportsLoadJob = viewModelScope.launch {
-            _error.value = null
-            _loadMoreError.value = null
-            if (_reports.value.isEmpty()) {
-                _isInitialLoading.value = true
-            } else {
-                _isRefreshing.value = true
-            }
-
-            // Observe Room cache (updates UI on every DB change)
-            launch {
-                try {
-                    repository.getHomeReports(userId = userId).collect { reports ->
-                        // Show cached rows at once; signed URLs are resolved in a
-                        // separate coroutine so the UI is not delayed by network I/O.
-                        _reports.value = applyCachedPhotoUrls(reports)
-                        // Cached data is enough to leave the full-screen loading
-                        // state; the network refresh keeps running quietly below.
-                        if (reports.isNotEmpty()) {
-                            _isInitialLoading.value = false
-                        }
-                        val version = ++homePhotosVersion
-                        launch {
-                            val resolved = resolveReportsPhotoUrls(reports)
-                            if (version == homePhotosVersion) {
-                                _reports.value = resolved
-                            }
-                        }
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            // Refresh from network → saves to Room → Flow auto-updates UI
-            try {
-                val result = repository.refreshHomeReports(userId)
-                _hasMoreReports.value = result.hasMore
-                // A genuinely empty snapshot will never produce a Room emission,
-                // so resolve the loader here; otherwise we wait for Room to deliver
-                // the freshly written reports to avoid flashing the Empty state.
-                if (result.loadedCount == 0) {
-                    _isInitialLoading.value = false
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _error.value = ErrorMapper.toUserFriendlyMessage(e)
-                _isInitialLoading.value = false
-            } finally {
-                _isRefreshing.value = false
-            }
-        }
+        detail.loadReportDetails(id)
     }
 
     fun loadMoreReports() {
-        if (_isLoadingMore.value || !_hasMoreReports.value) return
-        val userId = currentUserId ?: authRepository.currentUser()?.id ?: return
-
-        _isLoadingMore.value = true
-        _loadMoreError.value = null
-        viewModelScope.launch {
-            try {
-                _hasMoreReports.value = repository.loadMoreHomeReports(userId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // Keep hasMoreReports untouched so the retry action can re-run
-                // the same page instead of silently ending the list.
-                _loadMoreError.value =
-                    "Не удалось загрузить ещё отчёты: ${ErrorMapper.toUserFriendlyMessage(e)}"
-            } finally {
-                _isLoadingMore.value = false
-            }
-        }
-    }
-
-    private suspend fun resolvePhotoUrls(photos: List<FishingPhoto>): List<FishingPhoto> {
-        val storagePaths = photos.map { it.url }
-            .filter { repository.isStoragePath(it) }
-            .distinct()
-        if (storagePaths.isEmpty()) return photos
-
-        val urls = resolveSignedUrls(storagePaths)
-        if (urls.isEmpty()) return photos
-        return photos.map { photo ->
-            urls[photo.url]?.let { photo.copy(url = it) } ?: photo
-        }
-    }
-
-    /**
-     * Reuses already known signed URLs so repeated Room emissions (likes, cache
-     * updates) do not flash raw storage paths before the async resolve finishes.
-     */
-    private fun applyCachedPhotoUrls(reports: List<FishingReport>): List<FishingReport> {
-        val now = System.currentTimeMillis()
-        val snapshot = synchronized(signedPhotoUrlCache) { signedPhotoUrlCache.toMap() }
-        if (snapshot.isEmpty()) return reports
-        return reports.map { report ->
-            report.copy(
-                photos = report.photos.map { photo ->
-                    val cached = snapshot[photo.url]
-                    if (cached != null &&
-                        now < cached.expiresAtMillis - SIGNED_URL_REFRESH_BEFORE_MILLIS
-                    ) {
-                        photo.copy(url = cached.url)
-                    } else {
-                        photo
-                    }
-                }
-            )
-        }
-    }
-
-    private suspend fun resolveReportsPhotoUrls(
-        reports: List<FishingReport>
-    ): List<FishingReport> {
-        val storagePaths = reports.flatMap { it.photos }
-            .map { it.url }
-            .filter { repository.isStoragePath(it) }
-            .distinct()
-        if (storagePaths.isEmpty()) return reports
-
-        val urls = resolveSignedUrls(storagePaths)
-        if (urls.isEmpty()) return reports
-        return reports.map { report ->
-            report.copy(
-                photos = report.photos.map { photo ->
-                    urls[photo.url]?.let { photo.copy(url = it) } ?: photo
-                }
-            )
-        }
-    }
-
-    /**
-     * Resolves signed URLs for [storagePaths] using the cache where possible and
-     * one batched repository call for the rest. A failed lookup is not cached, so
-     * the next render tries again.
-     */
-    private suspend fun resolveSignedUrls(storagePaths: List<String>): Map<String, String> {
-        val now = System.currentTimeMillis()
-        val resolved = mutableMapOf<String, String>()
-        val missing = mutableListOf<String>()
-
-        synchronized(signedPhotoUrlCache) {
-            signedPhotoUrlCache.entries.removeAll { it.value.expiresAtMillis <= now }
-            storagePaths.forEach { path ->
-                val cached = signedPhotoUrlCache[path]
-                if (cached != null &&
-                    now < cached.expiresAtMillis - SIGNED_URL_REFRESH_BEFORE_MILLIS
-                ) {
-                    resolved[path] = cached.url
-                } else {
-                    missing += path
-                }
-            }
-        }
-        if (missing.isEmpty()) return resolved
-
-        return signedPhotoUrlMutex.withLock {
-            val toFetch = mutableListOf<String>()
-            val lockedNow = System.currentTimeMillis()
-            synchronized(signedPhotoUrlCache) {
-                missing.forEach { path ->
-                    val cached = signedPhotoUrlCache[path]
-                    if (cached != null &&
-                        lockedNow < cached.expiresAtMillis - SIGNED_URL_REFRESH_BEFORE_MILLIS
-                    ) {
-                        resolved[path] = cached.url
-                    } else {
-                        toFetch += path
-                    }
-                }
-            }
-
-            if (toFetch.isNotEmpty()) {
-                val fetched = try {
-                    repository.getPhotoSignedUrls(toFetch)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    emptyMap()
-                }
-                if (fetched.isNotEmpty()) {
-                    val expiresAt = lockedNow + SIGNED_URL_TTL_MILLIS
-                    synchronized(signedPhotoUrlCache) {
-                        fetched.forEach { (path, url) ->
-                            signedPhotoUrlCache[path] = CachedSignedUrl(url, expiresAt)
-                            resolved[path] = url
-                        }
-                    }
-                }
-            }
-            resolved
-        }
+        home.loadMoreReports()
     }
 
     fun deleteReport(id: UUID) {
-        if (_isDeletingReport.value) return
-
-        _isDeletingReport.value = true
-        _deleteReportError.value = null
-        _deletedReportId.value = null
-
-        deleteReportJob = viewModelScope.launch {
-            repository.deleteReport(id)
-                .onSuccess {
-                    _deletedReportId.value = id
-                }
-                .onFailure { e ->
-                    _deleteReportError.value = "Не удалось удалить отчет: ${ErrorMapper.toUserFriendlyMessage(e)}"
-                }
-            _isDeletingReport.value = false
-        }
+        detail.deleteReport(id)
     }
 
     fun clearDeleteReportError() {
-        _deleteReportError.value = null
+        detail.clearDeleteReportError()
     }
 
     fun clearDeletedReport() {
-        _deletedReportId.value = null
+        detail.clearDeletedReport()
     }
 }
