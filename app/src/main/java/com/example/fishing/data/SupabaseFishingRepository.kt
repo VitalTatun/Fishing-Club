@@ -7,8 +7,14 @@ import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.entity.FavoriteReportEntity
 import com.example.fishing.data.local.entity.LikeEntity
-import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
+import com.example.fishing.data.report.buildPublishPayload
+import com.example.fishing.data.report.SupabaseDateFormats
+import com.example.fishing.data.report.toDomain
+import com.example.fishing.data.report.toFishDto
+import com.example.fishing.data.report.toFishingDto
+import com.example.fishing.data.report.toMarkerEntity
+import com.example.fishing.data.report.toReportDetailsEntity
 import com.example.fishing.data.supabase.*
 import com.example.fishing.model.*
 import io.github.jan.supabase.SupabaseClient
@@ -26,22 +32,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import androidx.room.withTransaction
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import java.io.File
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.time.Duration.Companion.hours
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -60,8 +55,6 @@ class SupabaseFishingRepository @Inject constructor(
     private val database: AppDatabase,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : FishingRepository {
-
-    private val json = Json { ignoreUnknownKeys = true }
 
     // Pagination cursor for the home feed. `homeLoadedOwnCount` counts only the
     // current user's own reports already cached (bookmarks are always loaded whole).
@@ -84,17 +77,6 @@ class SupabaseFishingRepository @Inject constructor(
 
         // Supabase Storage accepts a limited number of paths per signed-url call.
         const val SIGNED_URL_BATCH_SIZE = 50
-    }
-
-    private val datePatterns = listOf(
-        "yyyy-MM-dd'T'HH:mm:ssXXX",
-        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
-        "yyyy-MM-dd'T'HH:mm:ss'Z'",
-        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-    )
-
-    private fun getDateFormat(pattern: String): SimpleDateFormat {
-        return SimpleDateFormat(pattern, Locale.US)
     }
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> =
@@ -268,11 +250,13 @@ class SupabaseFishingRepository @Inject constructor(
         val profilesById = profilesDeferred.await().associateBy { it.id }
 
         fishings.map { dto ->
+            val author = profilesById[dto.userId]
             dto.toReportDetailsEntity(
                 fish = fishByFishing[dto.id] ?: emptyList(),
                 baits = baitsByFishing[dto.id] ?: emptyList(),
                 photos = photosByFishing[dto.id] ?: emptyList(),
-                author = profilesById[dto.userId]
+                authorName = author?.name,
+                authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl)
             )
         }
     }
@@ -344,7 +328,13 @@ class SupabaseFishingRepository @Inject constructor(
             filter { eq("id", fishing.userId) }
         }.decodeList<ProfileDto>().firstOrNull()
 
-        val entity = fishing.toReportDetailsEntity(fish, baits, photos, author)
+        val entity = fishing.toReportDetailsEntity(
+            fish = fish,
+            baits = baits,
+            photos = photos,
+            authorName = author?.name,
+            authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl)
+        )
         database.withTransaction {
             reportDetailsDao.insert(preserveRecentLikes(listOf(entity), likesSnapshotSeq).single())
         }
@@ -358,7 +348,7 @@ class SupabaseFishingRepository @Inject constructor(
         val totalPhotos = report.photos.size
         var uploadedPhotos = report.photos.count { isStoragePath(it.url) }
         onPhotoUploaded?.invoke(uploadedPhotos, totalPhotos)
-        val now = formatDate(Date())
+        val now = SupabaseDateFormats.formatDate(Date())
         val dto = report.toFishingDto(now)
         val finalDto = dto.copy(
             isPublic = report.isPublic,
@@ -438,31 +428,12 @@ class SupabaseFishingRepository @Inject constructor(
             }
 
             val markerEntity = finalDto.toMarkerEntity(report.fish.map { it.name })
-            val detailsEntity = ReportDetailsEntity(
-                id = report.id,
-                userId = report.userId,
-                publishedAt = finalDto.publishedAt,
-                type = finalDto.type,
-                name = finalDto.name,
-                waterName = finalDto.waterName,
-                waterLat = finalDto.waterLat,
-                waterLng = finalDto.waterLng,
-                waterPaid = finalDto.waterPaid,
-                spotLat = finalDto.spotLat,
-                spotLng = finalDto.spotLng,
-                fishingStartAt = finalDto.fishingStartAt,
-                fishingEndAt = finalDto.fishingEndAt,
-                weight = finalDto.weight,
-                fishingMethod = finalDto.fishingMethod,
-                comment = finalDto.comment,
-                shore = finalDto.shore,
-                isPublic = finalDto.isPublic,
-                imageUrls = storagePaths,
-                fishJson = json.encodeToString(fishDtos),
-                baitsJson = json.encodeToString(baitDtos),
+            val detailsEntity = finalDto.toReportDetailsEntity(
+                fish = fishDtos,
+                baits = baitDtos,
+                photos = photoDtos,
                 authorName = report.user.name,
-                authorAvatar = report.user.image,
-                createdAt = finalDto.createdAt
+                authorAvatar = report.user.image
             )
 
             database.withTransaction {
@@ -699,31 +670,6 @@ class SupabaseFishingRepository @Inject constructor(
 
     private fun likeVersion(id: UUID): Long = likeMutationVersions[id] ?: 0L
 
-    private suspend fun fetchReportDetails(fishingId: UUID): ReportDetailsEntity? {
-        val fishing = supabase.postgrest["fishing"].select {
-            filter { eq("id", fishingId) }
-        }.decodeList<FishingDto>().firstOrNull() ?: return null
-
-        val fish = supabase.postgrest["fishing_fish"].select {
-            filter { eq("fishing_id", fishingId) }
-        }.decodeList<FishDto>()
-
-        val baits = supabase.postgrest["fishing_baits"].select {
-            filter { eq("fishing_id", fishingId) }
-        }.decodeList<BaitDto>()
-
-        val photos = supabase.postgrest["fishing_photos"].select {
-            filter { eq("fishing_id", fishingId) }
-            order("sort_order", Order.ASCENDING)
-        }.decodeList<PhotoDto>()
-
-        val author = supabase.postgrest["profiles_public"].select {
-            filter { eq("id", fishing.userId) }
-        }.decodeList<ProfileDto>().firstOrNull()
-
-        return fishing.toReportDetailsEntity(fish, baits, photos, author)
-    }
-
     override suspend fun getPhotoSignedUrl(storagePath: String): String? {
         return try {
             if (storagePath.startsWith("http") || storagePath.startsWith("/")) {
@@ -765,280 +711,5 @@ class SupabaseFishingRepository @Inject constructor(
 
     override fun isStoragePath(path: String): Boolean {
         return !path.startsWith("http") && !path.startsWith("/")
-    }
-
-    private fun parseDate(value: String): Date? {
-        for (pattern in datePatterns) {
-            try {
-                return getDateFormat(pattern).parse(value)
-            } catch (_: Exception) {}
-        }
-        return null
-    }
-
-    private fun formatDate(date: Date): String {
-        return getDateFormat(datePatterns[0]).format(date)
-    }
-
-    private fun parseInstant(value: String?): Instant? {
-        if (value.isNullOrBlank()) return null
-        return try {
-            Instant.parse(value)
-        } catch (_: Exception) {
-            try {
-                val date = parseDate(value)
-                date?.toInstant()
-            } catch (_: Exception) {
-                null
-            }
-        }
-    }
-
-    private fun formatInstant(instant: Instant?): String? {
-        return instant?.let {
-            DateTimeFormatter.ISO_INSTANT.format(it)
-        }
-    }
-
-    private fun enumValueOf(name: String, values: Array<out Enum<*>>): Enum<*>? {
-        return values.firstOrNull {
-            it.name.equals(name, ignoreCase = true) ||
-            it.name.replace("_", "").equals(name, ignoreCase = true)
-        }
-    }
-
-    private fun FishingDto.toDomain(
-        fish: List<FishDto>,
-        baits: List<BaitDto>,
-        photos: List<PhotoDto>
-    ): FishingReport {
-        return FishingReport(
-            id = id,
-            userId = userId,
-            publishedAt = publishedAt?.let { parseDate(it) },
-            type = (enumValueOf(type, FishingType.entries.toTypedArray()) as? FishingType) ?: FishingType.FISHING_LOG,
-            name = name,
-            water = Water(
-                waterName = waterName ?: "",
-                latitude = waterLat ?: 0.0,
-                longitude = waterLng ?: 0.0,
-                isPaid = waterPaid
-            ),
-            spotLat = spotLat,
-            spotLng = spotLng,
-            photos = photos.map { FishingPhoto(id = it.id, url = it.storagePath) },
-            fishingStartAt = parseInstant(fishingStartAt),
-            fishingEndAt = parseInstant(fishingEndAt),
-            weight = weight,
-            fish = fish.map { Fish(id = it.id, name = it.name, count = it.count) },
-            fishingMethod = (enumValueOf(fishingMethod ?: "", FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
-            bait = baits.map { (enumValueOf(it.baitCode, Bait.entries.toTypedArray()) as? Bait) ?: Bait.NONE },
-            comment = comment ?: "",
-            user = authRepository.currentUser() ?: User(id = userId, name = "", email = "", image = ""),
-            fishingFromTheShore = shore,
-            isPublic = isPublic,
-            createdAt = createdAt?.let { parseDate(it) }
-        )
-    }
-
-    private fun FishingDto.toMarkerEntity(fishNames: List<String>): MarkerEntity {
-        return MarkerEntity(
-            id = id,
-            name = name,
-            waterName = waterName ?: "",
-            waterLat = waterLat ?: 0.0,
-            waterLng = waterLng ?: 0.0,
-            type = type,
-            fishingMethod = fishingMethod ?: "",
-            fishingStartAt = fishingStartAt,
-            isPublic = isPublic,
-            isPaidWater = waterPaid,
-            fishNames = fishNames
-        )
-    }
-
-    private fun FishingDto.toReportDetailsEntity(
-        fish: List<FishDto>,
-        baits: List<BaitDto>,
-        photos: List<PhotoDto>,
-        author: ProfileDto?
-    ): ReportDetailsEntity {
-        return ReportDetailsEntity(
-            id = id,
-            userId = userId,
-            publishedAt = publishedAt,
-            type = type,
-            name = name,
-            waterName = waterName,
-            waterLat = waterLat,
-            waterLng = waterLng,
-            waterPaid = waterPaid,
-            spotLat = spotLat,
-            spotLng = spotLng,
-            fishingStartAt = fishingStartAt,
-            fishingEndAt = fishingEndAt,
-            weight = weight,
-            fishingMethod = fishingMethod,
-            comment = comment,
-            shore = shore,
-            isPublic = isPublic,
-            imageUrls = photos.map { it.storagePath },
-            fishJson = json.encodeToString(fish),
-            baitsJson = json.encodeToString(baits),
-            authorName = author?.name,
-            authorAvatar = author?.avatarUrl?.let(authRepository::resolveImageUrl),
-            createdAt = createdAt,
-            likesCount = likesCount
-        )
-    }
-
-    private fun MarkerEntity.toDomain(): MarkerDomain {
-        return MarkerDomain(
-            id = id,
-            name = name,
-            waterName = waterName,
-            waterLat = waterLat,
-            waterLng = waterLng,
-            type = (enumValueOf(type, FishingType.entries.toTypedArray()) as? FishingType) ?: FishingType.FISHING_LOG,
-            fishingMethod = (enumValueOf(fishingMethod, FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
-            fishingStartAt = parseInstant(fishingStartAt),
-            isPublic = isPublic,
-            isPaidWater = isPaidWater,
-            fishNames = fishNames
-        )
-    }
-
-    private fun ReportDetailsEntity.toDomain(): FishingReport {
-        val fish = json.decodeFromString<List<FishDto>>(fishJson)
-        val baits = json.decodeFromString<List<BaitDto>>(baitsJson)
-
-        return FishingReport(
-            id = id,
-            userId = userId,
-            publishedAt = publishedAt?.let { parseDate(it) },
-            type = (enumValueOf(type, FishingType.entries.toTypedArray()) as? FishingType) ?: FishingType.FISHING_LOG,
-            name = name,
-            water = Water(
-                waterName = waterName ?: "",
-                latitude = waterLat ?: 0.0,
-                longitude = waterLng ?: 0.0,
-                isPaid = waterPaid
-            ),
-            spotLat = spotLat,
-            spotLng = spotLng,
-            photos = imageUrls.map { url -> 
-                // We don't have Photo IDs in details entity, but we can reconstruct them
-                // or ideally we should store them in Room as well.
-                // For now, use deterministic ID based on URL if needed, 
-                // but domain FishingPhoto requires a UUID.
-                // Actually, PhotoDto has an ID.
-                FishingPhoto(id = UUID.nameUUIDFromBytes(url.toByteArray()), url = url)
-            },
-            fishingStartAt = parseInstant(fishingStartAt),
-            fishingEndAt = parseInstant(fishingEndAt),
-            weight = weight,
-            fish = fish.map { Fish(id = it.id, name = it.name, count = it.count) },
-            fishingMethod = (enumValueOf(fishingMethod ?: "", FishingMethod.entries.toTypedArray()) as? FishingMethod) ?: FishingMethod.NONE,
-            bait = baits.map { (enumValueOf(it.baitCode, Bait.entries.toTypedArray()) as? Bait) ?: Bait.NONE },
-            comment = comment ?: "",
-            user = User(
-                id = userId,
-                name = authorName.orEmpty(),
-                email = "",
-                image = authorAvatar.orEmpty()
-            ),
-            fishingFromTheShore = shore,
-            isPublic = isPublic,
-            createdAt = createdAt?.let { parseDate(it) }
-        )
-    }
-
-    private fun FishingReport.toFishingDto(now: String): FishingDto {
-        return FishingDto(
-            id = id,
-            userId = userId,
-            publishedAt = publishedAt?.let { formatDate(it) },
-            type = type.name,
-            name = name,
-            waterName = water.waterName,
-            waterLat = water.latitude,
-            waterLng = water.longitude,
-            waterPaid = water.isPaid,
-            spotLat = spotLat,
-            spotLng = spotLng,
-            fishingStartAt = formatInstant(fishingStartAt),
-            fishingEndAt = formatInstant(fishingEndAt),
-            weight = weight,
-            fishingMethod = fishingMethod.name,
-            comment = comment,
-            shore = fishingFromTheShore,
-            isPublic = isPublic,
-            createdAt = createdAt?.let { formatDate(it) } ?: now,
-            updatedAt = now
-        )
-    }
-
-    /**
-     * Builds the payload for the atomic [publish_report] RPC. Missing optional
-     * values are simply omitted: the SQL function treats a missing key as null.
-     */
-    private fun buildPublishPayload(
-        dto: FishingDto,
-        fish: List<FishDto>,
-        baits: List<BaitDto>,
-        photos: List<PhotoDto>
-    ): JsonObject = buildJsonObject {
-        put("id", dto.id.toString())
-        put("user_id", dto.userId.toString())
-        put("type", dto.type)
-        put("name", dto.name)
-        dto.waterName?.let { put("water_name", it) }
-        dto.waterLat?.let { put("water_lat", it) }
-        dto.waterLng?.let { put("water_lng", it) }
-        put("water_paid", dto.waterPaid)
-        dto.spotLat?.let { put("spot_lat", it) }
-        dto.spotLng?.let { put("spot_lng", it) }
-        dto.fishingStartAt?.let { put("fishing_start_at", it) }
-        dto.fishingEndAt?.let { put("fishing_end_at", it) }
-        put("weight", dto.weight)
-        dto.fishingMethod?.let { put("fishing_method", it) }
-        dto.comment?.let { put("comment", it) }
-        put("shore", dto.shore)
-        put("is_public", dto.isPublic)
-        dto.createdAt?.let { put("created_at", it) }
-        dto.publishedAt?.let { put("published_at", it) }
-
-        putJsonArray("fish") {
-            fish.forEach { item ->
-                addJsonObject {
-                    put("id", item.id.toString())
-                    put("name", item.name)
-                    put("count", item.count)
-                }
-            }
-        }
-        putJsonArray("baits") {
-            baits.forEach { item ->
-                addJsonObject { put("bait_code", item.baitCode) }
-            }
-        }
-        putJsonArray("photos") {
-            photos.forEach { item ->
-                addJsonObject {
-                    put("id", item.id.toString())
-                    put("storage_path", item.storagePath)
-                    put("sort_order", item.sortOrder ?: 0)
-                }
-            }
-        }
-    }
-
-    private fun Fish.toFishDto(fishingId: UUID): FishDto {
-        return FishDto(
-            id = id,
-            fishingId = fishingId,
-            name = name,
-            count = count
-        )
     }
 }
