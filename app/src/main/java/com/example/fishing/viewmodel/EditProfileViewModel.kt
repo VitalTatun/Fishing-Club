@@ -6,19 +6,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.ErrorMapper
+import com.example.fishing.data.IoDispatcher
 import com.example.fishing.model.User
 import com.example.fishing.utils.PhotoUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class EditProfileViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val _user = MutableStateFlow<User?>(authRepository.currentUser())
@@ -45,8 +51,13 @@ class EditProfileViewModel @Inject constructor(
             var localImagePath: String? = null
 
             try {
-                localImagePath = imageUri?.let {
-                    PhotoUtils.copyPhotoToInternalStorage(contentResolver, filesDir, it)
+                // Decoding, EXIF handling, scaling and JPEG re-encoding are heavy;
+                // doing them on Main froze the UI and caused an ANR. The state is
+                // set before suspending, so the spinner keeps drawing meanwhile.
+                localImagePath = imageUri?.let { uri ->
+                    withContext(ioDispatcher) {
+                        PhotoUtils.copyPhotoToInternalStorage(contentResolver, filesDir, uri)
+                    }
                 }
 
                 val result = authRepository.updateProfile(name, localImagePath)
@@ -56,12 +67,19 @@ class EditProfileViewModel @Inject constructor(
                 } else {
                     _error.value = result.exceptionOrNull()?.let { ErrorMapper.toUserFriendlyMessage(it) } ?: "Неизвестная ошибка"
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _error.value = ErrorMapper.toUserFriendlyMessage(e)
             } finally {
                 // The avatar is uploaded to Storage; the local temp copy is no
                 // longer needed, so filesDir/photos does not accumulate files.
-                localImagePath?.let { path -> runCatching { File(path).delete() } }
+                // Cleanup must still run when the scope is cancelled.
+                localImagePath?.let { path ->
+                    withContext(ioDispatcher + NonCancellable) {
+                        runCatching { File(path).delete() }
+                    }
+                }
                 _isLoading.value = false
             }
         }

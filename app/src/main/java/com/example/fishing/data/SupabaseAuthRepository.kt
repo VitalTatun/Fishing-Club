@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,7 +45,8 @@ class SupabaseAuthRepository @Inject constructor(
     private val favoriteReportDao: FavoriteReportDao,
     private val likeDao: LikeDao,
     private val markerDao: MarkerDao,
-    private val reportUploadQueue: ReportUploadQueue
+    private val reportUploadQueue: ReportUploadQueue,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : AuthRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -166,7 +168,10 @@ class SupabaseAuthRepository @Inject constructor(
                         val ext = file.extension.ifEmpty { "jpg" }
                         val storagePath = "avatars/${currentUser.id}/${UUID.randomUUID()}.$ext"
 
-                        supabase.storage.from("avatars").upload(storagePath, file.readBytes()) {
+                        // Reading the whole JPEG on Main is main-thread I/O
+                        // (AUD-01): load the bytes on the IO dispatcher.
+                        val bytes = withContext(ioDispatcher) { file.readBytes() }
+                        supabase.storage.from("avatars").upload(storagePath, bytes) {
                             upsert = true
                         }
                         avatarUrl = storagePath

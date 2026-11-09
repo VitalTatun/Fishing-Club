@@ -20,6 +20,9 @@ class FakeAuthRepository : AuthRepository {
     var registerResult: Result<User> = Result.success(
         User(id = UUID.randomUUID(), name = "Test", email = "test@example.com", image = "")
     )
+    var updateProfileResult: Result<User> = Result.success(
+        User(id = UUID.randomUUID(), name = "Updated", email = "test@example.com", image = "")
+    )
     var sessionUser: User? = null
         set(value) {
             field = value
@@ -32,12 +35,16 @@ class FakeAuthRepository : AuthRepository {
 
     var loginGate: CompletableDeferred<Unit>? = null
     var registerGate: CompletableDeferred<Unit>? = null
+    var updateProfileGate: CompletableDeferred<Unit>? = null
 
     var registerSetsSession = true
 
     var loginCalls = 0
     var registerCalls = 0
     var logoutCalls = 0
+    var updateProfileCalls = 0
+    var lastUpdateProfileName: String? = null
+    var lastUpdateProfileImage: String? = null
 
     override suspend fun login(email: String, password: String): Result<User> {
         loginCalls++
@@ -67,7 +74,11 @@ class FakeAuthRepository : AuthRepository {
     }
 
     override suspend fun updateProfile(name: String, imageUri: String?): Result<User> {
-        return loginResult
+        updateProfileCalls++
+        lastUpdateProfileName = name
+        lastUpdateProfileImage = imageUri
+        updateProfileGate?.await()
+        return updateProfileResult
     }
 
     override fun resolveImageUrl(path: String): String = path
