@@ -8,6 +8,8 @@
 > Все проверки выполнялись в транзакциях с `rollback` — данные проекта не изменялись.
 >
 > **Статус внедрения (2026-11-08):** все миграции применены к проекту и записаны в `schema_migrations`: F-1 `20261108182818`, F-3 `20261108182831`, F-4/F-5 `20261108182836`, F-2 `20261108183430`. Клиент переведён на `profiles_public`; harness-скрипт повторно проверен — все сценарии зелёные.
+>
+> **Обновление (2026-11-10):** в `public_fishing_photos_read` обнаружена регрессия F-1 (см. F-7) — условие ссылалось на `fishing.name` вместо `storage.objects.name`, из-за чего у других пользователей не открывались фото публичных отчётов. Исправлено миграцией `20261110062740_fix_public_photo_read_policy`; harness дополнен проверками D2/F.
 
 ## 1. Модель владения
 
@@ -51,7 +53,7 @@ Storage-политики (`storage.objects`):
 | `avatars_delete_own` | `avatars` | DELETE | 2-й сегмент пути = `auth.uid()` |
 | `fishing_photos_storage_read_own` | `fishing_photos` | SELECT | 1-й сегмент пути = `auth.uid()` |
 | `fishing_photos_storage_insert_own` / `_update_own` / `_delete_own` | `fishing_photos` | INSERT / UPDATE / DELETE | 1-й сегмент пути = `auth.uid()` |
-| `public_fishing_photos_read` | `fishing_photos` | SELECT | существует `fishing_photos.storage_path = objects.name` у публичного отчёта |
+| `public_fishing_photos_read` | `fishing_photos` | SELECT | существует `fishing_photos.storage_path = storage.objects.name` у публичного отчёта, путь принадлежит его автору |
 
 Buckets: `avatars` — public, `fishing_photos` — **private** (контент отдаётся через signed URL).
 
@@ -126,6 +128,18 @@ RLS разрешает владельцу обновлять любые коло
 - `favorites` INSERT не проверяет видимость отчёта — можно добавить в избранное произвольный UUID. Утечки данных нет, поэтому оставлено как есть.
 - `likes_select_own` не даёт увидеть, кто лайкнул (только свой лайк). Функциональное ограничение, не безопасность.
 - `fishing` доступен `anon` для публичных отчётов — соответствует публичной ленте, но стоит подтвердить продуктово, нужен ли анонимный доступ.
+
+### F-7 (High, regression) — чужие публичные фото не открывались
+
+Миграция F-1 переписала `public_fishing_photos_read` с неквалифицированным `name`. Внутри подзапроса имя разрешилось в `fishing.name` (таблица `fishing` входит в `FROM`), поэтому условие
+
+```sql
+p.storage_path = f.name
+```
+
+сравнивало путь объекта с названием отчёта («Свислочь», «Водохранилище», …). Проверка на данных проекта: **0 совпадений вместо 25**. Политика `fishing_photos_storage_read_own` продолжала работать, поэтому у автора свои фото открывались, а у остальных — нет: Storage не выдавал signed URL (`sign_many` → `200` с телом ошибки, ~219 байт), лента показывала заглушки.
+
+Исправление: `supabase/migrations/20261110062740_fix_public_photo_read_policy.sql` — явная квалификация `storage.objects.name`. Ограничения сохранены: только публичные отчёты и только путь, принадлежащий автору. Проверено: authenticated видит 24 чужих публичных объекта + свой, приватные чужие — по-прежнему 0; `anon` видит публичные. В `supabase/tests/fj4_rls_checks.sql` добавлены `D2_public_storage_read` и `F_anon_public_storage_read`.
 
 ## 5. Что проверено и работает корректно
 

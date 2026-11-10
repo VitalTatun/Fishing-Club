@@ -17,8 +17,10 @@
 --   C_update_others               = 0
 --   C_delete_others               = 0
 --   D_storage_direct_read         = 0
+--   D2_public_storage_read        = 1   (чужое фото публичного отчёта читается)
 --   E_pivot_row_inserted          = 0   (после F-1; до исправления — 1)
 --   F_anon_read_victim_object     = 0   (после F-1; до исправления — 1)
+--   F_anon_public_storage_read    = 1   (публичное фото доступно anon)
 --   F_anon_read_private_report    = 0
 --   G_update_own_likes_count      = 0   (после F-3; до исправления — >0)
 --   G_insert_fake_likes_count     = 0   (после F-3)
@@ -43,6 +45,14 @@ select
       and not f.is_public
       and f.user_id <> (select p.id from public.profiles p order by p.created_at nulls last limit 1)
     limit 1) as victim_path,
+  (select o.name
+     from storage.objects o
+     join public.fishing_photos fp on fp.storage_path = o.name
+     join public.fishing f on f.id = fp.fishing_id
+    where o.bucket_id = 'fishing_photos'
+      and f.is_public
+      and f.user_id <> (select p.id from public.profiles p order by p.created_at nulls last limit 1)
+    limit 1) as other_public_path,
   (select f.id
      from public.fishing f
     where f.is_public
@@ -101,6 +111,14 @@ insert into _fj4_results
 select 'D_storage_direct_read', count(*)::int
 from storage.objects
 where name = (select victim_path from _fj4_ids);
+
+-- FJ-4 follow-up: чужое фото публичного отчёта обязано читаться. Политика
+-- public_fishing_photos_read одно время ссылалась на fishing.name вместо
+-- objects.name, из-за чего здесь было 0 и ломались signed URL в ленте.
+insert into _fj4_results
+select 'D2_public_storage_read', count(*)::int
+from storage.objects
+where name = (select other_public_path from _fj4_ids);
 
 -- F-1: строка рыбалки и фото с чужим storage_path.
 -- После миграции вставка отклоняется (42501), поэтому ожидаемый отказ ловим
@@ -172,6 +190,11 @@ insert into _fj4_results
 select 'F_anon_read_victim_object', count(*)::int
 from storage.objects
 where name = (select victim_path from _fj4_ids);
+
+insert into _fj4_results
+select 'F_anon_public_storage_read', count(*)::int
+from storage.objects
+where name = (select other_public_path from _fj4_ids);
 
 insert into _fj4_results
 select 'F_anon_read_private_report', count(*)::int
