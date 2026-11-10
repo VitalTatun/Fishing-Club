@@ -31,7 +31,8 @@ fun testReport(
     fishingMethod: FishingMethod = FishingMethod.SPINNING,
     comment: String = "Test comment",
     publishedAt: Date? = null,
-    createdAt: Date? = null
+    createdAt: Date? = null,
+    isPublic: Boolean = true
 ): FishingReport = FishingReport(
     id = id,
     userId = userId,
@@ -53,7 +54,7 @@ fun testReport(
     comment = comment,
     user = testUser(userId),
     fishingFromTheShore = true,
-    isPublic = true,
+    isPublic = isPublic,
     createdAt = createdAt
 )
 

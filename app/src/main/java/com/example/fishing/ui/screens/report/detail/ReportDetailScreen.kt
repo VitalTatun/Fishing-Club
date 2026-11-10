@@ -14,7 +14,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
@@ -48,6 +47,12 @@ fun ReportDetailScreen(
     onToggleFavorite: () -> Unit = {},
     isOwnReport: Boolean = false,
     onDeleteReport: () -> Unit = {},
+    isUpdatingVisibility: Boolean = false,
+    onToggleVisibility: (Boolean) -> Unit = {},
+    visibilityError: String? = null,
+    onVisibilityErrorDismiss: () -> Unit = {},
+    visibilityResult: String? = null,
+    onVisibilityResultShown: () -> Unit = {},
     onPhotoClick: (Int) -> Unit = {},
     isDeleting: Boolean = false,
     deleteError: String? = null,
@@ -61,6 +66,7 @@ fun ReportDetailScreen(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showVisibilityDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(deleteError) {
@@ -82,6 +88,70 @@ fun ReportDetailScreen(
             snackbarHostState.showSnackbar(likeError)
             onLikeErrorDismiss()
         }
+    }
+
+    LaunchedEffect(visibilityError) {
+        if (visibilityError != null) {
+            snackbarHostState.showSnackbar(visibilityError)
+            onVisibilityErrorDismiss()
+        }
+    }
+
+    LaunchedEffect(visibilityResult) {
+        if (visibilityResult != null) {
+            snackbarHostState.showSnackbar(visibilityResult)
+            onVisibilityResultShown()
+        }
+    }
+
+    if (showVisibilityDialog) {
+        AlertDialog(
+            onDismissRequest = { showVisibilityDialog = false },
+            title = {
+                Text(
+                    stringResource(
+                        if (report.isPublic) {
+                            R.string.visibility_private_title
+                        } else {
+                            R.string.visibility_public_title
+                        }
+                    )
+                )
+            },
+            text = {
+                Text(
+                    stringResource(
+                        if (report.isPublic) {
+                            R.string.visibility_private_description
+                        } else {
+                            R.string.visibility_public_description
+                        }
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // Close first so the result snackbar is not covered by
+                        // the dialog while the request is in flight.
+                        showVisibilityDialog = false
+                        onToggleVisibility(!report.isPublic)
+                    },
+                    enabled = !isUpdatingVisibility
+                ) {
+                    Text(
+                        stringResource(
+                            if (report.isPublic) R.string.hide_report else R.string.publish
+                        )
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showVisibilityDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 
     if (showDeleteDialog) {
@@ -211,17 +281,14 @@ fun ReportDetailScreen(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.edit)) },
-                            onClick = { menuExpanded = false },
-                            leadingIcon = {
-                                Icon(Icons.Outlined.BorderColor, contentDescription = null)
-                            }
-                        )
                         if (isOwnReport) {
                             DropdownMenuItem(
                                 text = { Text(if (report.isPublic) stringResource(R.string.make_private) else stringResource(R.string.make_public)) },
-                                onClick = { menuExpanded = false },
+                                onClick = {
+                                    menuExpanded = false
+                                    showVisibilityDialog = true
+                                },
+                                enabled = !isUpdatingVisibility,
                                 leadingIcon = {
                                     Icon(Icons.Outlined.Lock, contentDescription = null)
                                 }

@@ -23,6 +23,9 @@ interface MarkerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(markers: List<MarkerEntity>)
 
+    @Query("UPDATE markers SET isPublic = :isPublic WHERE id = :id")
+    suspend fun updateVisibility(id: UUID, isPublic: Boolean)
+
     @Query("DELETE FROM markers WHERE id = :id")
     suspend fun deleteById(id: UUID)
 

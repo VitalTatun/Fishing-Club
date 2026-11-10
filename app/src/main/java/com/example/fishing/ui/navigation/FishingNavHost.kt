@@ -18,6 +18,7 @@ import com.example.fishing.model.*
 import com.example.fishing.ui.screens.main.MainScreen
 import com.example.fishing.ui.screens.profile.ChangeHistoryScreen
 import com.example.fishing.ui.screens.profile.EditProfileScreen
+import com.example.fishing.ui.screens.profile.ChangePasswordScreen
 import com.example.fishing.ui.screens.profile.AppearanceScreen
 import com.example.fishing.ui.screens.report.create.*
 import com.example.fishing.ui.screens.report.detail.PhotoViewerOverlay
@@ -37,6 +38,7 @@ import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.LoginViewModel
 import com.example.fishing.viewmodel.RegistrationViewModel
 import com.example.fishing.viewmodel.EditProfileViewModel
+import com.example.fishing.viewmodel.ChangePasswordViewModel
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.AuthRepository
 import kotlinx.coroutines.launch
@@ -407,6 +409,12 @@ fun FishingNavHost(
                 val isDeletingReport by viewModel.isDeletingReport.collectAsState()
                 val deleteReportError by viewModel.deleteReportError.collectAsState()
                 val deletedReportId by viewModel.deletedReportId.collectAsState()
+                val isUpdatingReportVisibility by
+                    viewModel.isUpdatingReportVisibility.collectAsState()
+                val reportVisibilityError by
+                    viewModel.reportVisibilityError.collectAsState()
+                val reportVisibilityResult by
+                    viewModel.reportVisibilityResult.collectAsState()
 
                 var photoViewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
@@ -434,6 +442,18 @@ fun FishingNavHost(
                                     isOwnReport = state.report.userId == currentUser?.id,
                                     isDeleting = isDeletingReport,
                                     onDeleteReport = { viewModel.deleteReport(state.report.id) },
+                                    isUpdatingVisibility = isUpdatingReportVisibility,
+                                    onToggleVisibility = { isPublic ->
+                                        viewModel.setReportVisibility(state.report.id, isPublic)
+                                    },
+                                    visibilityError = reportVisibilityError,
+                                    onVisibilityErrorDismiss = {
+                                        viewModel.clearReportVisibilityError()
+                                    },
+                                    visibilityResult = reportVisibilityResult,
+                                    onVisibilityResultShown = {
+                                        viewModel.clearReportVisibilityResult()
+                                    },
                                     onPhotoClick = { index ->
                                         photoViewerIndex = index
                                     },
@@ -539,6 +559,8 @@ fun FishingNavHost(
                 val isLoading by editProfileViewModel.isLoading.collectAsState()
                 val error by editProfileViewModel.error.collectAsState()
                 val saveSuccess by editProfileViewModel.saveSuccess.collectAsState()
+                val isDeletingAccount by editProfileViewModel.isDeletingAccount.collectAsState()
+                val deleteAccountError by editProfileViewModel.deleteAccountError.collectAsState()
                 val context = LocalContext.current
 
                 EditProfileScreen(
@@ -548,6 +570,8 @@ fun FishingNavHost(
                     isLoading = isLoading,
                     error = error,
                     saveSuccess = saveSuccess,
+                    isDeletingAccount = isDeletingAccount,
+                    deleteAccountError = deleteAccountError,
                     onBackClick = { navController.popBackStack() },
                     onSaveClick = { name, imageUri ->
                         editProfileViewModel.updateProfile(
@@ -558,8 +582,21 @@ fun FishingNavHost(
                         )
                     },
                     onResetSaveSuccess = { editProfileViewModel.resetSuccess() },
-                    onChangePasswordClick = { /* TODO: Implement */ },
-                    onDeleteAccountClick = { /* TODO: Implement */ }
+                    onChangePasswordClick = {
+                        navController.navigate(ChangePasswordRoute)
+                    },
+                    onDeleteAccount = { editProfileViewModel.deleteAccount() },
+                    onClearDeleteAccountError = {
+                        editProfileViewModel.clearDeleteAccountError()
+                    }
+                )
+            }
+
+            composable<ChangePasswordRoute> {
+                val changePasswordViewModel: ChangePasswordViewModel = hiltViewModel()
+                ChangePasswordScreen(
+                    viewModel = changePasswordViewModel,
+                    onBackClick = { navController.popBackStack() }
                 )
             }
 

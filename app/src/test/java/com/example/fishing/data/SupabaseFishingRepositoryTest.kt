@@ -23,6 +23,7 @@ import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.MainDispatcherRule
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
@@ -479,6 +480,34 @@ class SupabaseFishingRepositoryTest {
         }
 
     @Test
+    fun `visibility update mirrors the accepted server state into the caches`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val report = report(listOf(FishingPhoto(UUID.randomUUID(), "user/report/photo.jpg")))
+            assertTrue(repository.saveReport(report).isSuccess)
+
+            val result = repository.updateReportVisibility(report.id, isPublic = false)
+
+            assertTrue(result.isSuccess)
+            assertFalse(db.reportDetailsDao().getByIdOneShot(report.id)!!.isPublic)
+            val marker = db.markerDao().getVisibleForUser(user.id).first().single()
+            assertFalse(marker.isPublic)
+        }
+
+    @Test
+    fun `rejected visibility update is not mirrored into the cache`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val report = report(listOf(FishingPhoto(UUID.randomUUID(), "user/report/photo.jpg")))
+            assertTrue(repository.saveReport(report).isSuccess)
+            remote.exists = false
+
+            val result = repository.updateReportVisibility(report.id, isPublic = false)
+
+            assertTrue(result.isFailure)
+            assertTrue(db.reportDetailsDao().getByIdOneShot(report.id)!!.isPublic)
+            assertTrue(db.markerDao().getVisibleForUser(user.id).first().single().isPublic)
+        }
+
+    @Test
     fun `failed remote deletion keeps the local cache for a retry`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val report = report(listOf(FishingPhoto(UUID.randomUUID(), "user/report/photo.jpg")))
@@ -548,6 +577,12 @@ class SupabaseFishingRepositoryTest {
             publishFailure?.let { throw it }
             return PublishReportResult(publishedReportId, removedPhotoPaths)
         }
+
+        override suspend fun updateReportVisibility(
+            reportId: UUID,
+            isPublic: Boolean,
+            publishedAt: String?
+        ): Boolean = exists
 
         override suspend fun deletePhotos(paths: List<String>) {
             deleteFailure?.let { throw it }

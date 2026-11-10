@@ -69,4 +69,7 @@ data object ChangeHistoryRoute
 data object EditProfileRoute
 
 @Serializable
+data object ChangePasswordRoute
+
+@Serializable
 data object AppearanceRoute

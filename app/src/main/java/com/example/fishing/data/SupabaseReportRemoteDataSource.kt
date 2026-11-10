@@ -1,5 +1,7 @@
 package com.example.fishing.data
 
+import com.example.fishing.data.report.SupabaseDateFormats
+import com.example.fishing.data.supabase.FishingDto
 import com.example.fishing.data.supabase.PhotoDto
 import com.example.fishing.data.supabase.PhotoPathDto
 import io.github.jan.supabase.SupabaseClient
@@ -13,6 +15,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
+import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,6 +56,28 @@ class SupabaseReportRemoteDataSource @Inject constructor(
             }
         )
         return parsePublishReportResult(response.data)
+    }
+
+    override suspend fun updateReportVisibility(
+        reportId: UUID,
+        isPublic: Boolean,
+        publishedAt: String?
+    ): Boolean {
+        val result = supabase.postgrest["fishing"].update({
+            set("is_public", isPublic)
+            if (publishedAt == null) {
+                setToNull("published_at")
+            } else {
+                set("published_at", publishedAt)
+            }
+            set("updated_at", SupabaseDateFormats.formatDate(Date()))
+        }) {
+            filter { eq("id", reportId) }
+            select()
+        }
+        // RLS silently filters rows the caller may not update; an empty response
+        // is the only signal that the backend did not accept the change.
+        return result.decodeSingleOrNull<FishingDto>() != null
     }
 
     override suspend fun deletePhotos(paths: List<String>) {

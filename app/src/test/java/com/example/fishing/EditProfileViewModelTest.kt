@@ -173,6 +173,35 @@ class EditProfileViewModelTest {
         assertFalse(viewModel.saveSuccess.value)
     }
 
+    @Test
+    fun `successful account deletion calls the repository`() = runTest {
+        val repository = FakeAuthRepository()
+        val viewModel = EditProfileViewModel(repository, newWorkerDispatcher())
+
+        viewModel.deleteAccount()
+
+        assertEquals(1, repository.deleteAccountCalls)
+        assertNull(repository.sessionUser)
+        assertNull(viewModel.deleteAccountError.value)
+        assertFalse(viewModel.isDeletingAccount.value)
+    }
+
+    @Test
+    fun `account deletion failure keeps the session and shows an error`() = runTest {
+        val repository = FakeAuthRepository().apply {
+            deleteAccountResult = Result.failure(Exception("Unable to resolve host"))
+        }
+        val user = FakeAuthRepository().loginResult.getOrThrow()
+        repository.sessionUser = user
+        val viewModel = EditProfileViewModel(repository, newWorkerDispatcher())
+
+        viewModel.deleteAccount()
+
+        assertEquals(user.id, repository.sessionUser?.id)
+        assertEquals("Нет соединения с интернетом", viewModel.deleteAccountError.value)
+        assertFalse(viewModel.isDeletingAccount.value)
+    }
+
     /** Records every dispatch so a test can prove the work left the Main thread. */
     private class CountingDispatcher(
         private val delegate: CoroutineDispatcher

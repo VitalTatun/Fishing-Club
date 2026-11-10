@@ -292,6 +292,55 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `visibility change is forwarded and updates the cached report`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.homeReportsValue = listOf(report)
+        fakeFishingRepository.reportDetailsValue = report
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        vm.loadReportDetails(report.id)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.setReportVisibility(report.id, isPublic = false)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.updateReportVisibilityCallCount)
+        assertEquals(report.id, fakeFishingRepository.lastVisibilityReportId)
+        assertEquals(false, fakeFishingRepository.lastVisibilityIsPublic)
+        assertFalse(vm.isUpdatingReportVisibility.value)
+        assertNull(vm.reportVisibilityError.value)
+        assertEquals("Отчёт теперь виден только вам", vm.reportVisibilityResult.value)
+        val state = vm.reportDetailUiState.value
+        assertTrue(state is ReportDetailUiState.Success)
+        assertFalse((state as ReportDetailUiState.Success).report.isPublic)
+    }
+
+    @Test
+    fun `visibility failure publishes an error and keeps the old state`() = runTest {
+        fakeAuthRepository.sessionUser = testUser
+        val report = createReport()
+        fakeFishingRepository.reportDetailsValue = report
+        fakeFishingRepository.updateReportVisibilityException = RuntimeException("Network error")
+
+        val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        vm.loadReportDetails(report.id)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.setReportVisibility(report.id, isPublic = false)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNotNull(vm.reportVisibilityError.value)
+        assertNull(vm.reportVisibilityResult.value)
+        assertFalse(vm.isUpdatingReportVisibility.value)
+        val state = vm.reportDetailUiState.value
+        assertTrue(state is ReportDetailUiState.Success)
+        assertTrue((state as ReportDetailUiState.Success).report.isPublic)
+    }
+
+    @Test
     fun `duplicate delete while in-flight is ignored`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         val report = createReport()

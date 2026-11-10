@@ -38,15 +38,19 @@ fun EditProfileScreen(
     isLoading: Boolean = false,
     error: String? = null,
     saveSuccess: Boolean = false,
+    isDeletingAccount: Boolean = false,
+    deleteAccountError: String? = null,
     onBackClick: () -> Unit,
     onSaveClick: (String, Uri?) -> Unit,
     onResetSaveSuccess: () -> Unit = {},
     onChangePasswordClick: () -> Unit = {},
-    onDeleteAccountClick: () -> Unit = {}
+    onDeleteAccount: () -> Unit = {},
+    onClearDeleteAccountError: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf(initialName) }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var showNameDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(initialName) {
@@ -64,6 +68,14 @@ fun EditProfileScreen(
     LaunchedEffect(error) {
         error?.let {
             snackbarHostState.showSnackbar(it)
+        }
+    }
+
+    LaunchedEffect(deleteAccountError) {
+        deleteAccountError?.let {
+            showDeleteAccountDialog = false
+            snackbarHostState.showSnackbar(it)
+            onClearDeleteAccountError()
         }
     }
 
@@ -102,6 +114,44 @@ fun EditProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showNameDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDeletingAccount) showDeleteAccountDialog = false
+            },
+            title = { Text("Удалить аккаунт") },
+            text = {
+                Text(
+                    "Аккаунт и все отчёты будут удалены безвозвратно. " +
+                        "Это действие нельзя отменить."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onDeleteAccount() },
+                    enabled = !isDeletingAccount
+                ) {
+                    if (isDeletingAccount) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountDialog = false },
+                    enabled = !isDeletingAccount
+                ) {
                     Text("Отмена")
                 }
             }
@@ -167,11 +217,14 @@ fun EditProfileScreen(
                 )
                 ProfileListItem(
                     value = "Удалить аккаунт",
-                    onClick = onDeleteAccountClick
+                    onClick = {
+                        onClearDeleteAccountError()
+                        showDeleteAccountDialog = true
+                    }
                 )
             }
-            
-            if (isLoading) {
+
+            if (isLoading || isDeletingAccount) {
                 CircularProgressIndicator(modifier = Modifier.padding(16.dp))
             }
         }

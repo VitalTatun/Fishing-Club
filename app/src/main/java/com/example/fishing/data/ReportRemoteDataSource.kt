@@ -48,6 +48,19 @@ interface ReportRemoteDataSource {
     /** Publishes the report and its children in one transaction. */
     suspend fun publishReport(payload: JsonObject): PublishReportResult
 
+    /**
+     * Flips only the publish flag of [reportId].
+     *
+     * Returns `false` when the server did not update a row (the caller is not the
+     * author or the report is gone), so the caller must not pretend the local
+     * cache is in sync with the backend.
+     */
+    suspend fun updateReportVisibility(
+        reportId: UUID,
+        isPublic: Boolean,
+        publishedAt: String?
+    ): Boolean
+
     /** Best-effort removal of photo objects; failures are the caller's concern. */
     suspend fun deletePhotos(paths: List<String>)
 

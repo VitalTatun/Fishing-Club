@@ -74,6 +74,51 @@ class ReportDetailCoordinatorTest {
     }
 
     @Test
+    fun `visibility change updates the repository with the target state`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val repository = FakeFishingRepository()
+            val report = testReport(isPublic = true)
+            repository.reportDetailsValue = report
+            repository.homeReportsValue = listOf(report)
+            val coordinator = ReportDetailCoordinator(
+                repository = repository,
+                photoUrls = PhotoUrlResolver(repository),
+                scope = backgroundScope
+            )
+
+            coordinator.updateVisibility(report.id, isPublic = false)
+            advanceUntilIdle()
+
+            assertEquals(1, repository.updateReportVisibilityCallCount)
+            assertEquals(report.id, repository.lastVisibilityReportId)
+            assertEquals(false, repository.lastVisibilityIsPublic)
+            assertFalse(coordinator.isUpdatingVisibility.value)
+            assertNull(coordinator.visibilityError.value)
+            assertEquals("Отчёт теперь виден только вам", coordinator.visibilityResult.value)
+        }
+
+    @Test
+    fun `visibility failure surfaces a message and stops the spinner`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val repository = FakeFishingRepository()
+            val report = testReport(isPublic = false)
+            repository.reportDetailsValue = report
+            repository.updateReportVisibilityException = RuntimeException("offline")
+            val coordinator = ReportDetailCoordinator(
+                repository = repository,
+                photoUrls = PhotoUrlResolver(repository),
+                scope = backgroundScope
+            )
+
+            coordinator.updateVisibility(report.id, isPublic = true)
+            advanceUntilIdle()
+
+            assertFalse(coordinator.isUpdatingVisibility.value)
+            assertTrue(coordinator.visibilityError.value?.isNotBlank() == true)
+            assertNull(coordinator.visibilityResult.value)
+        }
+
+    @Test
     fun `clear resets detail delete and error state`() = runTest(UnconfinedTestDispatcher()) {
         val repository = FakeFishingRepository()
         val report = testReport()

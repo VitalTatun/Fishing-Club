@@ -144,14 +144,45 @@ class SupabaseAuthRepository @Inject constructor(
         supabase.auth.signOut()
         _sessionUser.value = null
         if (userId != null) {
-            try {
-                reportDetailsDao.deleteAll()
-                favoriteReportDao.deleteAll()
-                likeDao.deleteAll()
-                markerDao.deleteAll()
-            } catch (e: Exception) {
-                Log.e("SupabaseAuth", "Failed to clear user cache on logout: ${e.message}")
+            clearUserScopedData()
+        }
+    }
+
+    override suspend fun changePassword(newPassword: String): Result<Unit> {
+        return try {
+            supabase.auth.updateUser {
+                password = newPassword
             }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("SupabaseAuth", "Password change failed: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteAccount(): Result<Unit> {
+        return try {
+            // SECURITY DEFINER function in supabase/migrations; removing the
+            // auth.users row cascades to profiles and reports.
+            supabase.postgrest.rpc("delete_account")
+            runCatching { supabase.auth.signOut() }
+            _sessionUser.value = null
+            clearUserScopedData()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("SupabaseAuth", "Account deletion failed: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun clearUserScopedData() {
+        try {
+            reportDetailsDao.deleteAll()
+            favoriteReportDao.deleteAll()
+            likeDao.deleteAll()
+            markerDao.deleteAll()
+        } catch (e: Exception) {
+            Log.e("SupabaseAuth", "Failed to clear user cache: ${e.message}")
         }
         // Unsaved report photos belong to the session that just ended. The queue
         // is cleared first so its rows cannot keep files alive across sessions.

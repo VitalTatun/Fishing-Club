@@ -50,6 +50,12 @@ interface ReportWriter {
     suspend fun isReportSynced(report: FishingReport): Boolean
 
     suspend fun deleteReport(id: UUID): Result<Unit>
+
+    /**
+     * Publishes or hides an already saved report. Only the publish flag changes;
+     * photos, fish and bait rows stay untouched.
+     */
+    suspend fun updateVisibility(id: UUID, isPublic: Boolean): Result<Unit>
 }
 
 @Singleton
@@ -245,6 +251,41 @@ class SupabaseReportWriter @Inject constructor(
             throw e
         } catch (e: Exception) {
             false
+        }
+
+    override suspend fun updateVisibility(id: UUID, isPublic: Boolean): Result<Unit> =
+        withContext(ioDispatcher) {
+            try {
+                authRepository.currentUser()
+                    ?: throw IllegalStateException("Not authenticated")
+                val now = SupabaseDateFormats.formatDate(Date())
+                // A report becomes public at the moment of this change; hiding it
+                // clears the publish time the same way saveReport does.
+                val publishedAt = if (isPublic) now else null
+
+                val updated = reportRemoteDataSource.updateReportVisibility(
+                    reportId = id,
+                    isPublic = isPublic,
+                    publishedAt = publishedAt
+                )
+                if (!updated) {
+                    throw IllegalStateException(
+                        "Report not found or you are not allowed to change it"
+                    )
+                }
+
+                database.withTransaction {
+                    // The update is filtered by RLS as well; mirror it only after
+                    // the server confirmed a row so an offline toggle cannot lie.
+                    reportDetailsDao.updateVisibility(id, isPublic, publishedAt)
+                    markerDao.updateVisibility(id, isPublic)
+                }
+                Result.success(Unit)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {

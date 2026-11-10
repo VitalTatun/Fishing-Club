@@ -63,6 +63,9 @@ interface ReportDetailsDao {
     @Query("UPDATE report_details SET likesCount = :likesCount WHERE id = :id")
     suspend fun updateLikesCount(id: UUID, likesCount: Int)
 
+    @Query("UPDATE report_details SET isPublic = :isPublic, publishedAt = :publishedAt WHERE id = :id")
+    suspend fun updateVisibility(id: UUID, isPublic: Boolean, publishedAt: String?)
+
     @Query("SELECT id, likesCount FROM report_details WHERE id IN (:ids)")
     suspend fun getLikesCounts(ids: List<UUID>): List<ReportLikesCountRow>
 }

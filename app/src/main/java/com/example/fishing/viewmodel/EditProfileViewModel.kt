@@ -39,6 +39,12 @@ class EditProfileViewModel @Inject constructor(
     private val _saveSuccess = MutableStateFlow(false)
     val saveSuccess: StateFlow<Boolean> = _saveSuccess.asStateFlow()
 
+    private val _isDeletingAccount = MutableStateFlow(false)
+    val isDeletingAccount: StateFlow<Boolean> = _isDeletingAccount.asStateFlow()
+
+    private val _deleteAccountError = MutableStateFlow<String?>(null)
+    val deleteAccountError: StateFlow<String?> = _deleteAccountError.asStateFlow()
+
     fun updateProfile(
         contentResolver: ContentResolver,
         filesDir: File,
@@ -87,5 +93,26 @@ class EditProfileViewModel @Inject constructor(
     
     fun resetSuccess() {
         _saveSuccess.value = false
+    }
+
+    fun deleteAccount() {
+        if (_isDeletingAccount.value) return
+
+        _deleteAccountError.value = null
+        viewModelScope.launch {
+            _isDeletingAccount.value = true
+            try {
+                authRepository.deleteAccount()
+                    .onFailure { e ->
+                        _deleteAccountError.value = ErrorMapper.toUserFriendlyMessage(e)
+                    }
+            } finally {
+                _isDeletingAccount.value = false
+            }
+        }
+    }
+
+    fun clearDeleteAccountError() {
+        _deleteAccountError.value = null
     }
 }

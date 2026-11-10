@@ -37,13 +37,27 @@ class ReportDetailCoordinator(
     private val _deletedReportId = MutableStateFlow<UUID?>(null)
     val deletedReportId: StateFlow<UUID?> = _deletedReportId.asStateFlow()
 
+    private val _isUpdatingVisibility = MutableStateFlow(false)
+    val isUpdatingVisibility: StateFlow<Boolean> = _isUpdatingVisibility.asStateFlow()
+
+    private val _visibilityError = MutableStateFlow<String?>(null)
+    val visibilityError: StateFlow<String?> = _visibilityError.asStateFlow()
+
+    private val _visibilityResult = MutableStateFlow<String?>(null)
+    val visibilityResult: StateFlow<String?> = _visibilityResult.asStateFlow()
+
     private var reportDetailsJob: Job? = null
     private var deleteReportJob: Job? = null
+    private var visibilityJob: Job? = null
     private var detailPhotosVersion = 0
 
     fun loadReportDetails(id: UUID) {
         reportDetailsJob?.cancel()
         _deleteReportError.value = null
+        // A result for a previous report must not leak into the next one if the
+        // user left the screen before the snackbar finished.
+        _visibilityError.value = null
+        _visibilityResult.value = null
         _reportDetailUiState.value = ReportDetailUiState.Loading
 
         reportDetailsJob = scope.launch {
@@ -119,6 +133,44 @@ class ReportDetailCoordinator(
         _deleteReportError.value = null
     }
 
+    /**
+     * Flips the publish flag on the server. The room flow updates the rendered
+     * report afterwards, so the menu label and the draft badge follow the
+     * authoritative state instead of an optimistic local guess.
+     */
+    fun updateVisibility(id: UUID, isPublic: Boolean) {
+        if (_isUpdatingVisibility.value) return
+
+        _isUpdatingVisibility.value = true
+        _visibilityError.value = null
+        _visibilityResult.value = null
+
+        visibilityJob = scope.launch {
+            repository.updateReportVisibility(id, isPublic)
+                .onSuccess {
+                    _visibilityResult.value = if (isPublic) {
+                        "Отчёт опубликован"
+                    } else {
+                        "Отчёт теперь виден только вам"
+                    }
+                }
+                .onFailure { e ->
+                    _visibilityError.value =
+                        "Не удалось изменить видимость отчета: " +
+                            ErrorMapper.toUserFriendlyMessage(e)
+                }
+            _isUpdatingVisibility.value = false
+        }
+    }
+
+    fun clearVisibilityError() {
+        _visibilityError.value = null
+    }
+
+    fun clearVisibilityResult() {
+        _visibilityResult.value = null
+    }
+
     fun clearDeletedReport() {
         _deletedReportId.value = null
     }
@@ -126,10 +178,14 @@ class ReportDetailCoordinator(
     fun clear() {
         reportDetailsJob?.cancel()
         deleteReportJob?.cancel()
+        visibilityJob?.cancel()
         _reportDetailUiState.value = ReportDetailUiState.Loading
         _isDeletingReport.value = false
         _deleteReportError.value = null
         _deletedReportId.value = null
+        _isUpdatingVisibility.value = false
+        _visibilityError.value = null
+        _visibilityResult.value = null
         detailPhotosVersion++
     }
 

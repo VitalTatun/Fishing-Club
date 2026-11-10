@@ -78,6 +78,12 @@ class FakeFishingRepository : FishingRepository {
     var deleteReportException: Exception? = null
     var deleteReportGate: CompletableDeferred<Unit>? = null
 
+    var updateReportVisibilityCallCount = 0
+    var updateReportVisibilityException: Exception? = null
+    var updateReportVisibilityGate: CompletableDeferred<Unit>? = null
+    var lastVisibilityReportId: UUID? = null
+    var lastVisibilityIsPublic: Boolean? = null
+
     var addLikeCallCount = 0
     var addLikeException: Exception? = null
     var addLikeGate: CompletableDeferred<Unit>? = null
@@ -206,6 +212,28 @@ class FakeFishingRepository : FishingRepository {
         _homeReports.value = _homeReports.value.filterNot { it.id == id }
         _favoriteReports.value = _favoriteReports.value.filterNot { it.id == id }
         _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
+        return Result.success(Unit)
+    }
+
+    override suspend fun updateReportVisibility(id: UUID, isPublic: Boolean): Result<Unit> {
+        updateReportVisibilityCallCount++
+        lastVisibilityReportId = id
+        lastVisibilityIsPublic = isPublic
+        updateReportVisibilityGate?.await()
+        updateReportVisibilityException?.let { return Result.failure(it) }
+
+        _homeReports.value = _homeReports.value.map {
+            if (it.id == id) it.copy(isPublic = isPublic) else it
+        }
+        _favoriteReports.value = _favoriteReports.value.map {
+            if (it.id == id) it.copy(isPublic = isPublic) else it
+        }
+        _reportDetails.value = _reportDetails.value?.let {
+            if (it.id == id) it.copy(isPublic = isPublic) else it
+        }
+        _mapMarkers.value = _mapMarkers.value.map {
+            if (it.id == id) it.copy(isPublic = isPublic) else it
+        }
         return Result.success(Unit)
     }
 

@@ -23,6 +23,8 @@ class FakeAuthRepository : AuthRepository {
     var updateProfileResult: Result<User> = Result.success(
         User(id = UUID.randomUUID(), name = "Updated", email = "test@example.com", image = "")
     )
+    var changePasswordResult: Result<Unit> = Result.success(Unit)
+    var deleteAccountResult: Result<Unit> = Result.success(Unit)
     var sessionUser: User? = null
         set(value) {
             field = value
@@ -45,6 +47,9 @@ class FakeAuthRepository : AuthRepository {
     var updateProfileCalls = 0
     var lastUpdateProfileName: String? = null
     var lastUpdateProfileImage: String? = null
+    var changePasswordCalls = 0
+    var lastChangedPassword: String? = null
+    var deleteAccountCalls = 0
 
     override suspend fun login(email: String, password: String): Result<User> {
         loginCalls++
@@ -79,6 +84,20 @@ class FakeAuthRepository : AuthRepository {
         lastUpdateProfileImage = imageUri
         updateProfileGate?.await()
         return updateProfileResult
+    }
+
+    override suspend fun changePassword(newPassword: String): Result<Unit> {
+        changePasswordCalls++
+        lastChangedPassword = newPassword
+        return changePasswordResult
+    }
+
+    override suspend fun deleteAccount(): Result<Unit> {
+        deleteAccountCalls++
+        if (deleteAccountResult.isSuccess) {
+            sessionUser = null
+        }
+        return deleteAccountResult
     }
 
     override fun resolveImageUrl(path: String): String = path

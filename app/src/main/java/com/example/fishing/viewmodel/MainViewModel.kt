@@ -137,6 +137,9 @@ class MainViewModel @Inject constructor(
     val isDeletingReport: StateFlow<Boolean> = detail.isDeletingReport
     val deleteReportError: StateFlow<String?> = detail.deleteReportError
     val deletedReportId: StateFlow<UUID?> = detail.deletedReportId
+    val isUpdatingReportVisibility: StateFlow<Boolean> = detail.isUpdatingVisibility
+    val reportVisibilityError: StateFlow<String?> = detail.visibilityError
+    val reportVisibilityResult: StateFlow<String?> = detail.visibilityResult
 
     /** Reports waiting for upload; the banner in [MainScreen] is driven by this. */
     val pendingUploads: StateFlow<List<PendingReportUpload>> =
@@ -304,5 +307,17 @@ class MainViewModel @Inject constructor(
 
     fun clearDeletedReport() {
         detail.clearDeletedReport()
+    }
+
+    fun setReportVisibility(id: UUID, isPublic: Boolean) {
+        detail.updateVisibility(id, isPublic)
+    }
+
+    fun clearReportVisibilityError() {
+        detail.clearVisibilityError()
+    }
+
+    fun clearReportVisibilityResult() {
+        detail.clearVisibilityResult()
     }
 }

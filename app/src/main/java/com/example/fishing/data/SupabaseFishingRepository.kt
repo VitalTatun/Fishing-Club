@@ -75,6 +75,9 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun deleteReport(id: UUID): Result<Unit> = reportWriter.deleteReport(id)
 
+    override suspend fun updateReportVisibility(id: UUID, isPublic: Boolean): Result<Unit> =
+        reportWriter.updateVisibility(id, isPublic)
+
     override suspend fun getPhotoSignedUrl(storagePath: String): String? =
         photoUrlProvider.getSignedUrl(storagePath)
 

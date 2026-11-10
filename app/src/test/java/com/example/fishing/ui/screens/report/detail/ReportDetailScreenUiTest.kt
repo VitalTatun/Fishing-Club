@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,6 +21,7 @@ import com.example.fishing.model.User
 import com.example.fishing.model.Water
 import com.example.fishing.ui.theme.FishingTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,6 +50,7 @@ class ReportDetailScreenUiTest {
     private var favoriteToggles = 0
     private var deleteCalls = 0
     private var likeToggles = 0
+    private var visibilityCalls = mutableListOf<Boolean>()
 
     private fun report(
         isPublic: Boolean = false,
@@ -90,6 +93,8 @@ class ReportDetailScreenUiTest {
         isFavorite: Boolean = false,
         isOwnReport: Boolean = true,
         isDeleting: Boolean = false,
+        isUpdatingVisibility: Boolean = false,
+        visibilityResult: String? = null,
         likeState: ReportLikeState? = null
     ) {
         composeRule.setContent {
@@ -105,6 +110,9 @@ class ReportDetailScreenUiTest {
                         isOwnReport = isOwnReport,
                         onDeleteReport = { deleteCalls++ },
                         isDeleting = isDeleting,
+                        isUpdatingVisibility = isUpdatingVisibility,
+                        onToggleVisibility = { visibilityCalls += it },
+                        visibilityResult = visibilityResult,
                         likeState = likeState,
                         onToggleLike = { likeToggles++ }
                     )
@@ -147,9 +155,24 @@ class ReportDetailScreenUiTest {
         composeRule.onNodeWithContentDescription("Добавить в избранное").performClick()
         composeRule.onNodeWithContentDescription("Меню").performClick()
 
-        composeRule.onNodeWithText("Редактировать").assertIsDisplayed()
-        composeRule.onNodeWithText("Сделать публичным").assertIsDisplayed()
+        composeRule.onNodeWithText("Редактировать").assertDoesNotExist()
+        composeRule.onNodeWithText("Сделать публичным").performClick()
+        composeRule.waitForIdle()
 
+        // The action is confirmed in a dialog before anything is sent.
+        composeRule.onNodeWithText("Сделать отчёт публичным?").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Отчёт станет доступен всем пользователям и появится на карте уловов."
+        ).assertIsDisplayed()
+        assertTrue(visibilityCalls.isEmpty())
+
+        composeRule.onNodeWithText("Опубликовать").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(listOf(true), visibilityCalls)
+        composeRule.onNodeWithText("Сделать отчёт публичным?").assertDoesNotExist()
+
+        composeRule.onNodeWithContentDescription("Меню").performClick()
         composeRule.onNodeWithText("Удалить").performClick()
         composeRule.onNodeWithText("Удалить отчет").assertIsDisplayed()
         composeRule.onNodeWithText("Вы уверены, что хотите удалить этот отчет?")
@@ -179,9 +202,58 @@ class ReportDetailScreenUiTest {
 
         composeRule.onNodeWithContentDescription("Меню").performClick()
 
-        composeRule.onNodeWithText("Редактировать").assertIsDisplayed()
+        composeRule.onNodeWithText("Редактировать").assertDoesNotExist()
         composeRule.onNodeWithText("Сделать публичным").assertDoesNotExist()
+        composeRule.onNodeWithText("Сделать приватным").assertDoesNotExist()
         composeRule.onNodeWithText("Удалить").assertDoesNotExist()
+    }
+
+    @Test
+    fun `visibility action is disabled while the change is in flight`() {
+        setDetailScreen(report = report(isPublic = true), isUpdatingVisibility = true)
+
+        composeRule.onNodeWithContentDescription("Меню").performClick()
+
+        composeRule.onNodeWithText("Сделать приватным").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `visibility action targets the opposite of the current state`() {
+        setDetailScreen(report = report(isPublic = true))
+
+        composeRule.onNodeWithContentDescription("Меню").performClick()
+        composeRule.onNodeWithText("Сделать приватным").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Сделать отчёт приватным?").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Отчёт станет виден только вам: он исчезнет из поиска и с карты у других пользователей."
+        ).assertIsDisplayed()
+
+        composeRule.onNodeWithText("Скрыть").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(listOf(false), visibilityCalls)
+    }
+
+    @Test
+    fun `cancelling the visibility dialog sends nothing`() {
+        setDetailScreen(report = report(isPublic = false))
+
+        composeRule.onNodeWithContentDescription("Меню").performClick()
+        composeRule.onNodeWithText("Сделать публичным").performClick()
+        composeRule.onNodeWithText("Отмена").performClick()
+        composeRule.waitForIdle()
+
+        assertTrue(visibilityCalls.isEmpty())
+        composeRule.onNodeWithText("Сделать отчёт публичным?").assertDoesNotExist()
+    }
+
+    @Test
+    fun `visibility result is shown in a snackbar`() {
+        setDetailScreen(visibilityResult = "Отчёт опубликован")
+
+        composeRule.onNodeWithText("Отчёт опубликован").assertIsDisplayed()
     }
 
     @Test

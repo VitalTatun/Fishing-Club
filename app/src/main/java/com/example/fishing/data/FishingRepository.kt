@@ -66,6 +66,9 @@ interface FishingRepository {
     suspend fun isReportSynced(report: FishingReport): Boolean
 
     suspend fun deleteReport(id: UUID): Result<Unit>
+
+    /** Changes whether [id] is visible to other users. Author-only on the server. */
+    suspend fun updateReportVisibility(id: UUID, isPublic: Boolean): Result<Unit>
     suspend fun getPhotoSignedUrl(storagePath: String): String?
     /** Resolves many storage paths in as few requests as possible. */
     suspend fun getPhotoSignedUrls(storagePaths: List<String>): Map<String, String>
@@ -113,6 +116,13 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun deleteReport(id: UUID): Result<Unit> {
         reports.removeAll { it.id == id }
+        return Result.success(Unit)
+    }
+
+    override suspend fun updateReportVisibility(id: UUID, isPublic: Boolean): Result<Unit> {
+        val index = reports.indexOfFirst { it.id == id }
+        if (index < 0) return Result.failure(IllegalStateException("Report not found"))
+        reports[index] = reports[index].copy(isPublic = isPublic)
         return Result.success(Unit)
     }
 
