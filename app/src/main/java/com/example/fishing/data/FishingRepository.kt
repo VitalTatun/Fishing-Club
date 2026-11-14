@@ -3,6 +3,7 @@ package com.example.fishing.data
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
+import com.example.fishing.data.report.UserProfileData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,12 @@ data class HomeRefreshResult(
 interface FishingRepository {
     fun getHomeReports(userId: UUID): Flow<List<FishingReport>>
     suspend fun loadFavoriteReports(userId: UUID): List<FishingReport>
+
+    /**
+     * Public page of another user: their visible profile data and everything
+     * they published. Not cached locally on purpose.
+     */
+    suspend fun loadUserProfile(userId: UUID): Result<UserProfileData>
 
     /**
      * Ids of the reports the user has bookmarked. Backed by the local cache, so
@@ -135,6 +142,16 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
         return favoriteReports.toList()
+    }
+
+    override suspend fun loadUserProfile(userId: UUID): Result<UserProfileData> {
+        val ownReports = reports.filter { it.userId == userId }
+        return Result.success(
+            UserProfileData(
+                user = ownReports.firstOrNull()?.user,
+                reports = ownReports.filter { it.isPublic }
+            )
+        )
     }
 
     override fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>> = _favoriteIds.asStateFlow()

@@ -7,6 +7,8 @@ import com.example.fishing.data.report.MarkerStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportDetailsStore
 import com.example.fishing.data.report.ReportWriter
+import com.example.fishing.data.report.UserProfileData
+import com.example.fishing.data.report.UserReportsStore
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
@@ -30,7 +32,8 @@ class SupabaseFishingRepository @Inject constructor(
     private val favoritesStore: FavoritesStore,
     private val likesStore: LikesStore,
     private val reportWriter: ReportWriter,
-    private val photoUrlProvider: PhotoUrlProvider
+    private val photoUrlProvider: PhotoUrlProvider,
+    private val userReportsStore: UserReportsStore
 ) : FishingRepository {
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> =
@@ -38,6 +41,9 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> =
         favoritesStore.loadFavoriteReports(userId)
+
+    override suspend fun loadUserProfile(userId: UUID): Result<UserProfileData> =
+        runCatching { userReportsStore.loadUserProfile(userId) }
 
     override fun getFavoriteReportIds(userId: UUID): Flow<Set<UUID>> =
         favoritesStore.getFavoriteReportIds(userId)

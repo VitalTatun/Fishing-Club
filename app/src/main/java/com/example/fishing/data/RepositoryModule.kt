@@ -16,6 +16,8 @@ import com.example.fishing.data.report.SupabaseLikesStore
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.data.report.SupabaseReportWriter
 import com.example.fishing.data.report.SupabaseReportRemoteQueries
+import com.example.fishing.data.report.SupabaseUserReportsStore
+import com.example.fishing.data.report.UserReportsStore
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -91,4 +93,10 @@ abstract class RepositoryModule {
     abstract fun bindReportWriter(
         writer: SupabaseReportWriter
     ): ReportWriter
+
+    @Binds
+    @Singleton
+    abstract fun bindUserReportsStore(
+        store: SupabaseUserReportsStore
+    ): UserReportsStore
 }

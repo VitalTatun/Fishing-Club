@@ -28,6 +28,7 @@ import com.example.fishing.ui.screens.report.detail.ReportDetailUnavailableScree
 import com.example.fishing.ui.screens.report.detail.ReportDetailErrorScreen
 import com.example.fishing.ui.screens.search.LocationSearchScreen
 import com.example.fishing.ui.screens.search.ReportSearchScreen
+import com.example.fishing.ui.screens.user.UserProfileScreen
 import com.example.fishing.ui.screens.login.LoginScreen
 import com.example.fishing.ui.screens.login.RegistrationScreen
 import com.example.fishing.ui.screens.map.MapScreen
@@ -397,8 +398,9 @@ fun FishingNavHost(
                 // shown on this destination; the regular pop slide still plays.
                 BackHandler { navController.popBackStack() }
 
+                val reportDetailRoute = backStackEntry.toRoute<ReportDetailRoute>()
                 val reportId = runCatching {
-                    UUID.fromString(backStackEntry.toRoute<ReportDetailRoute>().reportId)
+                    UUID.fromString(reportDetailRoute.reportId)
                 }.getOrNull()
 
                 LaunchedEffect(reportId) {
@@ -464,7 +466,23 @@ fun FishingNavHost(
                                     likeState = likeStates[state.report.id],
                                     onToggleLike = { viewModel.toggleLike(state.report) },
                                     likeError = likeError,
-                                    onLikeErrorDismiss = { viewModel.clearLikeError() }
+                                    onLikeErrorDismiss = { viewModel.clearLikeError() },
+                                    // Opened from a user page: the author of this
+                                    // report is that same user, so the row must not
+                                    // push another profile onto the back stack.
+                                    onUserClick = if (reportDetailRoute.allowAuthorNavigation) {
+                                        {
+                                            navController.navigate(
+                                                UserProfileRoute(
+                                                    userId = state.report.userId.toString(),
+                                                    userName = state.report.user.name,
+                                                    userAvatar = state.report.user.image
+                                                )
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    }
                                 )
                             } else {
                                 ReportDetailLoadingScreen(
@@ -544,6 +562,47 @@ fun FishingNavHost(
                     initialReportId = reportId,
                     repository = fishingRepository,
                     favoriteReports = filterFavoriteReports
+                )
+            }
+
+            composable<UserProfileRoute> { backStackEntry ->
+                val userProfileRoute = backStackEntry.toRoute<UserProfileRoute>()
+                val profileUserId = runCatching {
+                    UUID.fromString(userProfileRoute.userId)
+                }.getOrNull()
+
+                LaunchedEffect(profileUserId) {
+                    profileUserId?.let(viewModel::loadUserProfile)
+                }
+
+                val userProfileState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
+                val userProfileSortOrder by viewModel.userProfileSortOrder
+                    .collectAsStateWithLifecycle()
+                val userProfileCanChangeSortOrder by viewModel.userProfileCanChangeSortOrder
+                    .collectAsStateWithLifecycle()
+
+                UserProfileScreen(
+                    uiState = userProfileState,
+                    sortOrder = userProfileSortOrder,
+                    canChangeSortOrder = userProfileCanChangeSortOrder,
+                    fallbackUserName = userProfileRoute.userName,
+                    fallbackUserAvatar = userProfileRoute.userAvatar,
+                    onSetSortOrder = viewModel::setUserProfileSortOrder,
+                    onBackClick = {
+                        viewModel.clearUserProfile()
+                        navController.popBackStack()
+                    },
+                    onReportClick = { report ->
+                        navController.navigate(
+                            ReportDetailRoute(
+                                reportId = report.id.toString(),
+                                // The author row of these details is this same page,
+                                // so it must not push another profile on top.
+                                allowAuthorNavigation = false
+                            )
+                        )
+                    },
+                    onRetry = { profileUserId?.let(viewModel::loadUserProfile) }
                 )
             }
 

@@ -45,6 +45,15 @@ interface ReportRemoteQueries {
     suspend fun fetchOwnReportPage(userId: UUID, offset: Int, limit: Int): RemoteReportPage
 
     /**
+     * One page of [userId]'s published reports, newest fishing time first.
+     * Used by the public user screen, so drafts never show up here.
+     */
+    suspend fun fetchUserReportPage(userId: UUID, offset: Int, limit: Int): RemoteReportPage
+
+    /** Public projection of one profile (no email), or null when it is gone. */
+    suspend fun fetchPublicProfile(userId: UUID): ProfileDto?
+
+    /**
      * Reports by id, with children. [ids] is used for the child queries so the
      * payload matches the requested set even if a row is missing.
      */
@@ -84,6 +93,32 @@ class SupabaseReportRemoteQueries @Inject constructor(
         if (page.isEmpty()) return RemoteReportPage(emptyList(), hasMore = false)
         return RemoteReportPage(buildReports(page, page.map { it.id }), hasMore)
     }
+
+    override suspend fun fetchUserReportPage(
+        userId: UUID,
+        offset: Int,
+        limit: Int
+    ): RemoteReportPage {
+        val fetched = supabase.postgrest["fishing"].select {
+            filter {
+                eq("user_id", userId)
+                eq("is_public", true)
+            }
+            order("fishing_start_at", Order.DESCENDING)
+            range(offset.toLong(), (offset + limit).toLong())
+        }.decodeList<FishingDto>()
+
+        val hasMore = fetched.size > limit
+        val page = if (hasMore) fetched.take(limit) else fetched
+        if (page.isEmpty()) return RemoteReportPage(emptyList(), hasMore = false)
+        return RemoteReportPage(buildReports(page, page.map { it.id }), hasMore)
+    }
+
+    override suspend fun fetchPublicProfile(userId: UUID): ProfileDto? =
+        supabase.postgrest["profiles_public"].select {
+            filter { eq("id", userId) }
+            limit(1)
+        }.decodeList<ProfileDto>().firstOrNull()
 
     override suspend fun fetchReportsByIds(ids: List<UUID>): List<RemoteReport> {
         if (ids.isEmpty()) return emptyList()

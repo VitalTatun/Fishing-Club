@@ -50,6 +50,7 @@ class ReportDetailScreenUiTest {
     private var favoriteToggles = 0
     private var deleteCalls = 0
     private var likeToggles = 0
+    private var userClicks = 0
     private var visibilityCalls = mutableListOf<Boolean>()
 
     private fun report(
@@ -95,7 +96,8 @@ class ReportDetailScreenUiTest {
         isDeleting: Boolean = false,
         isUpdatingVisibility: Boolean = false,
         visibilityResult: String? = null,
-        likeState: ReportLikeState? = null
+        likeState: ReportLikeState? = null,
+        onUserClick: (() -> Unit)? = { userClicks++ }
     ) {
         composeRule.setContent {
             // Skip the osmdroid AndroidView map: the report data and actions are
@@ -114,11 +116,32 @@ class ReportDetailScreenUiTest {
                         onToggleVisibility = { visibilityCalls += it },
                         visibilityResult = visibilityResult,
                         likeState = likeState,
-                        onToggleLike = { likeToggles++ }
+                        onToggleLike = { likeToggles++ },
+                        onUserClick = onUserClick
                     )
                 }
             }
         }
+    }
+
+    @Test
+    fun `author row opens the user page when navigation is allowed`() {
+        setDetailScreen()
+
+        composeRule.onNodeWithText("Иван Рыбак").performClick()
+
+        assertEquals(1, userClicks)
+    }
+
+    @Test
+    fun `author row is not clickable when navigation is disabled`() {
+        // Details opened from a user page pass null: profile → report → profile
+        // must not be able to stack.
+        setDetailScreen(onUserClick = null)
+
+        composeRule.onNodeWithText("Иван Рыбак").performClick()
+
+        assertEquals(0, userClicks)
     }
 
     @Test

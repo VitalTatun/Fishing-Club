@@ -63,6 +63,8 @@ fun ReportDetailScreen(
     onToggleLike: () -> Unit = {},
     likeError: String? = null,
     onLikeErrorDismiss: () -> Unit = {},
+    /** `null` disables the author row (details opened from a user page). */
+    onUserClick: (() -> Unit)? = null,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -324,7 +326,8 @@ fun ReportDetailScreen(
                 likesCount = likeState?.likesCount,
                 isLiked = likeState?.isLiked ?: false,
                 onToggleLike = onToggleLike,
-                onPhotoClick = onPhotoClick
+                onPhotoClick = onPhotoClick,
+                onUserClick = onUserClick
             )
 
             // 3. Описание отчета

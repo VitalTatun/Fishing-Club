@@ -54,11 +54,32 @@ data object CatchEditRoute
 
 // --- Report detail ---
 
+/**
+ * [allowAuthorNavigation] is false when the details were opened from a user
+ * page: the author row then stops being a target, otherwise
+ * profile → report → profile could be pushed onto the back stack forever.
+ */
 @Serializable
-data class ReportDetailRoute(val reportId: String)
+data class ReportDetailRoute(
+    val reportId: String,
+    val allowAuthorNavigation: Boolean = true
+)
 
 @Serializable
 data class FullMapRoute(val reportId: String)
+
+// --- Users ---
+
+/**
+ * Public page of a report author. Name and avatar are passed along as a
+ * fallback so the header renders before the profile request finishes.
+ */
+@Serializable
+data class UserProfileRoute(
+    val userId: String,
+    val userName: String = "",
+    val userAvatar: String = ""
+)
 
 // --- Profile ---
 

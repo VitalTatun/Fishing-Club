@@ -111,7 +111,8 @@ class SupabaseFishingRepositoryReadTest {
                 photoUrlProvider = photoUrlProvider,
                 ioDispatcher = mainDispatcherRule.testDispatcher
             ),
-            photoUrlProvider = photoUrlProvider
+            photoUrlProvider = photoUrlProvider,
+            userReportsStore = mockk(relaxed = true)
         )
     }
 
@@ -285,9 +286,16 @@ class SupabaseFishingRepositoryReadTest {
             return page
         }
 
+        override suspend fun fetchUserReportPage(
+            userId: UUID,
+            offset: Int,
+            limit: Int
+        ): RemoteReportPage = RemoteReportPage(emptyList(), hasMore = false)
+
+        override suspend fun fetchPublicProfile(userId: UUID): ProfileDto? = null
+
         override suspend fun fetchReportsByIds(ids: List<UUID>): List<RemoteReport> =
             ids.mapNotNull { reportsById[it] }
-
         override suspend fun fetchReport(id: UUID): RemoteReport? = reportsById[id]
 
         override suspend fun fetchFavoriteReportIds(userId: UUID): List<UUID> = favorites

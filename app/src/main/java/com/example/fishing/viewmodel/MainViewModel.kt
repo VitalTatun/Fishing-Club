@@ -24,6 +24,7 @@ import com.example.fishing.viewmodel.map.MapCoordinator
 import com.example.fishing.viewmodel.photos.PhotoUrlResolver
 import com.example.fishing.viewmodel.search.SearchCoordinator
 import com.example.fishing.viewmodel.session.UserSession
+import com.example.fishing.viewmodel.user.UserProfileCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -79,6 +80,11 @@ class MainViewModel @Inject constructor(
     )
     private val search = SearchCoordinator()
     private val detail = ReportDetailCoordinator(
+        repository = repository,
+        photoUrls = photoUrls,
+        scope = viewModelScope
+    )
+    private val userProfile = UserProfileCoordinator(
         repository = repository,
         photoUrls = photoUrls,
         scope = viewModelScope
@@ -140,6 +146,10 @@ class MainViewModel @Inject constructor(
     val isUpdatingReportVisibility: StateFlow<Boolean> = detail.isUpdatingVisibility
     val reportVisibilityError: StateFlow<String?> = detail.visibilityError
     val reportVisibilityResult: StateFlow<String?> = detail.visibilityResult
+
+    val userProfileUiState: StateFlow<UserProfileUiState> = userProfile.uiState
+    val userProfileSortOrder: StateFlow<ReportSortOrder> = userProfile.sortOrder
+    val userProfileCanChangeSortOrder: StateFlow<Boolean> = userProfile.canChangeSortOrder
 
     /** Reports waiting for upload; the banner in [MainScreen] is driven by this. */
     val pendingUploads: StateFlow<List<PendingReportUpload>> =
@@ -212,6 +222,7 @@ class MainViewModel @Inject constructor(
         map.clear()
         search.clear()
         detail.clear()
+        userProfile.clear()
 
         _selectedTab.value = 0
         _uploadNotice.value = null
@@ -291,6 +302,17 @@ class MainViewModel @Inject constructor(
 
     fun loadReportDetails(id: UUID) {
         detail.loadReportDetails(id)
+    }
+
+    fun loadUserProfile(userId: UUID) {
+        userProfile.load(userId)
+    }
+
+    fun setUserProfileSortOrder(order: ReportSortOrder) {
+        userProfile.setSortOrder(order)
+    }
+    fun clearUserProfile() {
+        userProfile.clear()
     }
 
     fun loadMoreReports() {

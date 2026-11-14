@@ -74,6 +74,13 @@ internal fun RemoteReport.toReportDetailsEntity(
     authorAvatar = author?.avatarUrl?.let(resolveImageUrl)
 )
 
+/**
+ * Direct remote-to-domain mapping for scenarios that never touch the Room cache
+ * (the public user screen), so they do not have to build a cache row first.
+ */
+internal fun RemoteReport.toDomain(resolveImageUrl: (String) -> String): FishingReport =
+    toReportDetailsEntity(resolveImageUrl).toDomain()
+
 internal fun FishingDto.toMarkerEntity(fishNames: List<String>): MarkerEntity {
     return MarkerEntity(
         id = id,

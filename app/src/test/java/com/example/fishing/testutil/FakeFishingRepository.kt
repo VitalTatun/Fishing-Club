@@ -2,6 +2,7 @@ package com.example.fishing.testutil
 
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.HomeRefreshResult
+import com.example.fishing.data.report.UserProfileData
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
@@ -116,6 +117,17 @@ class FakeFishingRepository : FishingRepository {
     val getPhotoSignedUrlsRequests = mutableListOf<List<String>>()
 
     override fun getHomeReports(userId: UUID): Flow<List<FishingReport>> = _homeReports.asStateFlow()
+
+    var loadUserProfileCallCount = 0
+    var userProfileResult: Result<UserProfileData>? = null
+    var loadUserProfileGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun loadUserProfile(userId: UUID): Result<UserProfileData> {
+        loadUserProfileCallCount++
+        loadUserProfileGate?.await()
+        return userProfileResult
+            ?: Result.success(UserProfileData(user = null, reports = emptyList()))
+    }
 
     override suspend fun loadFavoriteReports(userId: UUID): List<FishingReport> {
         loadFavoriteReportsCallCount++

@@ -45,7 +45,8 @@ fun ReportHeader(
     likesCount: Int? = null,
     isLiked: Boolean = false,
     onToggleLike: (() -> Unit)? = null,
-    onPhotoClick: (Int) -> Unit = {}
+    onPhotoClick: (Int) -> Unit = {},
+    onUserClick: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -62,7 +63,8 @@ fun ReportHeader(
             modifier = Modifier.padding(horizontal = 16.dp),
             likesCount = likesCount,
             isLiked = isLiked,
-            onToggleLike = onToggleLike
+            onToggleLike = onToggleLike,
+            onUserClick = onUserClick
         )
     }
 }
@@ -126,10 +128,9 @@ fun UserInfoBlock(
     modifier: Modifier = Modifier,
     likesCount: Int? = null,
     isLiked: Boolean = false,
-    onToggleLike: (() -> Unit)? = null
+    onToggleLike: (() -> Unit)? = null,
+    onUserClick: (() -> Unit)? = null
 ) {
-    val dateFormatter = remember { SimpleDateFormat("d MMMM yyyy", Locale.forLanguageTag("ru")) }
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -137,43 +138,60 @@ fun UserInfoBlock(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            if (user.image.isNotBlank()) {
-                AsyncImage(
-                    model = user.image,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                .weight(1f)
+                .then(
+                    if (onUserClick != null) {
+                        Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable(onClick = onUserClick)
+                    } else {
+                        Modifier
+                    }
                 )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                .padding(vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                if (user.image.isNotBlank()) {
+                    AsyncImage(
+                        model = user.image,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = user.name.ifBlank { stringResource(R.string.fisherman) },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = user.name.ifBlank { stringResource(R.string.fisherman) },
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
 
         if (likesCount != null) {

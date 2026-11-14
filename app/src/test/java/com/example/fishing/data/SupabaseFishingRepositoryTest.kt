@@ -125,7 +125,8 @@ class SupabaseFishingRepositoryTest {
                 photoUrlProvider = photoUrlProvider,
                 ioDispatcher = mainDispatcherRule.testDispatcher
             ),
-            photoUrlProvider = photoUrlProvider
+            photoUrlProvider = photoUrlProvider,
+            userReportsStore = mockk(relaxed = true)
         )
     }
 
