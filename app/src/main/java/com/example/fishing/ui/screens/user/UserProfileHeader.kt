@@ -20,8 +20,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+
+/** Figma: 60dp in the page header, matching Material's small avatar. */
+val HeaderAvatarSize = 60.dp
+
+/** Figma: the avatar shrinks to 32dp once it moves into the app bar. */
+val AppBarAvatarSize = 32.dp
 
 /**
  * First block of the user page: avatar and name. Statistics live in
@@ -37,30 +44,11 @@ fun UserProfileHeader(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape)
-                .background(AvatarPlaceholder)
-        ) {
-            if (avatarUrl.isNotBlank()) {
-                AsyncImage(
-                    model = avatarUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(32.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        UserAvatar(
+            avatarUrl = avatarUrl,
+            size = HeaderAvatarSize,
+            iconSize = 32.dp
+        )
 
         Text(
             text = userName,
@@ -69,6 +57,43 @@ fun UserProfileHeader(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+/**
+ * Round avatar with a person icon fallback. Shared by the page header and the
+ * collapsed app bar so both states stay visually identical apart from size.
+ */
+@Composable
+fun UserAvatar(
+    avatarUrl: String,
+    size: Dp,
+    iconSize: Dp,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(AvatarPlaceholder)
+    ) {
+        if (avatarUrl.isNotBlank()) {
+            AsyncImage(
+                model = avatarUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(iconSize),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

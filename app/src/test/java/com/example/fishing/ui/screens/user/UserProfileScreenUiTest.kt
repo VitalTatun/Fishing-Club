@@ -2,10 +2,12 @@ package com.example.fishing.ui.screens.user
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingPhoto
 import com.example.fishing.model.FishingMethod
@@ -17,6 +19,7 @@ import com.example.fishing.model.Water
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.UserProfileUiState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -45,6 +48,10 @@ class UserProfileScreenUiTest {
     private val sortOrders = mutableListOf<ReportSortOrder>()
     private var retries = 0
     private val openedReports = mutableListOf<UUID>()
+
+    private companion object {
+        const val AUTHOR_NAME = "Никита Белозерцев"
+    }
 
     private fun report(
         id: UUID = UUID.randomUUID(),
@@ -161,6 +168,45 @@ class UserProfileScreenUiTest {
 
         composeRule.onNodeWithText("По дате добавления").assertDoesNotExist()
         assertTrue(sortOrders.isEmpty())
+    }
+
+    @Test
+    fun `collapsed app bar shows the author once the header scrolls away`() {
+        setScreen(success(reports = List(10) { report() }))
+
+        // At rest the name belongs to the scrolling page header.
+        assertFalse(authorNameIsInAppBar())
+
+        composeRule.onNode(hasScrollAction()).performScrollToIndex(2)
+        composeRule.waitForIdle()
+
+        // The page header is gone; the compact title in the app bar replaces it.
+        composeRule.onNodeWithText(AUTHOR_NAME).assertExists()
+        assertTrue(authorNameIsInAppBar())
+    }
+
+    @Test
+    fun `scrolling back returns the name to the page header`() {
+        setScreen(success(reports = List(10) { report() }))
+
+        composeRule.onNode(hasScrollAction()).performScrollToIndex(2)
+        composeRule.waitForIdle()
+        assertTrue(authorNameIsInAppBar())
+
+        composeRule.onNode(hasScrollAction()).performScrollToIndex(0)
+        composeRule.waitForIdle()
+
+        assertFalse(authorNameIsInAppBar())
+    }
+
+    /** The app bar name sits next to the back arrow, the page header one much lower. */
+    private fun authorNameIsInAppBar(): Boolean {
+        val nameBounds = composeRule.onNodeWithText(AUTHOR_NAME).fetchSemanticsNode().boundsInRoot
+        val backBounds = composeRule
+            .onNodeWithContentDescription("Назад")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        return nameBounds.center.y < backBounds.bottom
     }
 
     @Test
