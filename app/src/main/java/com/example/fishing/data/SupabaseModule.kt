@@ -1,6 +1,10 @@
 package com.example.fishing.data
 
 import android.content.Context
+import com.example.fishing.data.auth.EncryptedSessionManager
+import com.example.fishing.data.auth.KeystoreSessionCipher
+import com.example.fishing.data.auth.SharedPreferencesLegacySessionStore
+import com.example.fishing.data.auth.legacyPlaintextSessionKey
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -40,7 +44,23 @@ object SupabaseModule {
                     cache(cache)
                 }
             }
-            install(Auth)
+            install(Auth) {
+                // AUD-11: supabase-kt keeps the session in plain
+                // SharedPreferences by default. Use an encrypted file in
+                // noBackupFilesDir (Keystore-backed AES-GCM) and migrate the
+                // old plaintext entry away on first load.
+                sessionManager = EncryptedSessionManager(
+                    file = File(context.noBackupFilesDir, "auth/session.bin"),
+                    cipher = KeystoreSessionCipher(),
+                    legacyStore = SharedPreferencesLegacySessionStore(
+                        preferences = context.getSharedPreferences(
+                            "${context.packageName}_preferences",
+                            Context.MODE_PRIVATE
+                        ),
+                        key = legacyPlaintextSessionKey(SupabaseConfig.URL)
+                    )
+                )
+            }
             install(Postgrest)
             install(Storage)
         }

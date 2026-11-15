@@ -75,12 +75,16 @@ internal data class PendingFishPayload(
     val count: Int
 )
 
+/**
+ * Author snapshot of a pending report. The e-mail is deliberately not stored:
+ * upload only needs id, name and avatar, and the queue lives in plaintext Room
+ * on the device.
+ */
 @Serializable
 internal data class PendingUserPayload(
     @Serializable(with = UuidSerializer::class) val id: UUID,
     val image: String,
-    val name: String,
-    val email: String
+    val name: String
 )
 
 /** Encodes reports for [com.example.fishing.data.local.entity.PendingReportUploadEntity]. */
@@ -134,8 +138,7 @@ private fun FishingReport.toPayload(): PendingReportPayload = PendingReportPaylo
     user = PendingUserPayload(
         id = user.id,
         image = user.image,
-        name = user.name,
-        email = user.email
+        name = user.name
     ),
     fishingFromTheShore = fishingFromTheShore,
     isPublic = isPublic,
@@ -170,7 +173,7 @@ private fun PendingReportPayload.toDomain(): FishingReport = FishingReport(
         id = user.id,
         image = user.image,
         name = user.name,
-        email = user.email
+        email = ""
     ),
     fishingFromTheShore = fishingFromTheShore,
     isPublic = isPublic,

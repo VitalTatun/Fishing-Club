@@ -96,10 +96,34 @@ class PendingReportPayloadCodecTest {
         assertEquals(original.fishingMethod, decoded.fishingMethod)
         assertEquals(original.bait, decoded.bait)
         assertEquals(original.comment, decoded.comment)
-        assertEquals(original.user, decoded.user)
+        assertEquals(original.user.id, decoded.user.id)
+        assertEquals(original.user.name, decoded.user.name)
+        assertEquals(original.user.image, decoded.user.image)
         assertEquals(original.fishingFromTheShore, decoded.fishingFromTheShore)
         assertEquals(original.isPublic, decoded.isPublic)
         assertEquals(original.createdAt, decoded.createdAt)
+    }
+
+    @Test
+    fun `pending payload does not persist the author email`() {
+        val raw = codec.encode(report())
+
+        assertTrue(!raw.contains("ivan@example.com"))
+        assertTrue(!raw.contains("\"email\""))
+        assertEquals("", codec.decode(raw).user.email)
+    }
+
+    @Test
+    fun `payload written by an older build with email still decodes`() {
+        val legacy = codec.encode(report()).replace(
+            """"name":"Иван"}""",
+            """"name":"Иван","email":"ivan@example.com"}"""
+        )
+
+        val decoded = codec.decode(legacy)
+
+        assertEquals("Иван", decoded.user.name)
+        assertEquals("", decoded.user.email)
     }
 
     @Test
