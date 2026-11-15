@@ -2,6 +2,7 @@ package com.example.fishing.testutil
 
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.HomeRefreshResult
+import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.data.report.UserProfileData
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
@@ -121,6 +122,29 @@ class FakeFishingRepository : FishingRepository {
     var loadUserProfileCallCount = 0
     var userProfileResult: Result<UserProfileData>? = null
     var loadUserProfileGate: CompletableDeferred<Unit>? = null
+
+    var refreshReportDetailsCallCount = 0
+    var refreshReportDetailsResult: ReportRefreshResult? = null
+    var refreshReportDetailsException: Exception? = null
+
+    /**
+     * Mirrors the real store: an explicit [ReportRefreshResult.Missing] drops the
+     * cached report so the UI cannot be handed stale data again.
+     */
+    override suspend fun refreshReportDetails(id: UUID): ReportRefreshResult {
+        refreshReportDetailsCallCount++
+        refreshReportDetailsException?.let { throw it }
+        val result = refreshReportDetailsResult
+            ?: if (_reportDetails.value?.id == id) {
+                ReportRefreshResult.Found
+            } else {
+                ReportRefreshResult.Missing
+            }
+        if (result == ReportRefreshResult.Missing && _reportDetails.value?.id == id) {
+            _reportDetails.value = null
+        }
+        return result
+    }
 
     override suspend fun loadUserProfile(userId: UUID): Result<UserProfileData> {
         loadUserProfileCallCount++

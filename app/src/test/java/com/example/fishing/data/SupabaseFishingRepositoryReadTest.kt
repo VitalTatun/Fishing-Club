@@ -6,6 +6,7 @@ import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.report.RemoteReport
 import com.example.fishing.data.report.RemoteReportPage
+import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.data.report.ReportRemoteQueries
 import com.example.fishing.data.report.RoomHomeFeedStore
 import com.example.fishing.data.report.RoomMarkerStore
@@ -82,6 +83,7 @@ class SupabaseFishingRepositoryReadTest {
                 reportRemoteQueries = queries,
                 likesStore = likesStore,
                 reportDetailsDao = db.reportDetailsDao(),
+                markerDao = db.markerDao(),
                 database = db,
                 authRepository = auth
             ),
@@ -191,7 +193,7 @@ class SupabaseFishingRepositoryReadTest {
             val id = UUID.randomUUID()
             queries.reportsById[id] = remoteReport(id)
 
-            assertTrue(repository.refreshReportDetails(id))
+            assertEquals(ReportRefreshResult.Found, repository.refreshReportDetails(id))
 
             assertEquals(id, db.reportDetailsDao().getByIdOneShot(id)?.id)
         }
@@ -201,9 +203,39 @@ class SupabaseFishingRepositoryReadTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val id = UUID.randomUUID()
 
-            assertFalse(repository.refreshReportDetails(id))
+            assertEquals(ReportRefreshResult.Missing, repository.refreshReportDetails(id))
 
             assertEquals(null, db.reportDetailsDao().getByIdOneShot(id))
+        }
+
+    @Test
+    fun `refreshReportDetails drops a cached report that was hidden on the server`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val id = UUID.randomUUID()
+            queries.reportsById[id] = remoteReport(id)
+            assertEquals(ReportRefreshResult.Found, repository.refreshReportDetails(id))
+            db.markerDao().insertAll(listOf(marker(id)))
+            assertEquals(id, db.reportDetailsDao().getByIdOneShot(id)?.id)
+
+            // The report became private or was deleted: RLS no longer returns it.
+            queries.reportsById.remove(id)
+
+            assertEquals(ReportRefreshResult.Missing, repository.refreshReportDetails(id))
+            assertEquals(null, db.reportDetailsDao().getByIdOneShot(id))
+            assertTrue(db.markerDao().getVisibleForUser(user.id).first().isEmpty())
+        }
+
+    @Test
+    fun `refreshReportDetails keeps the cache without a session`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val id = UUID.randomUUID()
+            queries.reportsById[id] = remoteReport(id)
+            assertEquals(ReportRefreshResult.Found, repository.refreshReportDetails(id))
+            auth.sessionUser = null
+
+            assertEquals(ReportRefreshResult.NoSession, repository.refreshReportDetails(id))
+
+            assertEquals(id, db.reportDetailsDao().getByIdOneShot(id)?.id)
         }
 
     @Test

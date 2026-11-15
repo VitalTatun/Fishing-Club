@@ -2,7 +2,7 @@ package com.example.fishing.viewmodel.detail
 
 import com.example.fishing.data.ErrorMapper
 import com.example.fishing.data.FishingRepository
-import com.example.fishing.data.SupabaseFishingRepository
+import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.viewmodel.ReportDetailUiState
 import com.example.fishing.viewmodel.photos.PhotoUrlResolver
 import kotlinx.coroutines.CancellationException
@@ -51,6 +51,13 @@ class ReportDetailCoordinator(
     private var visibilityJob: Job? = null
     private var detailPhotosVersion = 0
 
+    /**
+     * Set when the server authoritatively answered "no such report". From that
+     * point Room must not publish the (now deleted) cached row back into the UI,
+     * even if an emission was already in flight.
+     */
+    private var detailUnavailable = false
+
     fun loadReportDetails(id: UUID) {
         reportDetailsJob?.cancel()
         _deleteReportError.value = null
@@ -58,6 +65,7 @@ class ReportDetailCoordinator(
         // user left the screen before the snackbar finished.
         _visibilityError.value = null
         _visibilityResult.value = null
+        detailUnavailable = false
         _reportDetailUiState.value = ReportDetailUiState.Loading
 
         reportDetailsJob = scope.launch {
@@ -65,7 +73,7 @@ class ReportDetailCoordinator(
             launch {
                 try {
                     repository.getReportDetails(id).collect { report ->
-                        if (report != null) {
+                        if (report != null && !detailUnavailable) {
                             // Render immediately with raw paths, then swap in signed
                             // URLs. Network work never blocks the Room collector.
                             _reportDetailUiState.value = ReportDetailUiState.Success(
@@ -86,7 +94,9 @@ class ReportDetailCoordinator(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    if (_reportDetailUiState.value !is ReportDetailUiState.Success) {
+                    if (!detailUnavailable &&
+                        _reportDetailUiState.value !is ReportDetailUiState.Success
+                    ) {
                         _reportDetailUiState.value = reportDetailError(id, e)
                     }
                 }
@@ -94,14 +104,23 @@ class ReportDetailCoordinator(
             // Authoritative network refresh: it knows whether the report actually exists,
             // so Empty can be decided without racing Room's async emission.
             try {
-                val found = repository is SupabaseFishingRepository &&
-                    repository.refreshReportDetails(id)
-                if (!found && _reportDetailUiState.value == ReportDetailUiState.Loading) {
-                    _reportDetailUiState.value = ReportDetailUiState.Empty(id)
+                when (repository.refreshReportDetails(id)) {
+                    ReportRefreshResult.Found -> Unit
+                    ReportRefreshResult.Missing -> {
+                        // The store already deleted the cached row and marker. Drop
+                        // an in-flight photo resolution so it cannot overwrite Empty.
+                        detailUnavailable = true
+                        detailPhotosVersion++
+                        _reportDetailUiState.value = ReportDetailUiState.Empty(id)
+                    }
+                    // No session: the server was never asked, so cached data stays.
+                    ReportRefreshResult.NoSession -> Unit
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                // Network failure: keep the cached report on screen instead of
+                // treating "cannot reach the server" as "the report is gone".
                 if (_reportDetailUiState.value !is ReportDetailUiState.Success) {
                     _reportDetailUiState.value = reportDetailError(id, e)
                 }
@@ -187,6 +206,7 @@ class ReportDetailCoordinator(
         _visibilityError.value = null
         _visibilityResult.value = null
         detailPhotosVersion++
+        detailUnavailable = false
     }
 
     private fun reportDetailError(id: UUID, e: Exception): ReportDetailUiState.Error {

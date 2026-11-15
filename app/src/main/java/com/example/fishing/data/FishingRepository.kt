@@ -3,6 +3,7 @@ package com.example.fishing.data
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
+import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.data.report.UserProfileData
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -46,6 +47,14 @@ interface FishingRepository {
     suspend fun refreshFavoriteIds(userId: UUID)
     fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
+
+    /**
+     * Authoritative "does this report still exist for me" refresh. Unlike the
+     * cached [getReportDetails] flow, it can decide that the report is gone and
+     * remove the local copy; network errors are thrown instead of answering.
+     */
+    suspend fun refreshReportDetails(id: UUID): ReportRefreshResult
+
     /** Loads the first page of home reports, replacing the cache. */
     suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult
     /** Appends the next page of home reports. Returns whether more pages exist. */
@@ -108,6 +117,13 @@ class MockFishingRepository : FishingRepository {
         delay(1000)
         emit(reports.firstOrNull { it.id == id })
     }
+
+    override suspend fun refreshReportDetails(id: UUID): ReportRefreshResult =
+        if (reports.any { it.id == id }) {
+            ReportRefreshResult.Found
+        } else {
+            ReportRefreshResult.Missing
+        }
 
     override suspend fun saveReport(
         report: FishingReport,

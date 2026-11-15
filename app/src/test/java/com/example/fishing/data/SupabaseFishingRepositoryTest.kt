@@ -96,6 +96,7 @@ class SupabaseFishingRepositoryTest {
                 reportRemoteQueries = queries,
                 likesStore = likesStore,
                 reportDetailsDao = db.reportDetailsDao(),
+                markerDao = db.markerDao(),
                 database = db,
                 authRepository = auth
             ),

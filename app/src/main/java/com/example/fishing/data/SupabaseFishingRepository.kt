@@ -6,6 +6,7 @@ import com.example.fishing.data.report.LikesStore
 import com.example.fishing.data.report.MarkerStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportDetailsStore
+import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.data.report.ReportWriter
 import com.example.fishing.data.report.UserProfileData
 import com.example.fishing.data.report.UserReportsStore
@@ -56,6 +57,9 @@ class SupabaseFishingRepository @Inject constructor(
     override fun getReportDetails(id: UUID): Flow<FishingReport?> =
         reportDetailsStore.getReportDetails(id)
 
+    override suspend fun refreshReportDetails(id: UUID): ReportRefreshResult =
+        reportDetailsStore.refreshReportDetails(id)
+
     override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult =
         homeFeedStore.refreshHomeReports(userId)
 
@@ -100,11 +104,4 @@ class SupabaseFishingRepository @Inject constructor(
         likesStore.getLikeStates(userId)
 
     override suspend fun refreshLikes(userId: UUID) = likesStore.refreshLikes(userId)
-
-    /**
-     * Not part of [FishingRepository] yet: used by the detail screen to learn
-     * whether the report still exists on the server.
-     */
-    suspend fun refreshReportDetails(id: UUID): Boolean =
-        reportDetailsStore.refreshReportDetails(id)
 }

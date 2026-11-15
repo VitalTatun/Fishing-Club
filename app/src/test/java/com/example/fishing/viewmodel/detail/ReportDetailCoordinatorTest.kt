@@ -1,5 +1,6 @@
 package com.example.fishing.viewmodel.detail
 
+import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.testReport
 import com.example.fishing.viewmodel.ReportDetailUiState
@@ -52,6 +53,74 @@ class ReportDetailCoordinatorTest {
 
         assertEquals(ReportDetailUiState.Empty(missingId), coordinator.reportDetailUiState.value)
     }
+
+    @Test
+    fun `cached report hidden on the server resolves to empty`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val repository = FakeFishingRepository()
+            val report = testReport()
+            repository.reportDetailsValue = report
+            // Room still has the row, but the authoritative answer is "no".
+            repository.refreshReportDetailsResult = ReportRefreshResult.Missing
+            val coordinator = ReportDetailCoordinator(
+                repository = repository,
+                photoUrls = PhotoUrlResolver(repository),
+                scope = backgroundScope
+            )
+
+            coordinator.loadReportDetails(report.id)
+            advanceUntilIdle()
+
+            assertEquals(1, repository.refreshReportDetailsCallCount)
+            assertNull(repository.reportDetailsValue)
+            assertEquals(
+                ReportDetailUiState.Empty(report.id),
+                coordinator.reportDetailUiState.value
+            )
+        }
+
+    @Test
+    fun `network failure keeps the cached report on screen`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val repository = FakeFishingRepository()
+            val report = testReport()
+            repository.reportDetailsValue = report
+            repository.refreshReportDetailsException = RuntimeException("offline")
+            val coordinator = ReportDetailCoordinator(
+                repository = repository,
+                photoUrls = PhotoUrlResolver(repository),
+                scope = backgroundScope
+            )
+
+            coordinator.loadReportDetails(report.id)
+            advanceUntilIdle()
+
+            val state = coordinator.reportDetailUiState.value
+            assertTrue(state is ReportDetailUiState.Success)
+            assertEquals(report.id, (state as ReportDetailUiState.Success).report.id)
+            assertEquals(report.id, repository.reportDetailsValue?.id)
+        }
+
+    @Test
+    fun `no session keeps the cached report on screen`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val repository = FakeFishingRepository()
+            val report = testReport()
+            repository.reportDetailsValue = report
+            repository.refreshReportDetailsResult = ReportRefreshResult.NoSession
+            val coordinator = ReportDetailCoordinator(
+                repository = repository,
+                photoUrls = PhotoUrlResolver(repository),
+                scope = backgroundScope
+            )
+
+            coordinator.loadReportDetails(report.id)
+            advanceUntilIdle()
+
+            val state = coordinator.reportDetailUiState.value
+            assertTrue(state is ReportDetailUiState.Success)
+            assertEquals(report.id, repository.reportDetailsValue?.id)
+        }
 
     @Test
     fun `delete success publishes the deleted id`() = runTest(UnconfinedTestDispatcher()) {
