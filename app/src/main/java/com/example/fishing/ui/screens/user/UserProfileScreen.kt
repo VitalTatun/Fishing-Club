@@ -44,8 +44,6 @@ import java.time.Instant
 import java.util.UUID
 
 /** Figma "Экран профиля пользователя" (4158:6583). */
-private val ScreenBackground = Color(0xFFF9FAFE)
-
 /**
  * Scroll distance after which the page header is considered hidden: the avatar,
  * the gap below it and a little of the first name line.
@@ -100,7 +98,6 @@ fun UserProfileScreen(
 
     Scaffold(
         modifier = modifier,
-        containerColor = ScreenBackground,
         topBar = {
             UserProfileTopBar(
                 userName = userName,
@@ -181,10 +178,7 @@ private fun UserProfileTopBar(
                     contentDescription = stringResource(R.string.back)
                 )
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = ScreenBackground
-        )
+        }
     )
 }
 
