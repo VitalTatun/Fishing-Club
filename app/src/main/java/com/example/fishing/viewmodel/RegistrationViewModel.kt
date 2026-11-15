@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthErrorMapper
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.EmailValidator
+import com.example.fishing.data.PasswordPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,7 +73,7 @@ class RegistrationViewModel @Inject constructor(
         if (email.isBlank()) return "Введите email"
         if (!EmailValidator.isValid(email)) return "Некорректный формат email"
         if (password.isBlank()) return "Введите пароль"
-        if (password.length < 6) return "Пароль должен быть минимум 6 символов"
+        PasswordPolicy.validate(password)?.let { return it }
         if (password != confirmPassword) return "Пароли не совпадают"
         return null
     }

@@ -15,8 +15,34 @@ object ErrorMapper {
             msg.contains("User already registered", ignoreCase = true) ->
                 "Этот email уже зарегистрирован"
 
+            // Both current-password errors share the same server message and
+            // differ only by code, so the code has to be checked first.
+            msg.contains("current_password_mismatch", ignoreCase = true) ->
+                "Неверный текущий пароль"
+
+            msg.contains("current_password_required", ignoreCase = true) ||
+            msg.contains("Current password required", ignoreCase = true) ->
+                "Введите текущий пароль"
+
+            msg.contains("should be different from the old password", ignoreCase = true) ||
+            msg.contains("same_password", ignoreCase = true) ->
+                "Новый пароль должен отличаться от текущего"
+
+            msg.contains("requires reauthentication", ignoreCase = true) ||
+            msg.contains("reauthentication_needed", ignoreCase = true) ->
+                "Сессия слишком старая для смены пароля. Войдите в аккаунт заново"
+
+            msg.contains("should contain at least one character", ignoreCase = true) ->
+                "Пароль должен содержать строчную и заглавную буквы и цифру"
+
+            // The server owns the threshold: read the actual number from its
+            // message instead of assuming a fixed minimum (AUD-03).
             msg.contains("Password should be at least", ignoreCase = true) ->
-                "Пароль должен быть минимум 6 символов"
+                "Пароль должен быть минимум ${minLengthFrom(msg)} символов"
+
+            msg.contains("known to be weak", ignoreCase = true) ||
+            msg.contains("easy to guess", ignoreCase = true) ->
+                "Пароль слишком простой. Придумайте другой"
 
             msg.contains("rate limit", ignoreCase = true) ||
             msg.contains("429", ignoreCase = true) ->
@@ -40,6 +66,10 @@ object ErrorMapper {
 
             msg.contains("Photo file not found", ignoreCase = true) ->
                 "Фото было удалено, выберите его заново"
+
+            msg.contains("Auth session missing", ignoreCase = true) ||
+            msg.contains("session_not_found", ignoreCase = true) ->
+                "Сессия истекла. Войдите в аккаунт ещё раз"
 
             msg.contains("Not authenticated", ignoreCase = true) ->
                 "Сессия истекла. Войдите в аккаунт ещё раз"
@@ -65,7 +95,26 @@ object ErrorMapper {
             msg.contains("Not found", ignoreCase = true) ->
                 "Запрашиваемый ресурс не найден"
 
-            else -> e.message?.takeIf { it.isNotBlank() } ?: "Произошла неизвестная ошибка"
+            else -> fallbackMessage(msg)
         }
     }
+
+    /**
+     * RestException appends the request URL, headers and HTTP method to the
+     * message. Those details must never reach the UI, so an unmapped server
+     * error is replaced with a short generic text.
+     */
+    private fun fallbackMessage(message: String): String =
+        when {
+            message.isBlank() -> "Произошла неизвестная ошибка"
+            message.contains("URL:") || message.contains("Http Method:") ->
+                "Не удалось выполнить действие. Попробуйте позже"
+            else -> message
+        }
+
+    private val MIN_LENGTH_PATTERN = Regex("""at least (\d+)""", RegexOption.IGNORE_CASE)
+
+    private fun minLengthFrom(message: String): Int =
+        MIN_LENGTH_PATTERN.find(message)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: PasswordPolicy.MIN_LENGTH
 }

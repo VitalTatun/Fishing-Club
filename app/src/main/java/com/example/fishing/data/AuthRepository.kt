@@ -14,8 +14,13 @@ interface AuthRepository {
     suspend fun loadSession()
     suspend fun updateProfile(name: String, imageUri: String?): Result<User>
 
-    /** Updates the password of the signed-in account. */
-    suspend fun changePassword(newPassword: String): Result<Unit>
+    /**
+     * Updates the password of the signed-in account.
+     *
+     * The Supabase project requires the current password before setting a new
+     * one, so it is verified on the server as part of the same request.
+     */
+    suspend fun changePassword(newPassword: String, currentPassword: String): Result<Unit>
 
     /**
      * Deletes the signed-in account on the server and clears its local data.

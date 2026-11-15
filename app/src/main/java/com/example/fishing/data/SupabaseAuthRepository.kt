@@ -10,10 +10,13 @@ import com.example.fishing.data.local.dao.LikeDao
 import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.cleanup.MarkerCacheCleaner
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.annotations.SupabaseInternal
+import io.github.jan.supabase.auth.api.authenticatedSupabaseApi
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
+import io.github.jan.supabase.auth.user.UserUpdateBuilder
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
 import com.example.fishing.data.supabase.ProfileDto
@@ -148,16 +151,34 @@ class SupabaseAuthRepository @Inject constructor(
         }
     }
 
-    override suspend fun changePassword(newPassword: String): Result<Unit> {
+    override suspend fun changePassword(
+        newPassword: String,
+        currentPassword: String
+    ): Result<Unit> {
         return try {
-            supabase.auth.updateUser {
-                password = newPassword
-            }
+            updatePassword(newPassword, currentPassword)
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("SupabaseAuth", "Password change failed: ${e.message}")
             Result.failure(e)
         }
+    }
+
+    /**
+     * supabase-kt 3.6 serializes [UserUpdateBuilder.currentPassword] as
+     * `currentPassword` (the field has no `@SerialName`), while GoTrue reads
+     * `current_password`. With the project's "require current password"
+     * setting the SDK call therefore always fails with
+     * `current_password_required`.
+     *
+     * This mirrors `AuthImpl.updateUser` with the correct JSON key. Replace it
+     * with `supabase.auth.updateUser { ... }` once the SDK fixes the field.
+     */
+    @OptIn(SupabaseInternal::class)
+    private suspend fun updatePassword(newPassword: String, currentPassword: String) {
+        supabase
+            .authenticatedSupabaseApi(supabase.auth)
+            .putJson("user", passwordUpdateBody(newPassword, currentPassword))
     }
 
     override suspend fun deleteAccount(): Result<Unit> {
@@ -286,3 +307,13 @@ class SupabaseAuthRepository @Inject constructor(
         )
     }
 }
+
+/**
+ * GoTrue expects the `current_password` key, not the SDK's `currentPassword`.
+ * Extracted so a unit test can guard the wire format (AUD-03).
+ */
+internal fun passwordUpdateBody(newPassword: String, currentPassword: String): String =
+    buildJsonObject {
+        put("password", newPassword)
+        put("current_password", currentPassword)
+    }.toString()

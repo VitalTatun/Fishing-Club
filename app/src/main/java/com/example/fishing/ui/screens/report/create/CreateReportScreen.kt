@@ -489,7 +489,7 @@ private fun CreateReportScreenPreview() {
                     override fun currentUser(): User? = null
                     override suspend fun loadSession() {}
                     override suspend fun updateProfile(name: String, imageUri: String?): Result<User> = Result.failure(Exception("mock"))
-                    override suspend fun changePassword(newPassword: String): Result<Unit> = Result.failure(Exception("mock"))
+                    override suspend fun changePassword(newPassword: String, currentPassword: String): Result<Unit> = Result.failure(Exception("mock"))
                     override suspend fun deleteAccount(): Result<Unit> = Result.failure(Exception("mock"))
                     override fun resolveImageUrl(path: String): String = ""
                 },

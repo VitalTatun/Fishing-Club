@@ -49,6 +49,7 @@ class FakeAuthRepository : AuthRepository {
     var lastUpdateProfileImage: String? = null
     var changePasswordCalls = 0
     var lastChangedPassword: String? = null
+    var lastCurrentPassword: String? = null
     var deleteAccountCalls = 0
 
     override suspend fun login(email: String, password: String): Result<User> {
@@ -86,9 +87,10 @@ class FakeAuthRepository : AuthRepository {
         return updateProfileResult
     }
 
-    override suspend fun changePassword(newPassword: String): Result<Unit> {
+    override suspend fun changePassword(newPassword: String, currentPassword: String): Result<Unit> {
         changePasswordCalls++
         lastChangedPassword = newPassword
+        lastCurrentPassword = currentPassword
         return changePasswordResult
     }
 

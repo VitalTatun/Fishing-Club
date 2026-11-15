@@ -120,10 +120,19 @@ JUnit XML: `app/build/test-results/testDebugUnitTest/`.
 
 `app/src/test/java/com/example/fishing/ui/screens/profile/ChangePasswordScreenUiTest.kt`
 
-- отображение двух полей и недоступная кнопка «Сохранить» до заполнения;
+- отображение трёх полей (текущий, новый, повтор) и недоступная кнопка «Сохранить» до заполнения;
+- живой чек-лист требований к паролю (10 символов, строчная, заглавная, цифра);
 - отправка введённых паролей;
 - показ ошибки валидации;
+- переключение видимости пароля;
 - блокировка back во время запроса.
+
+### `PasswordUpdateBodyTest`
+
+`app/src/test/java/com/example/fishing/data/PasswordUpdateBodyTest.kt`
+
+- тело смены пароля отправляет `current_password` (обход бага supabase-kt с `currentPassword`);
+- нового ключа `currentPassword` в теле нет.
 
 ## Fakes и изоляция от Supabase
 

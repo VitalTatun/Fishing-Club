@@ -28,8 +28,8 @@ class RegistrationViewModelTest {
     private fun fillValidForm(viewModel: RegistrationViewModel) {
         viewModel.name = "Иван"
         viewModel.email = "new@example.com"
-        viewModel.password = "password123"
-        viewModel.confirmPassword = "password123"
+        viewModel.password = "Password123"
+        viewModel.confirmPassword = "Password123"
     }
 
     @Test
@@ -124,7 +124,26 @@ class RegistrationViewModelTest {
             advanceUntilIdle()
 
             assertEquals(
-                RegistrationResult.Error("Пароль должен быть минимум 6 символов"),
+                RegistrationResult.Error("Пароль должен быть минимум 10 символов"),
+                viewModel.result.value
+            )
+            assertEquals(0, repository.registerCalls)
+        }
+
+    @Test
+    fun `register with password without a digit shows validation error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val repository = FakeAuthRepository()
+            val viewModel = RegistrationViewModel(repository)
+            fillValidForm(viewModel)
+            viewModel.password = "PasswordAbc"
+            viewModel.confirmPassword = "PasswordAbc"
+
+            viewModel.register()
+            advanceUntilIdle()
+
+            assertEquals(
+                RegistrationResult.Error("Пароль должен содержать цифру"),
                 viewModel.result.value
             )
             assertEquals(0, repository.registerCalls)

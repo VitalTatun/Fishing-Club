@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.ErrorMapper
+import com.example.fishing.data.PasswordPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,27 +27,37 @@ class ChangePasswordViewModel @Inject constructor(
     private val _success = MutableStateFlow(false)
     val success: StateFlow<Boolean> = _success.asStateFlow()
 
-    fun changePassword(newPassword: String, confirmPassword: String) {
+    fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        confirmPassword: String
+    ) {
         if (_isLoading.value) return
 
         _error.value = null
         _success.value = false
 
-        when {
-            newPassword.length < MIN_PASSWORD_LENGTH -> {
-                _error.value = "Пароль должен быть минимум $MIN_PASSWORD_LENGTH символов"
-                return
-            }
-            newPassword != confirmPassword -> {
-                _error.value = "Пароли не совпадают"
-                return
-            }
+        if (currentPassword.isBlank()) {
+            _error.value = "Введите текущий пароль"
+            return
+        }
+        PasswordPolicy.validate(newPassword)?.let { validationError ->
+            _error.value = validationError
+            return
+        }
+        if (newPassword != confirmPassword) {
+            _error.value = "Пароли не совпадают"
+            return
+        }
+        if (newPassword == currentPassword) {
+            _error.value = "Новый пароль должен отличаться от текущего"
+            return
         }
 
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                authRepository.changePassword(newPassword)
+                authRepository.changePassword(newPassword, currentPassword)
                     .onSuccess { _success.value = true }
                     .onFailure { e ->
                         _error.value = ErrorMapper.toUserFriendlyMessage(e)
@@ -63,9 +74,5 @@ class ChangePasswordViewModel @Inject constructor(
 
     fun consumeSuccess() {
         _success.value = false
-    }
-
-    private companion object {
-        const val MIN_PASSWORD_LENGTH = 6
     }
 }

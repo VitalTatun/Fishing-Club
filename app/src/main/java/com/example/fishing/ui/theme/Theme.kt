@@ -25,21 +25,24 @@ data class FishingCustomColors(
     val trophyYellow: Color = Color.Unspecified,
     val bookmarkRed: Color = Color.Unspecified,
     val textOnTrophy: Color = Color.Unspecified,
-    val secondaryBackground: Color = Color.Unspecified
+    val secondaryBackground: Color = Color.Unspecified,
+    val success: Color = Color.Unspecified
 )
 
 val LightCustomColors = FishingCustomColors(
     trophyYellow = Color(0xFFFFD71D),
     bookmarkRed = Color(0xFFFF3E00),
     textOnTrophy = Color(0xFF50250A),
-    secondaryBackground = Color(0xFFF2F3F4)
+    secondaryBackground = Color(0xFFF2F3F4),
+    success = Color(0xFF2E7D32)
 )
 
 val DarkCustomColors = FishingCustomColors(
     trophyYellow = Color(0xFFFFE04D),
     bookmarkRed = Color(0xFFFF521A),
     textOnTrophy = Color(0xFF331706),
-    secondaryBackground = Color(0xFF1E1F25)
+    secondaryBackground = Color(0xFF1E1F25),
+    success = Color(0xFF81C784)
 )
 
 val LocalFishingCustomColors = staticCompositionLocalOf { FishingCustomColors() }
