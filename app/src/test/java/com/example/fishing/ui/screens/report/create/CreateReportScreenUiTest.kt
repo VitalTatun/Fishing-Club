@@ -2,6 +2,7 @@ package com.example.fishing.ui.screens.report.create
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
@@ -12,6 +13,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.SavedStateHandle
+import com.example.fishing.R
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
@@ -33,7 +36,9 @@ import org.junit.runner.RunWith
 import org.osmdroid.util.GeoPoint
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
+import java.io.FileNotFoundException
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
@@ -294,5 +299,48 @@ class CreateReportScreenUiTest {
         composeRule.waitForIdle()
 
         assertEquals(1, backClicks)
+    }
+
+    @Test
+    fun `restored photos warning is actually displayed`() {
+        val missingUri = Uri.parse("content://missing/photo_${UUID.randomUUID()}.jpg")
+        Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(missingUri) {
+            throw FileNotFoundException("grant revoked")
+        }
+        val handle = SavedStateHandle(
+            mapOf(
+                "form_photo_entries" to arrayListOf("${UUID.randomUUID()}\u001F$missingUri")
+            )
+        )
+        val restoredViewModel = CreateReportViewModel(
+            repository = fishingRepository,
+            authRepository = authRepository,
+            reportUploadQueue = uploadQueue,
+            context = context,
+            ioDispatcher = Dispatchers.Unconfined,
+            savedStateHandle = handle
+        )
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            restoredViewModel.restoredPhotosLost == 1
+        }
+
+        // Keep the virtual clock from skipping past the snackbar duration while
+        // the assertion runs.
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            CompositionLocalProvider(LocalInspectionMode provides true) {
+                FishingTheme(darkTheme = false, dynamicColor = false) {
+                    CreateReportScreen(
+                        viewModel = restoredViewModel,
+                        onBackClick = {},
+                        onSaveComplete = {}
+                    )
+                }
+            }
+        }
+        composeRule.mainClock.advanceTimeBy(1_000)
+
+        val warning = context.getString(R.string.restored_photos_lost, 1)
+        composeRule.onNodeWithText(warning).assertIsDisplayed()
     }
 }

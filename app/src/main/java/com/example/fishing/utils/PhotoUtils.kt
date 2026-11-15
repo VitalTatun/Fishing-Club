@@ -2,6 +2,7 @@ package com.example.fishing.utils
 
 import android.content.ContentResolver
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -18,6 +19,15 @@ import kotlin.math.roundToInt
 object PhotoUtils {
     /** Longest side of a stored photo. */
     private const val MAX_DIMENSION = 2048
+
+    /**
+     * Startup cleanup keeps photos touched within this window. A draft restored
+     * after process death may still reference them, and deleting a file the
+     * ViewModel just recovered would turn into a "phantom" photo on save.
+     * A weekend trip means the draft can be opened days later, so the window is
+     * deliberately generous (seven days).
+     */
+    private const val RECENT_PHOTO_GRACE_MS = 7L * 24 * 60 * 60 * 1000
 
     /** Hard cap for a single processed JPEG, matching the bucket limit policy. */
     private const val MAX_OUTPUT_BYTES = 3L * 1024 * 1024
@@ -46,22 +56,67 @@ object PhotoUtils {
     }
 
     /**
-     * Removes temporary photos written by the app. Safe to call on start-up and
-     * on logout: an interrupted edit is not resumable. [keepPaths] holds the
-     * files still referenced by pending uploads, which must survive a restart.
+     * Removes temporary photos written by the app. [keepPaths] holds the files
+     * still referenced by pending uploads and always survives.
+     *
+     * Two policies share this method:
+     * - default ([graceMs] > 0, used on app start): files modified within the
+     *   last seven days are kept because a draft restored after process death
+     *   may point at them and the cleanup can race with that restore. Truly
+     *   stale orphans are removed on a later start once the grace window has
+     *   passed.
+     * - strict ([graceMs] = 0, used on logout/account deletion): every file not
+     *   in [keepPaths] is removed immediately.
+     *
+     * Known limitation: draft photo paths are not passed to [keepPaths], so a
+     * draft older than the grace window loses its files on the next start.
+     * Persisting draft paths is a deliberate follow-up.
      */
-    fun clearSavedPhotos(filesDir: File, keepPaths: Set<String> = emptySet()) {
+    fun clearSavedPhotos(
+        filesDir: File,
+        keepPaths: Set<String> = emptySet(),
+        graceMs: Long = RECENT_PHOTO_GRACE_MS,
+    ) {
         val photosDir = File(filesDir, "photos")
         val keep = keepPaths.mapNotNull { path ->
             runCatching { File(path).canonicalPath }.getOrNull()
         }.toSet()
+        val now = System.currentTimeMillis()
         photosDir.listFiles()?.forEach { file ->
             runCatching {
-                if (file.canonicalPath !in keep) {
+                if (file.canonicalPath !in keep && !isWithinGrace(file, now, graceMs)) {
                     file.delete()
                 }
             }
         }
+    }
+
+    /**
+     * Logout/account-deletion cleanup: strict photo removal plus releasing all
+     * persisted gallery grants of the session. Runs on the caller's IO context.
+     */
+    fun clearSessionPhotos(filesDir: File, contentResolver: ContentResolver) {
+        runCatching {
+            contentResolver.persistedUriPermissions
+                .filter { it.isReadPermission }
+                .forEach { permission ->
+                    runCatching {
+                        contentResolver.releasePersistableUriPermission(
+                            permission.uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    }
+                }
+        }
+        clearSavedPhotos(filesDir, graceMs = 0L)
+    }
+
+    private fun isWithinGrace(file: File, now: Long, graceMs: Long): Boolean {
+        if (graceMs <= 0L) return false
+        val modified = file.lastModified()
+        // A missing/invalid timestamp must not turn a possible draft photo into
+        // an orphan on the next start.
+        return modified == 0L || now - modified < graceMs
     }
 
     /**

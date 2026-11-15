@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,12 +69,12 @@ fun CatchEditScreen(
     modifier: Modifier = Modifier,
     isTrophy: Boolean = false
 ) {
-    var fishNameInput by remember { mutableStateOf("") }
-    var weightInput by remember {
+    var fishNameInput by rememberSaveable { mutableStateOf("") }
+    var weightInput by rememberSaveable {
         mutableStateOf(initialWeight.coerceAtMost(MAX_TOTAL_WEIGHT_KG).takeIf { initialWeight > 0f }?.toString() ?: "")
     }
     var isDuplicateError by remember { mutableStateOf(false) }
-    val editableFish = remember(fishList) {
+    val editableFish = rememberSaveable(fishList, saver = FishListSaver) {
         mutableStateListOf<Fish>().also { it.addAll(fishList) }
     }
 

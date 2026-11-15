@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +58,9 @@ fun WaterEditScreen(
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var waterName by remember { mutableStateOf(viewModel.formWaterName) }
-    var isPaidWater by remember { mutableStateOf(viewModel.formIsPaidWater) }
-    var isFishingFromShore by remember { mutableStateOf(viewModel.formFishingFromShore) }
+    var waterName by rememberSaveable { mutableStateOf(viewModel.formWaterName) }
+    var isPaidWater by rememberSaveable { mutableStateOf(viewModel.formIsPaidWater) }
+    var isFishingFromShore by rememberSaveable { mutableStateOf(viewModel.formFishingFromShore) }
     
     val reports by reportsViewModel.reports.collectAsState()
     val previousPlaces = remember(reports) {

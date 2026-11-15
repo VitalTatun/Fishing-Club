@@ -207,9 +207,12 @@ class SupabaseAuthRepository @Inject constructor(
         }
         // Unsaved report photos belong to the session that just ended. The queue
         // is cleared first so its rows cannot keep files alive across sessions.
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             runCatching { reportUploadQueue.clearAll() }
-            runCatching { PhotoUtils.clearSavedPhotos(appContext.filesDir) }
+            runCatching {
+                // Strict cleanup plus release of the session's gallery grants.
+                PhotoUtils.clearSessionPhotos(appContext.filesDir, appContext.contentResolver)
+            }
         }
     }
 

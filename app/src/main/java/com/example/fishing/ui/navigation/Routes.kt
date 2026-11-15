@@ -11,6 +11,15 @@ import kotlinx.serialization.Serializable
 
 // --- Auth ---
 
+/**
+ * Start destination that renders no UI: it is on screen while the stored session is
+ * being restored, and the loading indicator is drawn over it by the activity. Keeping
+ * the nav host alive from the first frame is what preserves a back stack restored
+ * after process death (BUG-01).
+ */
+@Serializable
+data object SplashRoute
+
 @Serializable
 data object LoginRoute
 

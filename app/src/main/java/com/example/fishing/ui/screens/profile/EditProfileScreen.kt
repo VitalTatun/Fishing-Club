@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,18 +48,24 @@ fun EditProfileScreen(
     onDeleteAccount: () -> Unit = {},
     onClearDeleteAccountError: () -> Unit = {}
 ) {
-    var name by remember { mutableStateOf(initialName) }
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var nameEdited by rememberSaveable { mutableStateOf(false) }
+    // Not saved: the picker grant does not survive process death, and a gallery
+    // URI in saved state would be a needless privacy surface.
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var showNameDialog by remember { mutableStateOf(false) }
+    var showNameDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(initialName) {
-        name = initialName
+        // Do not overwrite a restored or user-edited name when the profile
+        // arrives slightly later (or after process death).
+        resolveNameSync(initialName, name, nameEdited)?.let { name = it }
     }
 
     LaunchedEffect(saveSuccess) {
         if (saveSuccess) {
+            nameEdited = false
             selectedPhotoUri = null
             snackbarHostState.showSnackbar("Изменения сохранены")
             onResetSaveSuccess()
@@ -91,7 +98,7 @@ fun EditProfileScreen(
     }
 
     if (showNameDialog) {
-        var tempName by remember { mutableStateOf(name) }
+        var tempName by rememberSaveable { mutableStateOf(name) }
         AlertDialog(
             onDismissRequest = { showNameDialog = false },
             title = { Text("Изменить имя") },
@@ -105,6 +112,7 @@ fun EditProfileScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
+                    nameEdited = true
                     name = tempName
                     showNameDialog = false
                     onSaveClick(name, selectedPhotoUri)
@@ -269,6 +277,16 @@ fun UserAvatarEdit(
         }
     }
 }
+
+/**
+ * Returns the name to write into local state when [initialName] arrives late,
+ * or `null` when the current value must be kept. Edited/restored names win.
+ */
+internal fun resolveNameSync(
+    initialName: String,
+    currentName: String,
+    nameEdited: Boolean
+): String? = if (!nameEdited && currentName != initialName) initialName else null
 
 @Preview(showBackground = true)
 @Composable

@@ -22,7 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +44,12 @@ fun FishingMethodAndBaitScreen(
     initialMethod: FishingMethod = FishingMethod.NONE,
     initialBaits: List<Bait> = emptyList()
 ) {
-    var selectedMethod by remember { mutableStateOf(initialMethod) }
-    val selectedBaits = remember { mutableStateListOf<Bait>().apply { addAll(initialBaits) } }
+    var selectedMethod by rememberSaveable(stateSaver = FishingMethodSaver) {
+        mutableStateOf(initialMethod)
+    }
+    val selectedBaits = rememberSaveable(saver = BaitListSaver) {
+        mutableStateListOf<Bait>().apply { addAll(initialBaits) }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),

@@ -167,7 +167,7 @@ internal fun ReportFieldRenderer(
                 ReportPhotosList(
                     selectedPhotos = viewModel.formPhotos,
                     onRemoveClick = { photo ->
-                        viewModel.formPhotos = viewModel.formPhotos - photo
+                        viewModel.removePhoto(photo)
                     }
                 )
             }

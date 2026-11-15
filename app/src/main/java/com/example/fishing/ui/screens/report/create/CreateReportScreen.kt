@@ -1,10 +1,7 @@
 package com.example.fishing.ui.screens.report.create
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -49,7 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
@@ -82,9 +79,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -136,11 +130,21 @@ fun CreateReportScreen(
     var showTimePicker by remember { mutableStateOf(false) }
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var pickerTarget by remember { mutableStateOf("start") }
-    var isDetailsExpanded by remember { mutableStateOf(false) }
+    var isDetailsExpanded by rememberSaveable { mutableStateOf(false) }
 
-    var tempCameraFile by remember { mutableStateOf<File?>(null) }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+
+    val restoredPhotosLost = viewModel.restoredPhotosLost
+    LaunchedEffect(restoredPhotosLost) {
+        if (restoredPhotosLost > 0) {
+            // Show before consuming: consuming resets the effect key and would
+            // cancel the suspended showSnackbar call.
+            snackbarHostState.showSnackbar(
+                context.getString(R.string.restored_photos_lost, restoredPhotosLost)
+            )
+            viewModel.consumeRestoredPhotosLost()
+        }
+    }
 
     val currentTime = Calendar.getInstance()
     val endTimeCalendar = (currentTime.clone() as Calendar).apply {
@@ -161,10 +165,15 @@ fun CreateReportScreen(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
     ) { uris ->
         if (uris.isNotEmpty()) {
+            // TODO(AUD-06, manual check): a re-delivered picker result must not
+            // produce a duplicate snackbar on a later restore.
             val currentPhotos = viewModel.formPhotos
             val currentUris = currentPhotos.map { it.uri }
             val availableSlots = MaxPhotos - currentPhotos.size
             val newUris = uris.take(availableSlots).filter { it !in currentUris }
+            // Best effort persistence of gallery grants happens off the main
+            // thread inside the ViewModel.
+            viewModel.retainPickedPhotoAccess(newUris)
             viewModel.formPhotos = currentPhotos + newUris.map { ReportPhoto(uri = it) }
         }
     }
@@ -172,25 +181,7 @@ fun CreateReportScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        val capturedFile = tempCameraFile
-        tempCameraFile = null
-        if (success && capturedFile != null) {
-            scope.launch {
-                val persistedUri = withContext(Dispatchers.IO) {
-                    PhotoUtils.persistCameraPhoto(
-                        context.contentResolver,
-                        context.filesDir,
-                        Uri.fromFile(capturedFile)
-                    )
-                }
-                capturedFile.delete()
-                if (persistedUri != null) {
-                    viewModel.formPhotos = viewModel.formPhotos + ReportPhoto(uri = persistedUri)
-                }
-            }
-        } else {
-            capturedFile?.delete()
-        }
+        viewModel.onCameraCaptureResult(success)
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -198,7 +189,7 @@ fun CreateReportScreen(
     ) { isGranted ->
         if (isGranted) {
             val file = PhotoUtils.createTempPhotoFile(context)
-            tempCameraFile = file
+            viewModel.beginCameraCapture(file)
             cameraLauncher.launch(PhotoUtils.getUriForFile(context, file))
         }
     }
@@ -207,7 +198,7 @@ fun CreateReportScreen(
         val permissionCheckResult = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
         if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
             val file = PhotoUtils.createTempPhotoFile(context)
-            tempCameraFile = file
+            viewModel.beginCameraCapture(file)
             cameraLauncher.launch(PhotoUtils.getUriForFile(context, file))
         } else {
             permissionLauncher.launch(Manifest.permission.CAMERA)

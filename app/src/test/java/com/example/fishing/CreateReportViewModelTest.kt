@@ -1,9 +1,13 @@
 package com.example.fishing
 
 import android.app.Application
+import android.content.ContentResolver
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingDateTimeError
@@ -17,6 +21,7 @@ import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeReportUploadQueue
 import com.example.fishing.testutil.MainDispatcherRule
+import com.example.fishing.utils.PhotoUtils
 import com.example.fishing.viewmodel.CreateReportSaveState
 import com.example.fishing.viewmodel.CreateReportViewModel
 import com.example.fishing.viewmodel.ReportPhoto
@@ -33,10 +38,13 @@ import org.junit.runner.RunWith
 import org.osmdroid.util.GeoPoint
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
-import java.text.SimpleDateFormat
 import java.io.File
+import java.io.FileNotFoundException
+import java.text.SimpleDateFormat
 import java.time.Instant
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
@@ -70,13 +78,50 @@ class CreateReportViewModelTest {
         context = RuntimeEnvironment.getApplication()
     }
 
-    private fun createViewModel(): CreateReportViewModel {
+    private fun createViewModel(
+        handle: SavedStateHandle = SavedStateHandle()
+    ): CreateReportViewModel {
         return CreateReportViewModel(
             repository = fakeFishingRepository,
             authRepository = fakeAuthRepository,
             reportUploadQueue = fakeReportUploadQueue,
             context = context,
-            ioDispatcher = mainDispatcherRule.testDispatcher
+            ioDispatcher = mainDispatcherRule.testDispatcher,
+            savedStateHandle = handle
+        )
+    }
+
+    /** ContentResolver stub that records persistable grant takes and releases. */
+    private class RecordingResolver(
+        context: Context,
+        private val releases: MutableList<Pair<Uri, Int>>,
+        private val takes: MutableList<Pair<Uri, Int>> = mutableListOf()
+    ) : ContentResolver(context) {
+        override fun takePersistableUriPermission(uri: Uri, modeFlags: Int) {
+            takes += uri to modeFlags
+        }
+
+        override fun releasePersistableUriPermission(uri: Uri, modeFlags: Int) {
+            releases += uri to modeFlags
+        }
+    }
+
+    private fun createViewModelRecordingGrants(
+        releases: MutableList<Pair<Uri, Int>>,
+        takes: MutableList<Pair<Uri, Int>> = mutableListOf(),
+        handle: SavedStateHandle = SavedStateHandle()
+    ): CreateReportViewModel {
+        val resolver = RecordingResolver(context, releases, takes)
+        val wrappedContext = object : ContextWrapper(context) {
+            override fun getContentResolver(): ContentResolver = resolver
+        }
+        return CreateReportViewModel(
+            repository = fakeFishingRepository,
+            authRepository = fakeAuthRepository,
+            reportUploadQueue = fakeReportUploadQueue,
+            context = wrappedContext,
+            ioDispatcher = mainDispatcherRule.testDispatcher,
+            savedStateHandle = handle
         )
     }
 
@@ -112,6 +157,29 @@ class CreateReportViewModelTest {
         }
         bitmap.recycle()
         return Uri.fromFile(file)
+    }
+
+    /** Same encoding as [createTestPhotoFile], but exposes the camera temp file. */
+    private fun createCameraTempFile(): File {
+        val file = File(context.cacheDir, "camera_photo_${UUID.randomUUID()}.jpg")
+        val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+        file.outputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+        }
+        bitmap.recycle()
+        return file
+    }
+
+    /** A processed draft photo in filesDir/photos, where restored photos live. */
+    private fun createDraftPhotoFile(): File {
+        val photosDir = File(context.filesDir, "photos").apply { mkdirs() }
+        val file = File(photosDir, "draft_photo_${UUID.randomUUID()}.jpg")
+        val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
+        file.outputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+        }
+        bitmap.recycle()
+        return file
     }
 
     @Test
@@ -203,9 +271,11 @@ class CreateReportViewModelTest {
     @Test
     fun `cross midnight fishing is still valid`() = runTest {
         val vm = createViewModel()
-        // Baseline chosen so that both times are in the past regardless of run time.
+        // Build the baseline from local midnight: the form parses dates in the
+        // default zone, so a UTC-based baseline would not produce 23:00 -> 02:00.
         val now = Instant.now()
-        val todayMidnight = now.truncatedTo(ChronoUnit.DAYS)
+        val zone = ZoneId.systemDefault()
+        val todayMidnight = now.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
         val baseline = if (now.isBefore(todayMidnight.plus(4, ChronoUnit.HOURS))) {
             todayMidnight.minus(1, ChronoUnit.DAYS)
         } else {
@@ -619,5 +689,550 @@ class CreateReportViewModelTest {
 
         val dateTimeSection = config.first { it.id == "date_time" }
         assertTrue(dateTimeSection.items.filterIsInstance<ReportField.ListItemField>().any { it.isError })
+    }
+
+    @Test
+    fun `restores all form fields after process death`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val fish = Fish(id = UUID.randomUUID(), name = "Щука", count = 3)
+        val photo = ReportPhoto(id = UUID.randomUUID(), uri = createTestPhotoFile())
+
+        first.formReportType = FishingType.HAUL
+        first.formWaterName = "Озеро Нарочь"
+        first.formPhotos = listOf(photo)
+        first.formStartDate = "1 янв 2020"
+        first.formStartTime = "08:15"
+        first.formEndDate = "2 янв 2020"
+        first.formEndTime = "18:45"
+        first.formFishingFromShore = false
+        first.formIsPublic = false
+        first.formIsPaidWater = true
+        first.formWeight = 3.5f
+        first.formSelectedMethod = FishingMethod.SPINNING
+        first.formSelectedBaits = listOf(Bait.WOBBLER, Bait.SPOONBAIT)
+        first.formSelectedFish = listOf(fish)
+        first.formMood = 5
+        first.formComment = "Клюёт с утра"
+        first.formLocation = GeoPoint(54.9, 26.7)
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(FishingType.HAUL, second.formReportType)
+        assertEquals("Озеро Нарочь", second.formWaterName)
+        assertEquals(1, second.formPhotos.size)
+        assertEquals(photo.id, second.formPhotos.single().id)
+        assertEquals(photo.uri, second.formPhotos.single().uri)
+        assertEquals("1 янв 2020", second.formStartDate)
+        assertEquals("08:15", second.formStartTime)
+        assertEquals("2 янв 2020", second.formEndDate)
+        assertEquals("18:45", second.formEndTime)
+        assertFalse(second.formFishingFromShore)
+        assertFalse(second.formIsPublic)
+        assertTrue(second.formIsPaidWater)
+        assertEquals(3.5f, second.formWeight, 0.001f)
+        assertEquals(FishingMethod.SPINNING, second.formSelectedMethod)
+        assertEquals(listOf(Bait.WOBBLER, Bait.SPOONBAIT), second.formSelectedBaits)
+        assertEquals(listOf(fish), second.formSelectedFish)
+        assertEquals(5, second.formMood)
+        assertEquals("Клюёт с утра", second.formComment)
+        assertEquals(54.9, second.formLocation?.latitude ?: 0.0, 0.0001)
+        assertEquals(26.7, second.formLocation?.longitude ?: 0.0, 0.0001)
+        assertFalse(second.isRestoringPhotos)
+        assertEquals(0, second.restoredPhotosLost)
+    }
+
+    @Test
+    fun `restored dates are not overwritten by defaults`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        first.formStartDate = "1 янв 2020"
+        first.formStartTime = "05:30"
+        first.formEndDate = "1 янв 2020"
+        first.formEndTime = "19:00"
+
+        val second = createViewModel(handle)
+
+        assertEquals("1 янв 2020", second.formStartDate)
+        assertEquals("05:30", second.formStartTime)
+        assertEquals("1 янв 2020", second.formEndDate)
+        assertEquals("19:00", second.formEndTime)
+    }
+
+    @Test
+    fun `save state is idle after restore`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        first.saveState = CreateReportSaveState.Error
+        first.saveErrorMessage = "boom"
+        first.saveProgress = ReportSaveProgress(uploadedPhotos = 1, totalPhotos = 2)
+
+        val second = createViewModel(handle)
+
+        assertEquals(CreateReportSaveState.Idle, second.saveState)
+        assertNull(second.saveErrorMessage)
+        assertNull(second.saveProgress)
+        assertFalse(second.isSaving)
+    }
+
+    @Test
+    fun `reset form clears the saved draft`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val (start, end) = validPastRange()
+        fillValidReport(first, start, end)
+        first.formPhotos = listOf(ReportPhoto(uri = createTestPhotoFile()))
+        first.formComment = "черновик"
+        first.formWeight = 2f
+
+        first.resetFormState(cleanupPhotos = false)
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("", second.formWaterName)
+        assertEquals(FishingType.FISHING_LOG, second.formReportType)
+        assertTrue(second.formPhotos.isEmpty())
+        assertEquals(FishingMethod.NONE, second.formSelectedMethod)
+        assertTrue(second.formSelectedBaits.isEmpty())
+        assertTrue(second.formSelectedFish.isEmpty())
+        assertEquals("", second.formComment)
+        assertEquals(0f, second.formWeight, 0.001f)
+        assertEquals(3, second.formMood)
+        assertNull(second.formLocation)
+    }
+
+    @Test
+    fun `repeat save uses the restored report id`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val (start, end) = validPastRange()
+        fillValidReport(first, start, end)
+        fakeReportUploadQueue.onEnqueue = { report ->
+            fakeReportUploadQueue.setPendingRow(
+                reportId = report.id,
+                state = ReportUploadState.FAILED,
+                lastError = "fail"
+            )
+        }
+
+        first.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        val failedId = fakeReportUploadQueue.enqueuedReports.single().id
+
+        fakeReportUploadQueue.onEnqueue = null
+        fakeReportUploadQueue.pending.value = emptyList()
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        fillValidReport(second, start, end)
+        second.saveReport {}
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(2, fakeReportUploadQueue.enqueuedReports.size)
+        assertEquals(failedId, fakeReportUploadQueue.enqueuedReports[1].id)
+    }
+
+    @Test
+    fun `interrupted camera capture is restored as a photo`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        // Draft photos live in filesDir/photos; startup cleanup must not eat them.
+        val cameraFile = createDraftPhotoFile()
+        first.beginCameraCapture(cameraFile)
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, second.formPhotos.size)
+        assertNull(second.pendingCameraPath)
+        val persisted = second.formPhotos.single().uri
+        assertEquals("file", persisted.scheme)
+        val persistedFile = File(requireNotNull(persisted.path))
+        assertTrue(persistedFile.isFile)
+        assertEquals(cameraFile.absolutePath, persistedFile.absolutePath)
+
+        PhotoUtils.clearSavedPhotos(context.filesDir)
+
+        assertTrue(persistedFile.isFile)
+        assertEquals(1, second.formPhotos.size)
+    }
+
+    @Test
+    fun `missing camera temp file is discarded`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val cameraFile = createCameraTempFile()
+        first.beginCameraCapture(cameraFile)
+        assertTrue(cameraFile.delete())
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(second.formPhotos.isEmpty())
+        assertNull(second.pendingCameraPath)
+        assertFalse(cameraFile.exists())
+    }
+
+    @Test
+    fun `unreadable restored photo is dropped and counted`() = runTest {
+        val missingUri = Uri.parse("content://missing/photo_${UUID.randomUUID()}.jpg")
+        // Robolectric returns an empty stream for unknown content URIs by default,
+        // so make the provider behave like a removed gallery grant.
+        Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(missingUri) {
+            throw FileNotFoundException("grant revoked")
+        }
+
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val (start, end) = validPastRange()
+        fillValidReport(first, start, end)
+        first.formPhotos = listOf(ReportPhoto(uri = missingUri))
+
+        val vm = createViewModel(handle)
+        // The form itself is valid; only the photo check may block saving.
+        assertTrue(vm.isRestoringPhotos)
+        assertFalse(vm.isSaveEnabled)
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.formPhotos.isEmpty())
+        assertEquals(1, vm.restoredPhotosLost)
+        assertFalse(vm.isRestoringPhotos)
+        assertTrue(vm.isSaveEnabled)
+
+        vm.consumeRestoredPhotosLost()
+        assertEquals(0, vm.restoredPhotosLost)
+    }
+
+    @Test
+    fun `empty camera temp file is discarded`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val emptyFile = File(context.cacheDir, "empty_camera_${UUID.randomUUID()}.jpg").apply {
+            writeBytes(ByteArray(0))
+        }
+        first.beginCameraCapture(emptyFile)
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(second.formPhotos.isEmpty())
+        assertNull(second.pendingCameraPath)
+        assertFalse(emptyFile.exists())
+    }
+
+    @Test
+    fun `late camera result after recovery does not duplicate the photo`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val cameraFile = createDraftPhotoFile()
+        first.beginCameraCapture(cameraFile)
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, second.formPhotos.size)
+
+        // The system may deliver the pending ActivityResult after the recovery
+        // already claimed the file; it must be a no-op.
+        second.onCameraCaptureResult(success = true)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, second.formPhotos.size)
+    }
+
+    @Test
+    fun `draft from another user is discarded after process death`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val (start, end) = validPastRange()
+        fillValidReport(first, start, end)
+        first.formPhotos = listOf(ReportPhoto(uri = Uri.fromFile(createDraftPhotoFile())))
+
+        fakeAuthRepository.sessionUser = User(
+            id = UUID.randomUUID(),
+            name = "Other User",
+            email = "other@example.com",
+            image = ""
+        )
+
+        val second = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("", second.formWaterName)
+        assertTrue(second.formPhotos.isEmpty())
+        assertTrue(second.formSelectedFish.isEmpty())
+        assertNull(second.formLocation)
+    }
+
+    @Test
+    fun `draft is restored for the same user after process death`() = runTest {
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        val (start, end) = validPastRange()
+        fillValidReport(first, start, end)
+
+        val second = createViewModel(handle)
+
+        assertEquals("Озеро Нарочь", second.formWaterName)
+        assertFalse(second.formSelectedFish.isEmpty())
+    }
+
+    @Test
+    fun `logout after authentication resets the form`() = runTest {
+        val vm = createViewModel()
+        vm.formWaterName = "Черновик"
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        fakeAuthRepository.sessionUser = null
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("", vm.formWaterName)
+        assertTrue(vm.formPhotos.isEmpty())
+    }
+
+    @Test
+    fun `cold start unauthenticated keeps the restored draft`() = runTest {
+        fakeAuthRepository.sessionUser = null
+        val handle = SavedStateHandle(mapOf("form_water_name" to "Черновик"))
+
+        val vm = createViewModel(handle)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("Черновик", vm.formWaterName)
+    }
+
+    @Test
+    fun `successful camera result publishes the photo and consumes the pending path`() = runTest {
+        val vm = createViewModel()
+        val cameraFile = createCameraTempFile()
+        vm.beginCameraCapture(cameraFile)
+        assertEquals(cameraFile.absolutePath, vm.pendingCameraPath)
+
+        vm.onCameraCaptureResult(success = true)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(vm.pendingCameraPath)
+        assertFalse(cameraFile.exists())
+        val photo = vm.formPhotos.single()
+        assertEquals("file", photo.uri.scheme)
+        assertTrue(File(requireNotNull(photo.uri.path)).isFile)
+    }
+
+    @Test
+    fun `failed camera result deletes the temp file and adds no photo`() = runTest {
+        val vm = createViewModel()
+        val cameraFile = createCameraTempFile()
+        vm.beginCameraCapture(cameraFile)
+
+        vm.onCameraCaptureResult(success = false)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNull(vm.pendingCameraPath)
+        assertTrue(vm.formPhotos.isEmpty())
+        assertFalse(cameraFile.exists())
+    }
+
+    @Test
+    fun `starting a new capture deletes the abandoned temp file`() = runTest {
+        val vm = createViewModel()
+        val abandoned = createCameraTempFile()
+        val current = createCameraTempFile()
+
+        vm.beginCameraCapture(abandoned)
+        vm.beginCameraCapture(current)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(current.absolutePath, vm.pendingCameraPath)
+        assertFalse(abandoned.exists())
+        assertTrue(current.exists())
+    }
+
+    @Test
+    fun `corrupted restored report id is healed and stays stable`() = runTest {
+        val handle = SavedStateHandle(mapOf("form_report_id" to "not-a-uuid"))
+
+        createViewModel(handle)
+        val healed = requireNotNull(handle.get<String>("form_report_id"))
+        // Throws IllegalArgumentException, failing the test, if not healed.
+        val healedId = UUID.fromString(healed)
+
+        createViewModel(handle)
+
+        assertEquals(healedId.toString(), handle.get<String>("form_report_id"))
+    }
+
+    @Test
+    fun `removePhoto releases the gallery grant and keeps the other photos`() = runTest {
+        val releases = mutableListOf<Pair<Uri, Int>>()
+        val vm = createViewModelRecordingGrants(releases)
+        val kept = ReportPhoto(uri = createTestPhotoFile())
+        val galleryUri = Uri.parse("content://media/external/images/media/42")
+        val removed = ReportPhoto(uri = galleryUri)
+        vm.formPhotos = listOf(kept, removed)
+
+        vm.removePhoto(removed)
+        // Releasing the grant is a binder call: it must not run on the caller's
+        // (main) thread.
+        assertTrue(releases.isEmpty())
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(kept), vm.formPhotos)
+        assertEquals(
+            listOf(galleryUri to Intent.FLAG_GRANT_READ_URI_PERMISSION),
+            releases
+        )
+    }
+
+    @Test
+    fun `removePhoto ignores unknown ids and never releases file uris`() = runTest {
+        val releases = mutableListOf<Pair<Uri, Int>>()
+        val vm = createViewModelRecordingGrants(releases)
+        val filePhoto = ReportPhoto(uri = createTestPhotoFile())
+        vm.formPhotos = listOf(filePhoto)
+
+        // A photo that is not in the draft must stay a no-op.
+        vm.removePhoto(ReportPhoto(uri = Uri.parse("content://media/external/images/media/7")))
+        assertEquals(listOf(filePhoto), vm.formPhotos)
+
+        vm.removePhoto(filePhoto)
+
+        assertTrue(vm.formPhotos.isEmpty())
+        // file:// needs no grant; releasing one here would be wrong.
+        assertTrue(releases.isEmpty())
+    }
+
+    @Test
+    fun `camera photo finishing after a reset is discarded`() = runTest {
+        val vm = createViewModel()
+        val cameraFile = createCameraTempFile()
+        vm.beginCameraCapture(cameraFile)
+
+        // Capture the draft token, then reset before the IO work can finish.
+        vm.onCameraCaptureResult(success = true)
+        vm.resetFormState(cleanupPhotos = false)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.formPhotos.isEmpty())
+        assertFalse(cameraFile.exists())
+        val photosDir = File(context.filesDir, "photos")
+        assertTrue(photosDir.listFiles()?.isEmpty() ?: true)
+    }
+
+    @Test
+    fun `photo reconciliation stopped by a reset does not report into the new draft`() = runTest {
+        val missingUri = Uri.parse("content://missing/photo_${UUID.randomUUID()}.jpg")
+        Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(missingUri) {
+            throw FileNotFoundException("grant revoked")
+        }
+        val handle = SavedStateHandle()
+        val first = createViewModel(handle)
+        first.formPhotos = listOf(ReportPhoto(uri = missingUri))
+
+        // Logout/account switch resets the draft while the readability check is
+        // still on the IO queue.
+        val second = createViewModel(handle)
+        assertTrue(second.isRestoringPhotos)
+        second.resetFormState(cleanupPhotos = false)
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(second.formPhotos.isEmpty())
+        // The stale check must not warn about photos of a draft that is gone.
+        assertEquals(0, second.restoredPhotosLost)
+        assertFalse(second.isRestoringPhotos)
+    }
+
+    @Test
+    fun `removePhoto is ignored while a save is in flight`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+        val photoFile = createDraftPhotoFile()
+        val photo = ReportPhoto(uri = Uri.fromFile(photoFile))
+        vm.formPhotos = listOf(photo)
+
+        vm.saveReport {}
+        // The upload snapshot points at this file until the queue row settles.
+        assertTrue(vm.isSaving)
+        vm.removePhoto(photo)
+
+        assertEquals(listOf(photo), vm.formPhotos)
+        assertTrue(photoFile.exists())
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test
+    fun `picked gallery uris keep their read grant and file uris are skipped`() = runTest {
+        val releases = mutableListOf<Pair<Uri, Int>>()
+        val takes = mutableListOf<Pair<Uri, Int>>()
+        val vm = createViewModelRecordingGrants(releases, takes)
+        val galleryUri = Uri.parse("content://media/external/images/media/11")
+        val fileUri = Uri.fromFile(createCameraTempFile())
+
+        vm.retainPickedPhotoAccess(listOf(galleryUri, fileUri))
+        // A binder call per uri must not run on the caller's (main) thread.
+        assertTrue(takes.isEmpty())
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(galleryUri to Intent.FLAG_GRANT_READ_URI_PERMISSION), takes)
+        // Taking a grant must never release one.
+        assertTrue(releases.isEmpty())
+    }
+
+    @Test
+    fun `removing a photo deletes its local draft file`() = runTest {
+        val vm = createViewModel()
+        val photoFile = createDraftPhotoFile()
+        vm.formPhotos = listOf(ReportPhoto(uri = Uri.fromFile(photoFile)))
+        val photo = vm.formPhotos.single()
+
+        vm.removePhoto(photo)
+        // The delete is queued on IO; nothing is removed on the calling thread.
+        assertTrue(photoFile.exists())
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.formPhotos.isEmpty())
+        assertFalse(photoFile.exists())
+    }
+
+    @Test
+    fun `removePhoto keeps a file still referenced by the upload queue`() = runTest {
+        val vm = createViewModel()
+        val photoFile = createDraftPhotoFile()
+        fakeReportUploadQueue.referencedPaths = setOf(photoFile.absolutePath)
+        vm.formPhotos = listOf(ReportPhoto(uri = Uri.fromFile(photoFile)))
+        val photo = vm.formPhotos.single()
+
+        vm.removePhoto(photo)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.formPhotos.isEmpty())
+        // A FAILED queue row may still upload this exact file.
+        assertTrue(photoFile.exists())
+    }
+
+    @Test
+    fun `save is disabled while a camera photo is publishing`() = runTest {
+        val vm = createViewModel()
+        val (start, end) = validPastRange()
+        fillValidReport(vm, start, end)
+        val cameraFile = createCameraTempFile()
+        vm.beginCameraCapture(cameraFile)
+
+        vm.onCameraCaptureResult(success = true)
+
+        assertTrue(vm.isPublishingCameraPhoto)
+        assertFalse(vm.isSaveEnabled)
+
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(vm.isPublishingCameraPhoto)
+        assertTrue(vm.isSaveEnabled)
     }
 }

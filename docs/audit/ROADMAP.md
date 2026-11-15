@@ -2,8 +2,8 @@
 
 **Дата аудита:** 2026-11-09  
 **Статус:** активен  
-**Текущий фокус:** `AUD-06` — сохранение состояния форм при повороте/process death  
-**Следующее действие:** `rememberSaveable`/`SavedStateHandle` для черновиков отчёта, формы профиля и пути к временному фото камеры. Затем `AUD-07` — адаптивность и edge-to-edge/IME.
+**Текущий фокус:** `AUD-07` — адаптивность и edge-to-edge/IME  
+**Следующее действие:** `AUD-07` — `NavigationSuiteScaffold`/rail, window size classes, insets/IME на login, поиске и full-map; затем `AUD-12` — экран выбора аватара. `BUG-01` исправлен 2026-11-15, `AUD-06` закрыт 2026-11-15.
 
 > Это handoff-файл аудита. Код правится по мере выполнения задач; актуальные статусы — в таблице ниже.
 
@@ -25,14 +25,15 @@
 4. **Backup/auth-токены** остаются P0 по impact, но не блокируют старт P1. Закрыть до появления реальных пользовательских данных; можно делать параллельно.
 5. **Приватность важнее косметики.** «Сделать приватным», удаление аккаунта и очистка приватного кэша — не откладывать дальше первых двух итераций.
 6. **Выбор аватара вынесен в отдельную задачу `AUD-12`.** В AUD-03 не трогаем аватар: текущий пикер и диалог имени остаются как есть до реализации отдельного экрана.
-7. **Порядок перестроен под «релиз ещё далеко».** Сначала задачи, которые меняют структуру приложения и иначе вызовут переделку (`AUD-11` как базовая приватность, затем `AUD-06`, `AUD-07`, `AUD-12`), потом изолированные улучшения (`AUD-08`), затем инфраструктура и release-подготовка (`AUD-09`, `AUD-05`, `AUD-10`). `AUD-05` разделён: R8/иконки/шрифты — до первых тестеров, baseline profile — на замороженном UI перед Release Gate.
+7. **`AUD-06` закрыт без черновика в Room.** Состояние формы отчёта живёт в activity-scoped `SavedStateHandle` (VM создаётся на уровне `FishingNavHost`), состояние подэкранов — в `rememberSaveable`. Этого достаточно для process death внутри живой задачи; полноценный черновик (вернуться через неделю, с фото) — отдельное решение, когда понадобится: тогда же передавать пути фото черновика в `keepPaths`, а не полагаться на 7-дневное окно. Ориентация дополнительно зафиксирована в portrait на телефоне, но это не отменяет restore-логику.
+8. **Порядок перестроен под «релиз ещё далеко».** Сначала задачи, которые меняют структуру приложения и иначе вызовут переделку (`AUD-11` как базовая приватность, затем `AUD-06`, `AUD-07`, `AUD-12`), потом изолированные улучшения (`AUD-08`), затем инфраструктура и release-подготовка (`AUD-09`, `AUD-05`, `AUD-10`). `AUD-05` разделён: R8/иконки/шрифты — до первых тестеров, baseline profile — на замороженном UI перед Release Gate.
 
 ## Очередь работ
 
 | ID | Приоритет | Статус | Задача |
 |---|---|---|---|
 | AUD-11 | P0 | `DONE` | Backup + plaintext Supabase-сессия + приватные данные |
-| AUD-06 | P2 | `TODO` | Сохранение состояния форм при повороте/process death |
+| AUD-06 | P2 | `DONE` | Сохранение состояния форм при повороте/process death |
 | AUD-07 | P2 | `TODO` | Адаптивность и edge-to-edge/IME |
 | AUD-12 | P2 | `TODO` | Экран выбора аватара и сохранение без диалога имени |
 | AUD-08 | P2 | `TODO` | Nominatim: клиент, User-Agent, таймауты |
@@ -40,9 +41,62 @@
 | AUD-05 | P2 | `TODO` | R8, shrink resources, размер APK, baseline profile (A — до тестеров, B — перед Release Gate) |
 | AUD-10 | Release Gate | `DEFERRED` | Release signing: keystore, Play App Signing, секреты |
 
-Закрытые задачи: `AUD-01` (ANR профиля), `AUD-02` (кэш маркеров), `AUD-03` (приватность/аккаунт), `AUD-04` (очистка приватного отчёта), `AUD-11` (backup/сессия).
+Закрытые задачи: `AUD-01` (ANR профиля), `AUD-02` (кэш маркеров), `AUD-03` (приватность/аккаунт), `AUD-04` (очистка приватного отчёта), `AUD-11` (backup/сессия), `AUD-06` (состояние форм).
 
 **Почему такой порядок:** `AUD-11` меняет хранение сессии и backup-политику — дешевле сделать до появления новых экранов и данных. `AUD-06`/`AUD-07`/`AUD-12` тоже структурные: если сделать их после новых фич, те же экраны придётся переделывать. `AUD-08` изолирован и не блокирует остальное. `AUD-09`/`AUD-05`/`AUD-10` — release-подготовка; до релиза далеко, поэтому они в конце, но `assembleRelease` должен оставаться рабочим, как только включим R8.
+
+## Открытые баги (сообщены 2026-11-15)
+
+> Найден при ручной проверке на устройстве после `AUD-06`. Причина подтверждена, баг исправлен 2026-11-15 (см. ниже).
+
+### BUG-01 — Возврат из системной камеры выбрасывает из формы отчёта на главный экран (FIXED, 2026-11-15)
+
+**Симптом:** в форме нового отчёта открыть «Добавить фото» → «Камера» → системная камера открывается. Нажатие **любой** кнопки в камере («Отмена» или затвор/подтверждение снимка) сразу выбрасывает приложение на главный экран.
+
+**Воспроизведение:**
+1. «Новый отчёт» → «Добавить фото» → «Камера»;
+2. в системной камере нажать «Отмена» **или** снять кадр и подтвердить;
+3. ожидаемо: возврат в ту же форму отчёта с сохранёнными данными; фактически: главный экран.
+
+**Где искать:**
+- `app/src/main/java/com/example/fishing/ui/screens/report/create/CreateReportScreen.kt:181-206` — `TakePicture`, `beginCameraCapture`, выдача `FileProvider`-URI;
+- `app/src/main/java/com/example/fishing/viewmodel/CreateReportViewModel.kt:747-848` — `onCameraCaptureResult`, `publishCameraPhoto`, токен `currentReportId`;
+- `app/src/main/java/com/example/fishing/utils/PhotoUtils.kt` — `createTempPhotoFile`, `persistCameraPhoto`, пережатие JPEG;
+- `app/src/main/java/com/example/fishing/MainActivity.kt:58-72` — экран загрузки, пока `authState is AuthState.Loading`;
+- `app/src/main/java/com/example/fishing/ui/navigation/FishingNavHost.kt:86-88` — `rememberNavController()` внутри `key(isAuthenticated)`;
+- `AndroidManifest.xml` (FileProvider) и `app/src/main/res/xml/file_paths.xml`.
+
+**Проверить в первую очередь:** стек `AndroidRuntime`/`RuntimeException` в logcat; права и место в `cacheDir`; не пустой ли файл после камеры; не падает ли `SavedStateHandle` при уходе в камеру (`onSaveInstanceState`); не регрессия ли `AUD-06` (`publishCameraPhoto`, `recoverInterruptedCameraCapture`).
+
+**Вероятная причина (подтвердить на устройстве).** Похоже, при возврате из камеры Activity/процесс пересоздаются, а навигационный back stack не восстанавливается:
+- `MainActivity.kt:58-72` показывает только спиннер, пока `authState is AuthState.Loading`, и `FishingNavHost` в этот момент **не входит в композицию**;
+- `FishingNavHost.kt:86-88` создаёт `rememberNavController()` внутри `key(isAuthenticated)`, а `authState` стартует с `AuthState.Loading` (`SupabaseAuthRepository.kt:86`, `SharingStarted.WhileSubscribed`);
+- когда сессия догружается и `FishingNavHost` появляется снова, его сохранённое состояние навигации уже не к чему восстановить — стартует `MainRoute` (главный экран). Форма отчёта и её маршрут теряются, хотя `CreateReportViewModel` (activity-scoped) может сохранить состояние формы в `SavedStateHandle`.
+
+Проверить, включена ли на устройстве опция Developer options → «Don't keep activities»; но баг актуален и при обычном kill процесса в фоне.
+
+**План исправления:**
+- поднять `NavHostController` в `MainActivity`/корень `setContent` и передавать его в `FishingNavHost`, чтобы контроллер жил вне ветки `Loading`;
+- не убирать `NavHost` из композиции во время `Loading` — рисовать спиннер оверлеем поверх, тогда `rememberSaveable`/saved state навигации восстанавливается;
+- убрать `key(isAuthenticated)`; вместо пересоздания NavHost реагировать на переходы auth эффектом (`LaunchedEffect`) с `navigate(...) { popUpTo(0) }` только при реальной смене пользователя (вход/выход), не трогая восстановленный стек;
+- `startDestination` зафиксировать (`MainRoute`), при `Unauthenticated` — редирект на `LoginRoute`;
+- проверить сценарии: возврат из камеры (отмена/снимок), process death на форме отчёта, logout→login, обычный холодный старт;
+- добавить регресс: тест на восстановление nav-состояния (если возможно в Robolectric) или явный ручной чек-лист в этом баге.
+
+**Готово, когда:** камера (отмена и снимок) возвращает в ту же форму отчёта с сохранёнными данными; back stack переживает process death; logcat чистый; `:app:testDebugUnitTest` зелёный.
+
+**Исправлено (2026-11-15):**
+- `NavHost` больше не покидает композицию при `AuthState.Loading`: `MainActivity` держит его всегда, а спиннер рисуется оверлеем. Оверлей перехватывает тапы и системный back, скрывает контент от TalkBack, поэтому под ним нельзя случайно нажать невидимую кнопку или открыть диалог отмены.
+- `showDiscardDialog`/`formHasData` теперь недоступны, пока идёт восстановление сессии.
+- `NavHostController` живёт всю жизнь композиции: `key(isAuthenticated)` убран, `startDestination = SplashRoute`, переход на `MainRoute`/`LoginRoute` делает `AuthNavigationEffect` по `resolveAuthNavigation`. Восстановленный стек (`CreateReportRoute`, `ReportDetailRoute` и т.п.) не сбрасывается; вход/выход чистят стек через `popUpTo(navController.graph.id)`.
+- Загрузки, которым нужна сессия (`ReportDetailRoute`, `UserProfileRoute`, `ReportListSearchRoute`, `FullMapRoute`), гейтятся `SessionReadyEffect`: при `Loading` запрос не стартует, после готовности сессии выполняется один раз (иначе восстановленный экран мог навсегда остаться в `Loading`).
+- Геолокация запрашивается только при первом создании Activity (`savedInstanceState == null`), а не при каждом возврате из камеры.
+- Тесты: `AuthNavigationTest` (10), `AuthRouteTest` (10), `AuthNavigationEffectTest` (6, реальный `NavHostController`), `FishingAppContentTest` (7, включая «оверлей съедает тап» и «back не доходит до контента»), `SessionReadyEffectTest` (3). Мутационно проверено, что тесты падают при возврате старого поведения.
+- `:app:testDebugUnitTest --rerun-tasks` — 456 тестов, 0 падений; `assembleDebug` зелёный.
+
+**Осталось вручную (device):** камера → «Отмена»/снимок возвращает в форму с данными; process death на форме (`Don't keep activities`/`am kill`) сохраняет стек и состояние формы; TalkBack под спиннером читает только прогресс; холодный старт авторизованного без вспышки логина; logout→login очищает стек; экран деталей после process death догружает данные.
+
+> Терминология: в UI «черновик» — это **неопубликованный отчёт** (бейдж «Не опубликован», снекбар «Сохранено в черновики», `R.string.report_draft_saved_notice`). Это не сохранённая незавершённая форма. Списка черновиков в приложении нет; состояние формы живёт только в `SavedStateHandle` до отправки или сброса.
 
 ## Детали задач
 
@@ -197,12 +251,32 @@
 - `app/src/main/java/com/example/fishing/ui/screens/profile/EditProfileScreen.kt:47-48`
 - `app/src/main/java/com/example/fishing/ui/screens/report/create/CreateReportScreen.kt:141`
 
-**Что сделать:** `rememberSaveable`/`SavedStateHandle` для черновиков, формы и temp-файла; при необходимости — сохранение черновика в Room/DataStore.
+**Что сделать:** `rememberSaveable`/`SavedStateHandle` для состояния формы и temp-файла; при необходимости — отдельное будущее решение: сохранение черновика в Room/DataStore.
 
 **Готово, когда:**
 - поворот не теряет введённые данные;
-- process death не теряет форму или восстанавливает черновик;
+- process death не теряет форму или восстанавливает состояние формы;
 - результат камеры не пропадает после recreation.
+
+**Сделано (2026-11-15):**
+
+**Ориентация.** `MainActivity` зафиксирована в portrait (`android:screenOrientation="portrait"`), чтобы на телефоне поворот не пересоздавал Activity. Ограничение не заменяет restore-логику: process death, смена темы/шрифта/языка, мультиокно и большие экраны (Android 16 игнорирует лок при smallest width ≥ 600dp) по-прежнему пересоздают UI — учесть в `AUD-07`.
+
+**Форма отчёта.** `CreateReportViewModel` получает `SavedStateHandle` последним параметром (со значением по умолчанию, чтобы не ломать тесты/preview). Все поля формы переведены на делегаты с ключами `form_*` (`SavedStateProperty`, `ReportFormCodecs`): `GeoPoint` — как `form_geo_lat`/`form_geo_lng`, фото — `id + uri`, `Fish`/`Bait`/`FishingMethod` — enum-именами. `currentReportId` тоже сохраняется, поэтому повторный Save после process death делает upsert по тому же id без дубля. Дефолтные даты выставляются только при отсутствии `form_start_date`; `saveState`/`saveProgress`/`pendingProcessedPaths` транзиентные (после восстановления `Idle`). Сброс формы — только на переходе `Authenticated → Unauthenticated`, а не на холодном старте с `Unauthenticated`. Состояние формы привязано к пользователю (`form_owner_id`).
+
+**Камера и фото.** Владение temp-файлом камеры переехало в VM (`beginCameraCapture`/`onCameraCaptureResult`/`recoverInterruptedCameraCapture`): после process death непустой temp-файл публикуется при старте, пустой/отсутствующий удаляется, поздний колбэк не дублирует фото. Восстановленные фото проверяются на читаемость, недоступные отбрасываются с snackbar, для `content://` освобождается грант. `isRestoringPhotos`/`isPublishingCameraPhoto` блокируют Save, пока фото не готовы. `takePersistableUriPermission` при выборе из галереи (best-effort) и release при удалении/сбросе/сохранении; при logout `clearSessionPhotos` освобождает все persisted-гранты. `PhotoUtils.clearSavedPhotos` получил `graceMs`: при старте — 7 дней (незавершённая форма может открыться позже), при logout — 0. `removePhoto` удаляет файл только внутри `filesDir/photos` и не трогает пути из FAILED-очереди.
+
+**Подэкраны и профиль.** `rememberSaveable`: `WaterEdit`, `CommentEdit`, `CatchEdit` (включая `SnapshotStateList<Fish>` через `Saver`), `FishingMethodAndBait`, `CreateReportScreen.isDetailsExpanded`, `EditProfile` (имя, флаг ручного редактирования, диалог имени). Флаги диалогов намеренно остаются `remember`. `LaunchedEffect(initialName)` больше не затирает ручное/восстановленное имя (`resolveNameSync`); `selectedPhotoUri` оставлен в `remember`, потому что грант пикера не переживает process death.
+
+**Проверка.** `:app:testDebugUnitTest --rerun-tasks` — 420 тестов, 0 падений (несколько полных прогонов), `assembleDebug` зелёный. Покрыты восстановление всех полей и дат, `Idle` после restore, переиспользование `currentReportId`, recovery/битый/0-байтный temp-файл, гонка «камера → сброс», потерянные фото, смена пользователя, strict/grace cleanup, восстановление подэкранов (`StateRestorationTester`), snackbar (тест падает при откате порядка show/consume).
+
+**Известные ограничения и follow-up:**
+- пути фото незавершённой формы не передаются в `keepPaths`: незавершённая форма, открытая позже 7 дней, потеряет файлы (Room-черновик сознательно не делали);
+- `EditProfile`: восстановление имени/аватара и confirm диалога UI-тестом под Robolectric не проверяются (OOM `ShadowLineBreaker`) — нужен device/instrumentation тест;
+- повторная доставка результата фото-пикера после process death может дать ложный snackbar — `TODO(AUD-06, manual check)` в `CreateReportScreen`;
+- ниты review: `isPublishingCameraPhoto` — Boolean, не считает параллельные публикации; `referencedLocalPaths()` в `removePhoto` fail-open (при ошибке БД файл удалится).
+
+**Ручная проверка на устройстве (осталось):** Developer options → Don't keep activities; `adb shell am kill com.example.fishing` с заполненной формой, с открытой камерой и с выбранными из галереи фото; logout после выбора фото; возврат из «недавних» через сутки+.
 
 ### AUD-07 — Адаптивность и edge-to-edge
 

@@ -1,6 +1,7 @@
 package com.example.fishing.viewmodel
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.compose.material.icons.Icons
@@ -14,10 +15,9 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fishing.R
@@ -28,17 +28,30 @@ import com.example.fishing.data.IoDispatcher
 import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.model.*
 import com.example.fishing.utils.PhotoUtils
+import com.example.fishing.viewmodel.savedstate.baitsFromSaved
+import com.example.fishing.viewmodel.savedstate.baitsToSaved
+import com.example.fishing.viewmodel.savedstate.booleanProperty
+import com.example.fishing.viewmodel.savedstate.enumProperty
+import com.example.fishing.viewmodel.savedstate.fishFromSaved
+import com.example.fishing.viewmodel.savedstate.fishToSaved
+import com.example.fishing.viewmodel.savedstate.floatProperty
+import com.example.fishing.viewmodel.savedstate.geoPointProperty
+import com.example.fishing.viewmodel.savedstate.intProperty
+import com.example.fishing.viewmodel.savedstate.listProperty
+import com.example.fishing.viewmodel.savedstate.photosFromSaved
+import com.example.fishing.viewmodel.savedstate.photosToSaved
+import com.example.fishing.viewmodel.savedstate.stringProperty
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.osmdroid.util.GeoPoint
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -69,30 +82,74 @@ class CreateReportViewModel @Inject constructor(
     private val reportUploadQueue: ReportUploadQueue,
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
-    private var currentReportId: UUID = UUID.randomUUID()
+    // The id is staged before the upload starts; persisting it means a retry
+    // after process death updates the same queue row instead of duplicating it.
+    private var formReportId by savedStateHandle.stringProperty(KEY_REPORT_ID) {
+        UUID.randomUUID().toString()
+    }
+
+    /** Owner of the draft; null when no user was known when it was created. */
+    private val formOwnerId: String?
+        get() = savedStateHandle.get<String>(KEY_OWNER_ID)
+
+    private var currentReportId: UUID
+        get() {
+            val parsed = runCatching { UUID.fromString(formReportId) }.getOrNull()
+            if (parsed != null) return parsed
+            // Corrupted/absent id: generate once and persist so save and cancel
+            // keep addressing the same queue row.
+            val generated = UUID.randomUUID()
+            formReportId = generated.toString()
+            return generated
+        }
+        set(value) {
+            formReportId = value.toString()
+        }
+
     private var saveJob: Job? = null
     private var pendingProcessedPaths: List<String> = emptyList()
 
-    // Form state
-    var formReportType by mutableStateOf(FishingType.FISHING_LOG)
-    var formWaterName by mutableStateOf("")
-    var formPhotos by mutableStateOf<List<ReportPhoto>>(emptyList())
-    var formStartDate by mutableStateOf("")
-    var formStartTime by mutableStateOf("")
-    var formEndDate by mutableStateOf("")
-    var formEndTime by mutableStateOf("")
-    var formFishingFromShore by mutableStateOf(value = true)
-    var formIsPublic by mutableStateOf(true)
-    var formIsPaidWater by mutableStateOf(false)
-    var formWeight by mutableFloatStateOf(0f)
-    var formSelectedMethod by mutableStateOf(FishingMethod.NONE)
-    var formSelectedBaits by mutableStateOf<List<Bait>>(emptyList())
-    var formSelectedFish by mutableStateOf<List<Fish>>(emptyList())
-    var formMood by mutableIntStateOf(3)
-    var formComment by mutableStateOf("")
-    var formLocation by mutableStateOf<GeoPoint?>(null)
+    // Form state. Every field lives in SavedStateHandle so the draft survives
+    // process death; names and types stay the same as before for callers.
+    var formReportType by savedStateHandle.enumProperty(KEY_REPORT_TYPE) {
+        FishingType.FISHING_LOG
+    }
+    var formWaterName by savedStateHandle.stringProperty(KEY_WATER_NAME)
+    var formPhotos by savedStateHandle.listProperty(
+        key = KEY_PHOTOS,
+        defaultValue = { emptyList<ReportPhoto>() },
+        save = { photosToSaved(it) },
+        restore = { photosFromSaved(it) },
+    )
+    var formStartDate by savedStateHandle.stringProperty(KEY_START_DATE)
+    var formStartTime by savedStateHandle.stringProperty(KEY_START_TIME)
+    var formEndDate by savedStateHandle.stringProperty(KEY_END_DATE)
+    var formEndTime by savedStateHandle.stringProperty(KEY_END_TIME)
+    var formFishingFromShore by savedStateHandle.booleanProperty(KEY_FROM_SHORE) { true }
+    var formIsPublic by savedStateHandle.booleanProperty(KEY_IS_PUBLIC) { true }
+    var formIsPaidWater by savedStateHandle.booleanProperty(KEY_PAID_WATER) { false }
+    var formWeight by savedStateHandle.floatProperty(KEY_WEIGHT) { 0f }
+    var formSelectedMethod by savedStateHandle.enumProperty(KEY_METHOD) {
+        FishingMethod.NONE
+    }
+    var formSelectedBaits by savedStateHandle.listProperty(
+        key = KEY_BAITS,
+        defaultValue = { emptyList<Bait>() },
+        save = { baitsToSaved(it) },
+        restore = { baitsFromSaved(it) },
+    )
+    var formSelectedFish by savedStateHandle.listProperty(
+        key = KEY_FISH,
+        defaultValue = { emptyList<Fish>() },
+        save = { fishToSaved(it) },
+        restore = { fishFromSaved(it) },
+    )
+    var formMood by savedStateHandle.intProperty(KEY_MOOD) { 3 }
+    var formComment by savedStateHandle.stringProperty(KEY_COMMENT)
+    var formLocation by savedStateHandle.geoPointProperty(KEY_GEO_LAT, KEY_GEO_LNG)
 
     var saveState by mutableStateOf(CreateReportSaveState.Idle)
     var saveErrorMessage by mutableStateOf<String?>(null)
@@ -100,17 +157,62 @@ class CreateReportViewModel @Inject constructor(
     /** Null while photos are still being processed on-device. */
     var saveProgress by mutableStateOf<ReportSaveProgress?>(null)
 
+    /**
+     * Temp file handed to the camera app. Kept in the handle because the
+     * ActivityResult callback is not replayed after process death.
+     */
+    var pendingCameraPath: String?
+        get() = savedStateHandle.get<String>(KEY_PENDING_CAMERA)
+        private set(value) {
+            if (value == null) {
+                savedStateHandle.remove<String>(KEY_PENDING_CAMERA)
+            } else {
+                savedStateHandle[KEY_PENDING_CAMERA] = value
+            }
+        }
+
+    /** True while restored photos are being checked for readability. */
+    var isRestoringPhotos by mutableStateOf(false)
+        private set
+
+    /** True while a captured photo is being persisted off the main thread. */
+    var isPublishingCameraPhoto by mutableStateOf(false)
+        private set
+
+    /** Number of restored photos that could not be read, shown once as a snackbar. */
+    var restoredPhotosLost by mutableStateOf(0)
+        private set
+
     val isSaving: Boolean
         get() = saveState == CreateReportSaveState.Saving
 
     init {
-        setDefaultDateTimeValues()
+        // Restored dates must win over freshly generated defaults.
+        if (!savedStateHandle.contains(KEY_START_DATE)) {
+            setDefaultDateTimeValues()
+        }
+        // Persist the id right away (and heal a corrupted one): a retry after
+        // process death must update the same queued report instead of creating
+        // a duplicate.
+        savedStateHandle[KEY_REPORT_ID] = currentReportId.toString()
+        bindDraftOwner(authRepository.currentUser()?.id?.toString())
+        recoverInterruptedCameraCapture()
+        reconcileRestoredPhotos()
         viewModelScope.launch {
+            var lastAuthState: AuthState? = null
             authRepository.authState.collect { state ->
-                if (state == com.example.fishing.model.AuthState.Unauthenticated) {
+                bindDraftOwner((state as? AuthState.Authenticated)?.user?.id?.toString())
+                // An authenticated session can become Unauthenticated on logout,
+                // session expiry or a failed refresh; clear the draft on that
+                // transition. The initial Unauthenticated reported on a cold
+                // start must not wipe a restored draft.
+                if (lastAuthState is AuthState.Authenticated &&
+                    state is AuthState.Unauthenticated
+                ) {
                     resetFormState()
                     resetSaveState()
                 }
+                lastAuthState = state
             }
         }
     }
@@ -311,7 +413,7 @@ class CreateReportViewModel @Inject constructor(
 
     val isSaveEnabled: Boolean
         get() {
-            if (isSaving) return false
+            if (isSaving || isRestoringPhotos || isPublishingCameraPhoto) return false
             val baseValid = formLocation != null &&
                 formSelectedMethod != FishingMethod.NONE &&
                 formSelectedBaits.isNotEmpty() &&
@@ -542,6 +644,11 @@ class CreateReportViewModel @Inject constructor(
 
     fun resetFormState(cleanupPhotos: Boolean = true) {
         val photosToDelete = formPhotos
+        releasePersistedPhotoPermissions(photosToDelete)
+        discardPendingCameraCapture()
+        restoredPhotosLost = 0
+        isRestoringPhotos = false
+        isPublishingCameraPhoto = false
         currentReportId = UUID.randomUUID()
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
@@ -557,9 +664,281 @@ class CreateReportViewModel @Inject constructor(
         formMood = 3
         formComment = ""
         formLocation = null
+        updateDraftOwner(authRepository.currentUser()?.id?.toString())
         if (cleanupPhotos) {
             viewModelScope.launch(ioDispatcher) {
                 cleanupTempPhotos(photos = photosToDelete)
+            }
+        }
+    }
+
+    /**
+     * Removes a single photo from the draft, drops its gallery grant and deletes
+     * a local draft file. Blocked while a save is in flight: the upload snapshot
+     * may still reference the file.
+     *
+     * Only files inside `filesDir/photos` are deleted, and a path still
+     * referenced by the upload queue (for example a FAILED row) is kept.
+     */
+    fun removePhoto(photo: ReportPhoto) {
+        if (isSaving) return
+        if (formPhotos.none { it.id == photo.id }) return
+        formPhotos = formPhotos.filterNot { it.id == photo.id }
+        releasePersistedPhotoPermissions(listOf(photo))
+        if (photo.uri.scheme == "file") {
+            val path = photo.uri.path ?: return
+            viewModelScope.launch(ioDispatcher) {
+                val file = runCatching { File(path).canonicalFile }.getOrNull() ?: return@launch
+                val photosDir = runCatching {
+                    File(context.filesDir, "photos").canonicalFile
+                }.getOrNull() ?: return@launch
+                if (!file.path.startsWith(photosDir.path + File.separator)) return@launch
+                val referenced = runCatching {
+                    reportUploadQueue.referencedLocalPaths()
+                }.getOrDefault(emptySet())
+                val keptByQueue = referenced.any { queued ->
+                    runCatching { File(queued).canonicalPath }.getOrNull() == file.path
+                }
+                if (!keptByQueue) {
+                    runCatching { file.delete() }
+                }
+            }
+        }
+    }
+
+    /**
+     * Keeps persisted read access to picked gallery URIs. Best effort: the
+     * picker contract does not always offer a persistable grant. Runs off the
+     * main thread because it is a binder call per URI.
+     */
+    fun retainPickedPhotoAccess(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch(ioDispatcher) {
+            uris.forEach { uri ->
+                if (uri.scheme != "content") return@forEach
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Claims a temp file before launching the camera. A previous temp file that
+     * was never returned by the camera app is deleted off the main thread.
+     */
+    fun beginCameraCapture(file: File) {
+        val previous = pendingCameraPath
+        pendingCameraPath = file.absolutePath
+        if (previous != null && previous != file.absolutePath) {
+            viewModelScope.launch(ioDispatcher) {
+                runCatching { File(previous).delete() }
+            }
+        }
+    }
+
+    /**
+     * Handles the camera result. The temp path is consumed first: whatever
+     * happens next, a later restoration must not process the same file twice.
+     */
+    fun onCameraCaptureResult(success: Boolean) {
+        val path = pendingCameraPath ?: return
+        pendingCameraPath = null
+        isPublishingCameraPhoto = true
+        val reportId = currentReportId
+        val file = File(path)
+        viewModelScope.launch {
+            try {
+                val readable = withContext(ioDispatcher) { file.isFile && file.length() > 0 }
+                if (success && readable) {
+                    publishCameraPhoto(file, reportId)
+                } else {
+                    withContext(ioDispatcher) {
+                        runCatching { file.delete() }
+                    }
+                }
+            } finally {
+                if (currentReportId == reportId) {
+                    isPublishingCameraPhoto = false
+                }
+            }
+        }
+    }
+
+    /** Resets the one-shot warning after the screen showed its snackbar. */
+    fun consumeRestoredPhotosLost() {
+        restoredPhotosLost = 0
+    }
+
+    /**
+     * After process death the camera result callback is usually not delivered,
+     * but the file the camera wrote is still in its temporary location. Treat a
+     * non-empty file as a successful capture so the photo is not silently lost.
+     */
+    private fun recoverInterruptedCameraCapture() {
+        val path = pendingCameraPath ?: return
+        pendingCameraPath = null
+        isPublishingCameraPhoto = true
+        val reportId = currentReportId
+        val file = File(path)
+        viewModelScope.launch {
+            try {
+                val readable = withContext(ioDispatcher) { file.isFile && file.length() > 0 }
+                if (readable) {
+                    publishCameraPhoto(file, reportId)
+                } else {
+                    withContext(ioDispatcher) {
+                        runCatching { file.delete() }
+                    }
+                }
+            } finally {
+                if (currentReportId == reportId) {
+                    isPublishingCameraPhoto = false
+                }
+            }
+        }
+    }
+
+    private fun discardPendingCameraCapture() {
+        val path = pendingCameraPath
+        pendingCameraPath = null
+        if (path != null) {
+            // Best effort: if the ViewModel scope is already cancelled the
+            // delete may not run. NonCancellable only helps once the coroutine
+            // has started.
+            viewModelScope.launch(ioDispatcher) {
+                withContext(NonCancellable) {
+                    runCatching { File(path).delete() }
+                }
+            }
+        }
+    }
+
+    private suspend fun publishCameraPhoto(file: File, reportId: UUID) {
+        val persistedUri = withContext(ioDispatcher) {
+            runCatching {
+                PhotoUtils.persistCameraPhoto(
+                    context.contentResolver,
+                    context.filesDir,
+                    Uri.fromFile(file)
+                )
+            }.getOrNull().also { persisted ->
+                // Never delete the file we just published: persistCameraPhoto
+                // short-circuits when the source already lives in photosDir.
+                if (persisted?.path != file.absolutePath) {
+                    runCatching { file.delete() }
+                }
+            }
+        } ?: return
+        if (currentReportId != reportId) {
+            // The draft was reset (logout, account switch, successful save)
+            // while the photo was being processed: drop the result.
+            withContext(ioDispatcher) {
+                persistedUri.path?.let { path -> runCatching { File(path).delete() } }
+            }
+            return
+        }
+        val current = formPhotos
+        if (current.none { it.uri == persistedUri }) {
+            formPhotos = current + ReportPhoto(uri = persistedUri)
+        }
+    }
+
+    /**
+     * Restored photo URIs may be gone (gallery grants expire, startup cleanup
+     * removed internal files). Drop unreadable entries once and tell the user.
+     */
+    private fun reconcileRestoredPhotos() {
+        val restored = formPhotos
+        if (restored.isEmpty()) {
+            isRestoringPhotos = false
+            return
+        }
+        val reportId = currentReportId
+        isRestoringPhotos = true
+        viewModelScope.launch {
+            try {
+                val readableIds = withContext(ioDispatcher) {
+                    restored.filter { isPhotoReadable(it.uri) }.map { it.id }.toSet()
+                }
+                // A reset while checking replaced the draft; do not touch it.
+                if (currentReportId != reportId) return@launch
+                val lost = restored.filterNot { it.id in readableIds }
+                if (lost.isNotEmpty()) {
+                    val lostIds = lost.map { it.id }.toSet()
+                    formPhotos = formPhotos.filterNot { it.id in lostIds }
+                    restoredPhotosLost += lost.size
+                    // Give back the grants of photos that are no longer usable.
+                    releasePersistedPhotoPermissions(lost)
+                }
+            } finally {
+                // Never leave Save disabled if a provider check throws. A reset
+                // already cleared the flag for an outdated check.
+                if (currentReportId == reportId) {
+                    isRestoringPhotos = false
+                }
+            }
+        }
+    }
+
+    private fun isPhotoReadable(uri: Uri): Boolean = runCatching {
+        when (uri.scheme) {
+            "file" -> uri.path?.let(::File)?.let { it.isFile && it.length() > 0 } ?: false
+            else -> context.contentResolver.openInputStream(uri)?.use { true } ?: false
+        }
+    }.getOrDefault(false)
+
+    /**
+     * A draft is not transferable between accounts: saved instance state from
+     * the previous user must not surface after a different user signs in.
+     * An as-yet unowned draft is claimed by the current user without a reset.
+     *
+     * Runs on inits and every auth emission. `Unauthenticated` can also arrive
+     * from a failed session refresh, which keeps the draft (no user id to
+     * compare against) instead of clearing it.
+     */
+    private fun bindDraftOwner(currentUserId: String?) {
+        val storedOwnerId = formOwnerId
+        if (storedOwnerId == null) {
+            if (currentUserId != null) {
+                updateDraftOwner(currentUserId)
+            }
+            return
+        }
+        if (currentUserId != null && storedOwnerId != currentUserId) {
+            resetFormState()
+            updateDraftOwner(currentUserId)
+        }
+    }
+
+    private fun updateDraftOwner(ownerId: String?) {
+        if (ownerId == null) {
+            savedStateHandle.remove<String>(KEY_OWNER_ID)
+        } else {
+            savedStateHandle[KEY_OWNER_ID] = ownerId
+        }
+    }
+
+    /**
+     * Releases persisted read grants off the main thread. Called on every path
+     * that forgets photos: reset, reset-on-logout, per-photo removal and
+     * unreadable restored photos.
+     */
+    private fun releasePersistedPhotoPermissions(photos: List<ReportPhoto>) {
+        if (photos.isEmpty()) return
+        viewModelScope.launch(ioDispatcher) {
+            photos.forEach { photo ->
+                val uri = photo.uri
+                if (uri.scheme != "content") return@forEach
+                runCatching {
+                    context.contentResolver.releasePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
             }
         }
     }
@@ -631,5 +1010,31 @@ class CreateReportViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "CreateReportVM"
+
+        // `form_` is a namespace for the report draft. FishingNavHost writes its
+        // sub-screen results to the destination's own SavedStateHandle, while
+        // this ViewModel gets the activity-level handle, so the prefix is
+        // hygiene rather than a collision fix.
+        private const val KEY_REPORT_TYPE = "form_report_type"
+        private const val KEY_WATER_NAME = "form_water_name"
+        private const val KEY_PHOTOS = "form_photo_entries"
+        private const val KEY_START_DATE = "form_start_date"
+        private const val KEY_START_TIME = "form_start_time"
+        private const val KEY_END_DATE = "form_end_date"
+        private const val KEY_END_TIME = "form_end_time"
+        private const val KEY_FROM_SHORE = "form_from_shore"
+        private const val KEY_IS_PUBLIC = "form_is_public"
+        private const val KEY_PAID_WATER = "form_paid_water"
+        private const val KEY_WEIGHT = "form_weight"
+        private const val KEY_METHOD = "form_method"
+        private const val KEY_BAITS = "form_baits"
+        private const val KEY_FISH = "form_fish"
+        private const val KEY_MOOD = "form_mood"
+        private const val KEY_COMMENT = "form_comment"
+        private const val KEY_GEO_LAT = "form_geo_lat"
+        private const val KEY_GEO_LNG = "form_geo_lng"
+        private const val KEY_REPORT_ID = "form_report_id"
+        private const val KEY_OWNER_ID = "form_owner_id"
+        private const val KEY_PENDING_CAMERA = "form_pending_camera_path"
     }
 }
