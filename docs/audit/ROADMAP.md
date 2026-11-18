@@ -45,7 +45,7 @@
 
 **Почему такой порядок:** `AUD-11` меняет хранение сессии и backup-политику — дешевле сделать до появления новых экранов и данных. `AUD-06`/`AUD-07`/`AUD-12` тоже структурные: если сделать их после новых фич, те же экраны придётся переделывать. `AUD-08` изолирован и не блокирует остальное. `AUD-09`/`AUD-05`/`AUD-10` — release-подготовка; до релиза далеко, поэтому они в конце, но `assembleRelease` должен оставаться рабочим, как только включим R8.
 
-## Открытые баги (сообщены 2026-11-15)
+## Баги (сообщены 2026-11-15, 2026-11-18)
 
 > Найден при ручной проверке на устройстве после `AUD-06`. Причина подтверждена, баг исправлен 2026-11-15 (см. ниже).
 
@@ -95,6 +95,36 @@
 - `:app:testDebugUnitTest --rerun-tasks` — 456 тестов, 0 падений; `assembleDebug` зелёный.
 
 **Осталось вручную (device):** камера → «Отмена»/снимок возвращает в форму с данными; process death на форме (`Don't keep activities`/`am kill`) сохраняет стек и состояние формы; TalkBack под спиннером читает только прогресс; холодный старт авторизованного без вспышки логина; logout→login очищает стек; экран деталей после process death догружает данные.
+
+### BUG-02 — Возврат с карты в детали отчёта показывает спиннер (FIXED, 2026-11-18)
+
+**Симптом:** детали отчёта → тап по локации → full-map → системный/экранный back: детали «перезагружаются на мгновение» — вместо готового отчёта на кадр появляется полноэкранный `CircularProgressIndicator`, затем отчёт возвращается (и, вероятно, скролл прыгает наверх).
+
+**Воспроизведение:**
+1. открыть отчёт (лента или карта) → экран деталей;
+2. нажать на секцию локации → открывается карта;
+3. сразу нажать «назад»;
+4. ожидаемо: детали на месте без индикатора загрузки; фактически: вспышка спиннера.
+
+То же самое при возврате из профиля автора в детали (детали → автор → назад).
+
+**Где искать:**
+- `app/src/main/java/com/example/fishing/ui/navigation/FishingNavHost.kt:398-412` — destination `ReportDetailRoute`, `SessionReadyEffect(reportId, authState) { viewModel.loadReportDetails(it) }`, `FishingNavHost.kt:444-447` — переход на `FullMapRoute`;
+- `app/src/main/java/com/example/fishing/viewmodel/detail/ReportDetailCoordinator.kt:61-77` — `loadReportDetails`;
+- `app/src/main/java/com/example/fishing/ui/screens/report/detail/ReportDetailScreen.kt:359-390` — `ReportDetailLoadingScreen`;
+- для сравнения: `app/src/main/java/com/example/fishing/viewmodel/user/UserProfileCoordinator.kt:52-65` — такой же guard уже был сделан для профиля автора.
+
+**Причина (подтверждена).** `MainViewModel` activity-scoped, поэтому данные деталей при уходе на карту не теряются: в `reportDetailUiState` остаётся `Success`. Но композиция destination'а уничтожается, а при возврате `LaunchedEffect` внутри `SessionReadyEffect` стартует заново (ключи те же, но это новая композиция). `loadReportDetails` безусловно выставлял `_reportDetailUiState.value = ReportDetailUiState.Loading`, хотя на экране уже был этот же отчёт. Ветка `when` менялась `Success → Loading → Success`: на время запроса Room-кэша рисовался полноэкранный спиннер. Поскольку `popEnter`-анимация длится 300 мс, спиннер въезжал вместе с ней, а не мигал один кадр.
+
+Побочно: переключение ветки `Success → Loading → Success` уничтожает поддерево с `verticalScroll(rememberScrollState())`, поэтому позиция скролла после вспышки не восстанавливается; кроме того, каждый возврат заново вызывал `repository.refreshReportDetails(id)` — лишний сетевой запрос.
+
+**Исправление (2026-11-18):**
+- `ReportDetailCoordinator.loadReportDetails` оставляет `Success`, если на экране уже этот же отчёт, и только для другого отчёта (или после `clear()`) выставляет `Loading`. Фоновый авторитетный refresh и обработка `Missing`/`NoSession` не изменились;
+- поведение выровнено с `UserProfileCoordinator` и `MapCoordinator.loadMapMarkers`, где такой же guard уже был;
+- тесты в `ReportDetailCoordinatorTest`: «returning to the same report keeps it on screen without loading» (падает на старом коде, проверено мутационно) и «opening another report still shows the loading state»;
+- `:app:testDebugUnitTest` — 458 тестов, 0 падений.
+
+**Осталось вручную (device):** детали → карта → назад без спиннера и с сохранённой позицией скролла; детали → профиль автора → назад так же; приватный/удалённый отчёт по-прежнему даёт `Unavailable`; process death на деталях по-прежнему грузит отчёт со спиннером.
 
 > Терминология: в UI «черновик» — это **неопубликованный отчёт** (бейдж «Не опубликован», снекбар «Сохранено в черновики», `R.string.report_draft_saved_notice`). Это не сохранённая незавершённая форма. Списка черновиков в приложении нет; состояние формы живёт только в `SavedStateHandle` до отправки или сброса.
 

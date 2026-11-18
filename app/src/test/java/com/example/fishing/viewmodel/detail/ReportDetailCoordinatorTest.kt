@@ -8,6 +8,7 @@ import com.example.fishing.viewmodel.photos.PhotoUrlResolver
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,6 +38,65 @@ class ReportDetailCoordinatorTest {
         assertTrue(state is ReportDetailUiState.Success)
         assertEquals(report.id, (state as ReportDetailUiState.Success).report.id)
     }
+
+    @Test
+    fun `returning to the same report keeps it on screen without loading`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val repository = FakeFishingRepository()
+            val report = testReport()
+            repository.reportDetailsValue = report
+            val coordinator = ReportDetailCoordinator(
+                repository = repository,
+                photoUrls = PhotoUrlResolver(repository),
+                scope = backgroundScope
+            )
+            val states = mutableListOf<ReportDetailUiState>()
+            backgroundScope.launch {
+                coordinator.reportDetailUiState.collect { states += it }
+            }
+
+            coordinator.loadReportDetails(report.id)
+            advanceUntilIdle()
+            states.clear()
+
+            // Navigating to the map and back recreates the destination, so its
+            // LaunchedEffect asks for the very same report again.
+            coordinator.loadReportDetails(report.id)
+            advanceUntilIdle()
+
+            assertTrue(states.none { it is ReportDetailUiState.Loading })
+            val state = coordinator.reportDetailUiState.value
+            assertTrue(state is ReportDetailUiState.Success)
+            assertEquals(report.id, (state as ReportDetailUiState.Success).report.id)
+            // The authoritative refresh still runs for the report on screen.
+            assertEquals(2, repository.refreshReportDetailsCallCount)
+        }
+
+    @Test
+    fun `opening another report still shows the loading state`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val repository = FakeFishingRepository()
+            val report = testReport()
+            repository.reportDetailsValue = report
+            val coordinator = ReportDetailCoordinator(
+                repository = repository,
+                photoUrls = PhotoUrlResolver(repository),
+                scope = backgroundScope
+            )
+            val states = mutableListOf<ReportDetailUiState>()
+            backgroundScope.launch {
+                coordinator.reportDetailUiState.collect { states += it }
+            }
+
+            coordinator.loadReportDetails(report.id)
+            advanceUntilIdle()
+            states.clear()
+
+            coordinator.loadReportDetails(UUID.randomUUID())
+            advanceUntilIdle()
+
+            assertTrue(states.any { it is ReportDetailUiState.Loading })
+        }
 
     @Test
     fun `absent report resolves to empty`() = runTest(UnconfinedTestDispatcher()) {

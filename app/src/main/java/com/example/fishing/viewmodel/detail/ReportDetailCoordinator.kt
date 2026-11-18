@@ -66,7 +66,15 @@ class ReportDetailCoordinator(
         _visibilityError.value = null
         _visibilityResult.value = null
         detailUnavailable = false
-        _reportDetailUiState.value = ReportDetailUiState.Loading
+        // Returning to this destination (map -> details, author -> details)
+        // recreates it and re-runs its LaunchedEffect. A report that is already
+        // on screen is refreshed in the background instead of being dropped to
+        // the loading screen, so the rendered report and the scroll position
+        // survive the round trip.
+        val current = _reportDetailUiState.value
+        if (current !is ReportDetailUiState.Success || current.report.id != id) {
+            _reportDetailUiState.value = ReportDetailUiState.Loading
+        }
 
         reportDetailsJob = scope.launch {
             // Observe Room cache and publish Success the moment the report is available.
