@@ -1,12 +1,16 @@
 package com.example.fishing.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -17,12 +21,26 @@ import com.example.fishing.ui.theme.FishingTheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Phishing
+import androidx.compose.material.icons.filled.Scale
+import androidx.compose.material.icons.filled.Schedule
 import java.util.*
 
 @Composable
 fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
     val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.forLanguageTag("ru")).withZone(ZoneId.systemDefault()) }
     val timeFormatter = remember { DateTimeFormatter.ofPattern("H:mm", Locale.forLanguageTag("ru")).withZone(ZoneId.systemDefault()) }
+    val fishingMethodIconRes = remember(report.fishingMethod) {
+        when (report.fishingMethod) {
+            FishingMethod.BOBBER -> R.drawable.fishing_methods_bobber
+            FishingMethod.FEEDER -> R.drawable.fishing_methods_feeder
+            FishingMethod.SPINNING -> R.drawable.fishing_methods_spinning
+            FishingMethod.FLY_FISHING -> R.drawable.fishing_methods_fly
+            FishingMethod.NONE -> null
+        }
+    }
 
     Column(
         modifier = modifier
@@ -37,7 +55,7 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             report.fishingEndAt != null -> timeFormatter.format(report.fishingEndAt)
             else -> null
         }
-
+        // Date
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -45,20 +63,23 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             InfoGridItem(
                 title = stringResource(R.string.date),
                 value = report.fishingStartAt?.let { dateFormatter.format(it) } ?: stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Event
             )
             InfoGridItem(
                 title = stringResource(R.string.time),
                 value = timeRangeValue ?: stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Schedule
             )
         }
-
+        // Duration
         Row(modifier = Modifier.fillMaxWidth()) {
             InfoGridItem(
                 title = stringResource(R.string.duration),
                 value = report.durationFormatted() ?: stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                painter = painterResource(id = R.drawable.search_activity),
             )
             Spacer(modifier = Modifier.weight(1f))
         }
@@ -70,12 +91,14 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             InfoGridItem(
                 title = stringResource(R.string.bait),
                 value = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Phishing
             )
             InfoGridItem(
                 title = stringResource(R.string.fishing_method),
                 value = stringResource(report.fishingMethod.labelRes),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                painter = fishingMethodIconRes?.let { painterResource(id = it) }
             )
         }
 
@@ -83,40 +106,66 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = stringResource(R.string.catch_label),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            @Composable
+            fun Catch() {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.fish),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
-                    if (report.type == FishingType.HAUL) {
-                        TrophyBadge()
-                    }
-                }
-                Spacer(modifier = Modifier.height(2.dp))
-                if (report.fish.isEmpty()) {
-                    Text(
-                        text = "—",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                } else {
-                    report.fish.forEach { fish ->
-                        Text(
-                            text = stringResource(R.string.fish_count, fish.name, fish.count),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.catch_label),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (report.type == FishingType.HAUL) {
+                                TrophyBadge()
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        if (report.fish.isEmpty()) {
+                            Text(
+                                text = "—",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        } else {
+                            report.fish.forEach { fish ->
+                                Text(
+                                    text = stringResource(
+                                        R.string.fish_count,
+                                        fish.name,
+                                        fish.count
+                                    ),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
                     }
                 }
             }
+
+            Catch()
             InfoGridItem(
                 title = stringResource(R.string.total_weight),
                 value = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} ${stringResource(R.string.weight_unit)}" else stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Scale
             )
         }
     }
@@ -126,21 +175,49 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
 private fun InfoGridItem(
     title: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    painter: Painter? = null
 ) {
-    Column(modifier = modifier) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.Top
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(top = 10.dp)
+                    .size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+        } else if (painter != null) {
+            Icon(
+                painter = painter,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(top = 10.dp)
+                    .size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
