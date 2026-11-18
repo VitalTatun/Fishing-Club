@@ -48,6 +48,7 @@ fun MapScreen(
     isLocationEnabled: Boolean = true,
     markersInteractive: Boolean = true,
     initialReportId: UUID? = null,
+    selectedMarkerDotStyle: Boolean = false,
     repository: FishingRepository? = null,
     favoriteReports: List<FishingReport> = emptyList(),
     isLoading: Boolean = false,
@@ -269,6 +270,7 @@ fun MapScreen(
             onMarkerSelected = { selectedMarkerId = it },
             selectedMarkerId = selectedMarkerId,
             markersInteractive = markersInteractive,
+            selectedMarkerDotStyle = selectedMarkerDotStyle,
             trophyColor = trophyColor,
             regularColor = regularColor,
             trophyIconColor = trophyIconColor,
@@ -465,6 +467,7 @@ fun OsmMapView(
     onMarkerSelected: (UUID?) -> Unit = {},
     selectedMarkerId: UUID? = null,
     markersInteractive: Boolean = true,
+    selectedMarkerDotStyle: Boolean = false,
     trophyColor: Int,
     regularColor: Int,
     trophyIconColor: Int = android.graphics.Color.WHITE,
@@ -531,17 +534,29 @@ fun OsmMapView(
                     existing.position = GeoPoint(marker.waterLat, marker.waterLng)
 
                     val isSelected = marker.id == selectedMarkerId
-                    val shape = if (isSelected) MarkerShape.DROP else MarkerShape.CIRCLE
+                    val shape = when {
+                        !isSelected -> MarkerShape.CIRCLE
+                        selectedMarkerDotStyle -> MarkerShape.DOT
+                        else -> MarkerShape.DROP
+                    }
                     val anchorY = if (shape == MarkerShape.DROP) Marker.ANCHOR_BOTTOM else Marker.ANCHOR_CENTER
                     existing.setAnchor(Marker.ANCHOR_CENTER, anchorY)
 
-                    val color = if (marker.type == FishingType.HAUL) trophyColor else regularColor
+                    val color = if (shape != MarkerShape.DOT && marker.type == FishingType.HAUL) {
+                        trophyColor
+                    } else {
+                        regularColor
+                    }
                     val iconColor = if (marker.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
                     existing.icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, marker.fishingMethod, iconColor)
                 } else {
                     // Create new marker
                     try {
-                        val shape = if (marker.id == selectedMarkerId) MarkerShape.DROP else MarkerShape.CIRCLE
+                        val shape = when {
+                            marker.id != selectedMarkerId -> MarkerShape.CIRCLE
+                            selectedMarkerDotStyle -> MarkerShape.DOT
+                            else -> MarkerShape.DROP
+                        }
                         val markerOverlay = Marker(mv).apply {
                             title = marker.id.toString()
                             position = GeoPoint(marker.waterLat, marker.waterLng)
@@ -562,7 +577,11 @@ fun OsmMapView(
                                 setInfoWindow(null)
                             }
 
-                            val color = if (marker.type == FishingType.HAUL) trophyColor else regularColor
+                            val color = if (shape != MarkerShape.DOT && marker.type == FishingType.HAUL) {
+                                trophyColor
+                            } else {
+                                regularColor
+                            }
                             val iconColor = if (marker.type == FishingType.HAUL) trophyIconColor else android.graphics.Color.WHITE
                             icon = MarkerDrawableUtils.getMarkerDrawable(context, shape, color, marker.fishingMethod, iconColor)
                         }

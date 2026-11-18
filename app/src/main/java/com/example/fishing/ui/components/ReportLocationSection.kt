@@ -72,9 +72,8 @@ fun ReportLocationSection(
                     )
                     
                     // Marker Preview
-                    val markerColor = if (report.type == FishingType.HAUL) 
-                        Color(0xFFFFD71D) else MaterialTheme.colorScheme.primary
-                        
+                    val markerColor = MaterialTheme.colorScheme.primary
+
                     Box(
                         modifier = Modifier
                             .size(60.dp)
@@ -93,9 +92,7 @@ fun ReportLocationSection(
                     }
                 }
             } else {
-                val regularColorInt = MaterialTheme.colorScheme.primary.toArgb()
-                val trophyColorInt = FishingTheme.colors.trophyYellow.toArgb()
-                val trophyIconColorInt = android.graphics.Color.parseColor("#50250A")
+                val markerColorInt = MaterialTheme.colorScheme.primary.toArgb()
 
                 AndroidView(
                     factory = { ctx ->
@@ -111,13 +108,17 @@ fun ReportLocationSection(
                             controller.setCenter(point)
 
                             val shape = MarkerShape.DOT
-                            val color = if (report.type == FishingType.HAUL) trophyColorInt else regularColorInt
-                            val iconColor = if (report.type == FishingType.HAUL) trophyIconColorInt else android.graphics.Color.WHITE
 
                             overlays.add(Marker(this).apply {
                                 position = point
                                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                icon = MarkerDrawableUtils.getMarkerDrawable(ctx, shape, color, report.fishingMethod, iconColor)
+                                icon = MarkerDrawableUtils.getMarkerDrawable(
+                                    ctx,
+                                    shape,
+                                    markerColorInt,
+                                    report.fishingMethod,
+                                    android.graphics.Color.WHITE
+                                )
                                 setOnMarkerClickListener { _, _ -> true }
                             })
                         }

@@ -564,6 +564,7 @@ fun FishingNavHost(
                 },
                 markersInteractive = false,
                 initialReportId = reportId,
+                selectedMarkerDotStyle = true,
                 repository = fishingRepository,
                 favoriteReports = filterFavoriteReports
             )
