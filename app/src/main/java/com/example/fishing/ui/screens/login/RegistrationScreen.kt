@@ -2,13 +2,16 @@ package com.example.fishing.ui.screens.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -40,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.screens.report.create.CreateReportColors
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.RegistrationResult
@@ -116,18 +120,25 @@ fun RegistrationContent(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(CreateReportColors.ScreenBackground)
-                .padding(padding)
-                .consumeWindowInsets(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
         ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = ContentWidths.Authentication)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
             Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedTextField(
@@ -220,6 +231,7 @@ fun RegistrationContent(
                     )
                 }
             }
+            }
         }
     }
 }
@@ -251,15 +263,22 @@ fun RegistrationConfirmationContent(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(CreateReportColors.ScreenBackground)
-                .padding(padding)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
         ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .widthIn(max = ContentWidths.Authentication)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(padding)
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
             Text(
                 text = stringResource(R.string.require_confirmation_title),
                 style = MaterialTheme.typography.headlineSmall,
@@ -288,6 +307,7 @@ fun RegistrationConfirmationContent(
                     text = stringResource(R.string.go_to_login),
                     color = MaterialTheme.colorScheme.onPrimary
                 )
+            }
             }
         }
     }

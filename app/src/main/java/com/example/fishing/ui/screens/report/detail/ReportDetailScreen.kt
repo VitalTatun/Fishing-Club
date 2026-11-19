@@ -312,14 +312,18 @@ fun ReportDetailScreen(
             )
         },
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(paddingValues)
-                .padding(bottom = 32.dp, top = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = ContentWidths.Detail)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState())
+                    .padding(paddingValues)
+                    .padding(bottom = 32.dp, top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
             // 1. Шапка отчета (Фото карусель + Заголовок, Дата, Статус)
             ReportHeader(
                 report = report,
@@ -348,6 +352,7 @@ fun ReportDetailScreen(
 
             // 6. Детальная информация в виде сетки
             ReportInfoGrid(report = report)
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -25,8 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -35,6 +34,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItem
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -126,8 +129,38 @@ fun MainShell(
         }
     }
 
-    Scaffold(
+    val navigationSuiteType = NavigationSuiteScaffoldDefaults.navigationSuiteType(
+        currentWindowAdaptiveInfoV2()
+    )
+
+    NavigationSuiteScaffold(
         modifier = modifier,
+        navigationSuiteType = navigationSuiteType,
+        navigationItems = {
+            items.forEachIndexed { index, item ->
+                val isSelected = pagerState.currentPage == index
+                NavigationSuiteItem(
+                    navigationSuiteType = navigationSuiteType,
+                    icon = {
+                        Icon(
+                            imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                            contentDescription = stringResource(item.titleRes)
+                        )
+                    },
+                    label = { Text(stringResource(item.titleRes)) },
+                    selected = isSelected,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.scrollToPage(index)
+                        }
+                        onTabSelected(index)
+                    }
+                )
+            }
+        }
+    ) {
+        Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
@@ -203,29 +236,6 @@ fun MainShell(
                     }
                 }
             )
-        },
-        bottomBar = {
-            NavigationBar {
-                items.forEachIndexed { index, item ->
-                    val isSelected = pagerState.currentPage == index
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                                contentDescription = stringResource(item.titleRes)
-                            )
-                        },
-                        label = { Text(stringResource(item.titleRes)) },
-                        selected = isSelected,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.scrollToPage(index)
-                            }
-                            onTabSelected(index)
-                        }
-                    )
-                }
-            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
@@ -326,6 +336,8 @@ fun MainShell(
                     onCancel = { onCancelPendingUpload(upload.reportId) },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .widthIn(max = 640.dp)
+                        .fillMaxWidth()
                         .padding(8.dp)
                 )
             }
@@ -346,6 +358,8 @@ fun MainShell(
                 Snackbar(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .widthIn(max = 640.dp)
+                        .fillMaxWidth()
                         .padding(
                             start = 8.dp,
                             end = 8.dp,
@@ -361,6 +375,7 @@ fun MainShell(
                 }
             }
         }
+    }
     }
 }
 

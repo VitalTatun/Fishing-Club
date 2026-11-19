@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -98,11 +101,15 @@ fun HomeTabContent(
                 ) {
                     // A scrollable child is required: PullToRefreshBox receives the
                     // gesture through nested scroll and a plain Box produces none.
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        item {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 320.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             Column(
                                 modifier = Modifier
-                                    .fillParentMaxSize()
+                                    .fillMaxWidth()
+                                    .heightIn(min = 400.dp)
                                     .padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
@@ -130,9 +137,11 @@ fun HomeTabContent(
                     onRefresh = onRefresh,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 320.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         itemsIndexed(
@@ -150,7 +159,11 @@ fun HomeTabContent(
                         }
 
                         if (isLoadingMore) {
-                            item(key = "loading_more", contentType = "loading_more") {
+                            item(
+                                key = "loading_more",
+                                span = { GridItemSpan(maxLineSpan) },
+                                contentType = "loading_more"
+                            ) {
                                 val loadingDescription = stringResource(R.string.loading)
                                 Box(
                                     modifier = Modifier
@@ -167,7 +180,11 @@ fun HomeTabContent(
                                 }
                             }
                         } else if (loadMoreError != null) {
-                            item(key = "load_more_error", contentType = "load_more_error") {
+                            item(
+                                key = "load_more_error",
+                                span = { GridItemSpan(maxLineSpan) },
+                                contentType = "load_more_error"
+                            ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()

@@ -27,6 +27,7 @@ import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.FishingFilterChips
 import com.example.fishing.ui.components.FishingReportCardItem
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.filter.ReportSearchState
 import java.util.Calendar
@@ -108,16 +109,25 @@ fun ReportSearchScreen(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Column(modifier = Modifier.statusBarsPadding()) {
-                ReportSearchHeader(
-                    query = state.query,
-                    onQueryChange = { query ->
-                        onStateChange { current -> current.copy(query = query) }
-                    },
-                    onBack = onBack,
-                    focusRequester = focusRequester,
-                )
-                FishingFilterChips(
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = ContentWidths.Detail)
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                ) {
+                    ReportSearchHeader(
+                        query = state.query,
+                        onQueryChange = { query ->
+                            onStateChange { current -> current.copy(query = query) }
+                        },
+                        onBack = onBack,
+                        focusRequester = focusRequester,
+                    )
+                    FishingFilterChips(
                     isFavoritesSelected = filters.isFavoritesSelected,
                     onFavoritesClick = {
                         onStateChange { current ->
@@ -182,7 +192,8 @@ fun ReportSearchScreen(
                             current.copy(selectedDateMillis = null)
                         }
                     }
-                )
+                    )
+                }
             }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -207,7 +218,12 @@ fun ReportSearchScreen(
                 }
                 else -> {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize().imePadding(),
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .widthIn(max = ContentWidths.Detail)
+                            .fillMaxWidth()
+                            .fillMaxHeight()
+                            .imePadding(),
                         contentPadding = PaddingValues(
                             start = 8.dp,
                             end = 8.dp,

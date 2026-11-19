@@ -2,6 +2,7 @@ package com.example.fishing.ui.screens.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.screens.report.create.CreateReportColors
 
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,29 +86,35 @@ fun LoginContent(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(CreateReportColors.ScreenBackground)
-                .padding(padding)
-                .consumeWindowInsets(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
-            Text(
-                text = stringResource(R.string.fishing_journal),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center
-            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = ContentWidths.Authentication)
+                    .fillMaxWidth()
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Spacer(modifier = Modifier.height(40.dp))
+                Text(
+                    text = stringResource(R.string.fishing_journal),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-            OutlinedTextField(
+                OutlinedTextField(
                 value = email,
                 onValueChange = onEmailChange,
                 label = { Text(stringResource(R.string.email)) },
@@ -123,9 +132,9 @@ fun LoginContent(
                 ),
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedTextField(
+                OutlinedTextField(
                 value = password,
                 onValueChange = onPasswordChange,
                 label = { Text(stringResource(R.string.password)) },
@@ -139,9 +148,9 @@ fun LoginContent(
                 ),
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
+                Button(
                 onClick = onLoginClick,
                 enabled = !isLoading,
                 modifier = Modifier
@@ -161,9 +170,9 @@ fun LoginContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedButton(
+                OutlinedButton(
                 onClick = onRegisterClick,
                 enabled = !isLoading,
                 modifier = Modifier
@@ -173,6 +182,7 @@ fun LoginContent(
                 Text(
                     text = stringResource(R.string.create_account),
                 )
+            }
             }
         }
     }

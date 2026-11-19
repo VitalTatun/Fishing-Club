@@ -39,7 +39,7 @@
 | AUD-11 | P0 | `DONE` | Backup + plaintext Supabase-сессия + приватные данные |
 | AUD-06 | P2 | `DONE` | Сохранение состояния форм при повороте/process death |
 | AUD-07a | P1 | `DONE` | Edge-to-edge, insets и IME; снятие portrait-lock |
-| AUD-07b | P2 | `TODO` | Адаптивная навигация, сетки и максимальная ширина контента |
+| AUD-07b | P2 | `IN_PROGRESS` | Адаптивная навигация, сетки и максимальная ширина контента |
 | AUD-13 | P2 | `TODO` | Переход на Navigation 3 (структурная подготовка к multi-pane) |
 | AUD-12 | P2 | `TODO` | Экран выбора аватара и сохранение без диалога имени |
 | AUD-08 | P2 | `TODO` | Nominatim: клиент, User-Agent, таймауты |
@@ -396,6 +396,15 @@
 - `:app:testDebugUnitTest` и `assembleDebug` зелёные.
 
 **Оценка:** 2–3 дня. **Зависит от:** `AUD-07a`. **Не входит:** multi-pane list-detail (нужен `AUD-13`), desktop/tabletop-сценарии.
+
+**Ход выполнения (2026-11-19, ветка `audit/aud-07b-adaptive-ui`):**
+- Добавлена зависимость Material 3 Adaptive Navigation Suite; `MainShell` переведён на `NavigationSuiteScaffold`, сохраняются top app bar, pager и tab callbacks.
+- Лента переведена на `LazyVerticalGrid(GridCells.Adaptive(320.dp))`; empty state и элементы пагинации используют span на всю строку, Pull-to-Refresh сохранён.
+- Ограничена ширина auth-экранов до 480dp, форм до 640dp, деталей/поиска до 840dp.
+- Snackbar и upload banner ограничены по ширине и остаются в области контента, не занимая место rail/bar.
+- Добавлены Robolectric-проверки для `w411dp`/`w840dp` (тип навигации, колонки ленты) и ширины auth/form экранов.
+- `ANDROID_HOME=/Users/vital/Library/Android/sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` — `BUILD SUCCESSFUL` (465 тестов, 0 падений).
+- **Осталось вручную:** проверить визуально на телефоне и планшете/развёрнутом foldable, в том числе rail/bar, ширину контента и расположение баннеров/snackbar.
 
 ### AUD-08 — Nominatim
 

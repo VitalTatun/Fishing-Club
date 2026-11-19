@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -69,6 +71,7 @@ import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.data.upload.ReportUploadResult
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.SectionGroup
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.utils.PhotoUtils
 import com.example.fishing.viewmodel.CreateReportViewModel
@@ -400,7 +403,10 @@ fun CreateReportScreen(
         ) {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = ContentWidths.Form)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
                     .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)

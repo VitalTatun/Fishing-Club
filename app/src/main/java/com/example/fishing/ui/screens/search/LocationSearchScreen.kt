@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.data.network.NominatimResponse
 import com.example.fishing.data.network.NominatimService
 import com.example.fishing.data.network.getPolygonPoints
@@ -73,12 +74,23 @@ fun LocationSearchScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            SearchFieldHeader(
-                query = query,
-                onQueryChange = { query = it },
-                onBack = onBack,
-                focusRequester = focusRequester,
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = ContentWidths.Detail)
+                        .fillMaxWidth()
+                ) {
+                    SearchFieldHeader(
+                        query = query,
+                        onQueryChange = { query = it },
+                        onBack = onBack,
+                        focusRequester = focusRequester,
+                    )
+                }
+            }
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
@@ -108,7 +120,11 @@ fun LocationSearchScreen(
                             .imePadding()
                     ) {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .widthIn(max = ContentWidths.Detail)
+                                .fillMaxWidth()
+                                .fillMaxHeight(),
                             contentPadding = PaddingValues(
                                 start = 8.dp,
                                 top = 8.dp,

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.fishing.R
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.components.ProfileListItem
 import com.example.fishing.ui.theme.FishingTheme
 
@@ -180,15 +181,19 @@ fun EditProfileScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = ContentWidths.Form)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             UserAvatarEdit(
                 avatarUrl = selectedPhotoUri ?: avatarUrl,
                 onEditClick = { photoPickerLauncher.launch("image/*") }
@@ -234,6 +239,7 @@ fun EditProfileScreen(
 
             if (isLoading || isDeletingAccount) {
                 CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+            }
             }
         }
     }

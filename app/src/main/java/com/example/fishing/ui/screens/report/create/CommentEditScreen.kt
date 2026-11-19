@@ -1,11 +1,14 @@
 package com.example.fishing.ui.screens.report.create
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -25,11 +28,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.fishing.R
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.theme.FishingTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,37 +82,45 @@ fun CommentEditScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .consumeWindowInsets(paddingValues)
                 .imePadding()
         ) {
-            TextField(
-                value = comment,
-                onValueChange = { comment = it },
+            Column(
                 modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = ContentWidths.Form)
                     .fillMaxWidth()
-                    .weight(1f),
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.text),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = CreateReportColors.Outline
-                    )
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = CreateReportColors.OnSurface,
-                    unfocusedTextColor = CreateReportColors.OnSurface
-                ),
-                textStyle = MaterialTheme.typography.bodyLarge
-            )
+                    .fillMaxHeight()
+            ) {
+                TextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.text),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = CreateReportColors.Outline
+                        )
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = CreateReportColors.OnSurface,
+                        unfocusedTextColor = CreateReportColors.OnSurface
+                    ),
+                    textStyle = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
     }
 }
