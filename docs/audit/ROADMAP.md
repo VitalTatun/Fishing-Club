@@ -2,8 +2,8 @@
 
 **Дата аудита:** 2026-11-09  
 **Статус:** активен  
-**Текущий фокус:** `AUD-07` — адаптивность и edge-to-edge/IME  
-**Следующее действие:** `AUD-07` — `NavigationSuiteScaffold`/rail, window size classes, insets/IME на login, поиске и full-map; затем `AUD-12` — экран выбора аватара. `BUG-01` исправлен 2026-11-15, `AUD-06` закрыт 2026-11-15.
+**Текущий фокус:** `AUD-07a` — edge-to-edge, insets и IME (P1)
+**Следующее действие:** `AUD-07a` — снять portrait-lock, привести insets/IME на login, формах, поиске и full-map; затем `AUD-07b` — адаптивная навигация и сетки, `AUD-13` — переход на Navigation 3. `BUG-01` исправлен 2026-11-15, `BUG-02` исправлен 2026-11-18, `AUD-06` закрыт 2026-11-15.
 
 > Это handoff-файл аудита. Код правится по мере выполнения задач; актуальные статусы — в таблице ниже.
 
@@ -12,7 +12,7 @@
 В начале новой сессии достаточно написать:
 
 ```text
-@docs/audit/ROADMAP.md Продолжаем с AUD-11. Сначала прочитай файл и статусы.
+@docs/audit/ROADMAP.md Продолжаем с AUD-07a. Сначала прочитай файл и статусы.
 ```
 
 Агент прочитает этот файл, увидит текущий фокус, порядок работ, решения и критерии готовности. После выполнения пункта нужно обновить его `Статус` и `Текущий фокус` здесь же.
@@ -20,13 +20,17 @@
 ## Принятые решения
 
 1. **Release signing отложен до Release Gate.** Пока нет внешнего релиза, debug-подпись не блокирует разработку. Не распространять release-APK, собранный с debug-ключом. Перед первым APK для тестеров/сторов вернуться к `AUD-10`.
-2. **P1 закрыты, дальше P0.** ANR, изоляция кэша маркеров, приватность отчёта и действия аккаунта сделаны. `AUD-11` (backup + encrypted-сессия) закрыт 2026-11-15, до появления реальных пользовательских данных.
+2. **P0 закрыты, дальше структурные P2.** ANR, изоляция кэша маркеров, приватность отчёта и действия аккаунта сделаны. `AUD-11` (backup + encrypted-сессия) закрыт 2026-11-15. `AUD-07a` помечен P1 по impact: клавиатура и системные панели перекрывают поля и кнопки — это пользовательский баг, а не косметика.
 3. **R8 не делаем первым.** Сначала стабилизируем логику и приватность, затем включаем R8 с проверкой release-сборки.
-4. **Backup/auth-токены** остаются P0 по impact, но не блокируют старт P1. Закрыть до появления реальных пользовательских данных; можно делать параллельно.
+4. **Backup/auth-токены закрыты в `AUD-11`.** При появлении новых приватных данных или новых каналов экспорта повторить проверку backup-правил и хранения сессии.
 5. **Приватность важнее косметики.** «Сделать приватным», удаление аккаунта и очистка приватного кэша — не откладывать дальше первых двух итераций.
 6. **Выбор аватара вынесен в отдельную задачу `AUD-12`.** В AUD-03 не трогаем аватар: текущий пикер и диалог имени остаются как есть до реализации отдельного экрана.
-7. **`AUD-06` закрыт без черновика в Room.** Состояние формы отчёта живёт в activity-scoped `SavedStateHandle` (VM создаётся на уровне `FishingNavHost`), состояние подэкранов — в `rememberSaveable`. Этого достаточно для process death внутри живой задачи; полноценный черновик (вернуться через неделю, с фото) — отдельное решение, когда понадобится: тогда же передавать пути фото черновика в `keepPaths`, а не полагаться на 7-дневное окно. Ориентация дополнительно зафиксирована в portrait на телефоне, но это не отменяет restore-логику.
-8. **Порядок перестроен под «релиз ещё далеко».** Сначала задачи, которые меняют структуру приложения и иначе вызовут переделку (`AUD-11` как базовая приватность, затем `AUD-06`, `AUD-07`, `AUD-12`), потом изолированные улучшения (`AUD-08`), затем инфраструктура и release-подготовка (`AUD-09`, `AUD-05`, `AUD-10`). `AUD-05` разделён: R8/иконки/шрифты — до первых тестеров, baseline profile — на замороженном UI перед Release Gate.
+7. **`AUD-06` закрыт без черновика в Room.** Состояние формы отчёта живёт в activity-scoped `SavedStateHandle` (VM создаётся на уровне `FishingNavHost`), состояние подэкранов — в `rememberSaveable`. Этого достаточно для process death внутри живой задачи; полноценный черновик (вернуться через неделю, с фото) — отдельное решение, когда понадобится: тогда же передавать пути фото черновика в `keepPaths`, а не полагаться на 7-дневное окно. Ориентация временно зафиксирована в portrait на телефоне; `AUD-07a` снимает этот лок, restore-логика к этому готова.
+8. **Порядок перестроен под «релиз ещё далеко».** Сначала задачи, которые меняют структуру приложения и иначе вызовут переделку (`AUD-11` как базовая приватность, затем `AUD-06`, `AUD-07a`, `AUD-07b`, `AUD-13`, `AUD-12`), потом изолированные улучшения (`AUD-08`), затем инфраструктура и release-подготовка (`AUD-09`, `AUD-05`, `AUD-10`). `AUD-05` разделён: R8/иконки/шрифты — до первых тестеров, baseline profile — на замороженном UI перед Release Gate.
+
+9. **`AUD-07` разделён на `AUD-07a` и `AUD-07b`.** IME/insets — исправление уже существующего поведения (P1), адаптивная навигация и сетки — изменение структуры UI (P2). У них разный риск, разные проверки и разные критерии готовности; смешивать в одну задачу нельзя.
+
+10. **Переход на Navigation 3 — отдельная задача `AUD-13`.** `NavigationSuiteScaffold` и адаптивные сетки не требуют Nav3, поэтому `AUD-07b` не блокируется миграцией. Nav3 нужен только для multi-pane (`SceneStrategy`); делаем его после стабилизации layout'а и до новых экранов (`AUD-12`), чтобы не переписывать маршруты дважды.
 
 ## Очередь работ
 
@@ -34,16 +38,24 @@
 |---|---|---|---|
 | AUD-11 | P0 | `DONE` | Backup + plaintext Supabase-сессия + приватные данные |
 | AUD-06 | P2 | `DONE` | Сохранение состояния форм при повороте/process death |
-| AUD-07 | P2 | `TODO` | Адаптивность и edge-to-edge/IME |
+| AUD-07a | P1 | `IN_PROGRESS` | Edge-to-edge, insets и IME; снятие portrait-lock |
+| AUD-07b | P2 | `TODO` | Адаптивная навигация, сетки и максимальная ширина контента |
+| AUD-13 | P2 | `TODO` | Переход на Navigation 3 (структурная подготовка к multi-pane) |
 | AUD-12 | P2 | `TODO` | Экран выбора аватара и сохранение без диалога имени |
 | AUD-08 | P2 | `TODO` | Nominatim: клиент, User-Agent, таймауты |
 | AUD-09 | P2 | `TODO` | Окружения, baseline-миграции Supabase, CI |
 | AUD-05 | P2 | `TODO` | R8, shrink resources, размер APK, baseline profile (A — до тестеров, B — перед Release Gate) |
 | AUD-10 | Release Gate | `DEFERRED` | Release signing: keystore, Play App Signing, секреты |
 
+**Порядок и зависимости новых задач:**
+- `AUD-07a` — можно начинать сразу, блокеров нет.
+- `AUD-07b` — после `AUD-07a`: сначала фиксируем владельца insets (`Scaffold` vs `NavigationSuiteScaffold`), иначе получим двойные отступы.
+- `AUD-13` — после `AUD-07b`, когда каркас экранов стабилен. `AUD-07a` и `AUD-07b` от него не зависят; Nav3 разблокирует только multi-pane list-detail.
+- `AUD-12` — рекомендуется после `AUD-13`, чтобы новый экран сразу жил в целевой навигации.
+
 Закрытые задачи: `AUD-01` (ANR профиля), `AUD-02` (кэш маркеров), `AUD-03` (приватность/аккаунт), `AUD-04` (очистка приватного отчёта), `AUD-11` (backup/сессия), `AUD-06` (состояние форм).
 
-**Почему такой порядок:** `AUD-11` меняет хранение сессии и backup-политику — дешевле сделать до появления новых экранов и данных. `AUD-06`/`AUD-07`/`AUD-12` тоже структурные: если сделать их после новых фич, те же экраны придётся переделывать. `AUD-08` изолирован и не блокирует остальное. `AUD-09`/`AUD-05`/`AUD-10` — release-подготовка; до релиза далеко, поэтому они в конце, но `assembleRelease` должен оставаться рабочим, как только включим R8.
+**Почему такой порядок:** `AUD-07a` идёт первым, потому что IME/insets — регресс, видимый на каждом телефоне, и он не зависит от структуры навигации. `AUD-07b` меняет каркас `MainShell` и владение отступами, поэтому идёт сразу после 07a. `AUD-13` — структурная миграция навигации: её выгодно сделать до новых экранов (`AUD-12`), иначе маршруты и `SceneStrategy` придётся переписывать дважды; при этом `AUD-07b` от неё не зависит. `AUD-08` изолирован и не блокирует остальное. `AUD-09`/`AUD-05`/`AUD-10` — release-подготовка; до релиза далеко, поэтому они в конце, но `assembleRelease` должен оставаться рабочим, как только включим R8.
 
 ## Баги (сообщены 2026-11-15, 2026-11-18)
 
@@ -290,7 +302,7 @@
 
 **Сделано (2026-11-15):**
 
-**Ориентация.** `MainActivity` зафиксирована в portrait (`android:screenOrientation="portrait"`), чтобы на телефоне поворот не пересоздавал Activity. Ограничение не заменяет restore-логику: process death, смена темы/шрифта/языка, мультиокно и большие экраны (Android 16 игнорирует лок при smallest width ≥ 600dp) по-прежнему пересоздают UI — учесть в `AUD-07`.
+**Ориентация.** `MainActivity` зафиксирована в portrait (`android:screenOrientation="portrait"`), чтобы на телефоне поворот не пересоздавал Activity. Ограничение не заменяет restore-логику: process death, смена темы/шрифта/языка, мультиокно и большие экраны (Android 16 игнорирует лок при smallest width ≥ 600dp) по-прежнему пересоздают UI — учесть в `AUD-07a`/`AUD-07b`.
 
 **Форма отчёта.** `CreateReportViewModel` получает `SavedStateHandle` последним параметром (со значением по умолчанию, чтобы не ломать тесты/preview). Все поля формы переведены на делегаты с ключами `form_*` (`SavedStateProperty`, `ReportFormCodecs`): `GeoPoint` — как `form_geo_lat`/`form_geo_lng`, фото — `id + uri`, `Fish`/`Bait`/`FishingMethod` — enum-именами. `currentReportId` тоже сохраняется, поэтому повторный Save после process death делает upsert по тому же id без дубля. Дефолтные даты выставляются только при отсутствии `form_start_date`; `saveState`/`saveProgress`/`pendingProcessedPaths` транзиентные (после восстановления `Idle`). Сброс формы — только на переходе `Authenticated → Unauthenticated`, а не на холодном старте с `Unauthenticated`. Состояние формы привязано к пользователю (`form_owner_id`).
 
@@ -308,19 +320,82 @@
 
 **Ручная проверка на устройстве (осталось):** Developer options → Don't keep activities; `adb shell am kill com.example.fishing` с заполненной формой, с открытой камерой и с выбранными из галереи фото; logout после выбора фото; возврат из «недавних» через сутки+.
 
-### AUD-07 — Адаптивность и edge-to-edge
+### AUD-07a — Edge-to-edge, insets и IME (P1)
 
-**Проблема:** фиксированный `NavigationBar`, одна колонка ленты, нет `WindowSizeClass`; поисковые экраны не учитывают navigation bar; login/registration без `imePadding`; FAB full-map без `navigationBarsPadding`.
+**Проблема:** `enableEdgeToEdge()` и `adjustResize` уже включены, но экраны не доводят эту модель до конца: клавиатура перекрывает поля ввода и кнопки, списки поиска уходят под navigation bar, FAB на full-map не учитывает системную панель. Дополнительно `MainActivity` залочена в portrait, что противоречит `adaptive`-скиллу и мешает планшетам/складным.
+
+**Почему P1:** это не косметика. На маленьком экране с открытой клавиатурой пользователь не видит поле или кнопку «Сохранить» — сценарий ввода пароля/отчёта ломается.
 
 **Где:**
-- `app/src/main/java/com/example/fishing/ui/screens/main/MainShell.kt:207-229`
-- `app/src/main/java/com/example/fishing/ui/screens/main/HomeTabContent.kt:133-141`
-- `app/src/main/java/com/example/fishing/ui/screens/search/ReportSearchScreen.kt:181-204`
-- `app/src/main/java/com/example/fishing/ui/screens/search/LocationSearchScreen.kt:75-104`
-- `app/src/main/java/com/example/fishing/ui/screens/login/LoginScreen.kt:84-90`
-- `app/src/main/java/com/example/fishing/ui/screens/map/MapScreen.kt:444-447`
+- `app/src/main/AndroidManifest.xml:26` — `android:screenOrientation="portrait"`;
+- `app/src/main/java/com/example/fishing/ui/screens/login/LoginScreen.kt:84-90`;
+- `app/src/main/java/com/example/fishing/ui/screens/login/RegistrationScreen.kt:121-122`;
+- `app/src/main/java/com/example/fishing/ui/screens/profile/EditProfileScreen.kt:187`;
+- `app/src/main/java/com/example/fishing/ui/screens/profile/ChangePasswordScreen.kt:187-188` — `imePadding` после `verticalScroll`;
+- `app/src/main/java/com/example/fishing/ui/screens/report/create/WaterEditScreen.kt:153`;
+- `app/src/main/java/com/example/fishing/ui/screens/report/create/CatchEditScreen.kt:149`;
+- `app/src/main/java/com/example/fishing/ui/screens/report/create/CommentEditScreen.kt:83`;
+- `app/src/main/java/com/example/fishing/ui/screens/search/ReportSearchScreen.kt:181-204`;
+- `app/src/main/java/com/example/fishing/ui/screens/search/LocationSearchScreen.kt:75-104`;
+- `app/src/main/java/com/example/fishing/ui/screens/map/MapScreen.kt:437-449` — FAB в `FullMapRoute`.
 
-**Что сделать:** `NavigationSuiteScaffold`/rail, адаптивные сетки, максимальная ширина контента, корректные insets и IME, проверка phone/tablet/foldable.
+**Что сделать:**
+- убрать `android:screenOrientation="portrait"`; поворот и fold должны пересоздавать UI без потери формы (регресс `AUD-06`);
+- для login/registration и всех экранов с `TextField` добавить `imePadding()` (или `fitInside(WindowInsetsRulers.Ime.current)`) **до** `verticalScroll`; не дублировать IME, если `contentWindowInsets` уже содержит его;
+- в поисковых экранах оставить `contentWindowInsets = WindowInsets(0, 0, 0, 0)`, но добавить нижний inset navigation bar в `contentPadding` списка; `imePadding` не убирать, чтобы не получить двойной отступ;
+- в `MapScreen` для standalone/full-map добавить `navigationBarsPadding()` к FAB; в табе учесть, что после `AUD-07b` контент станет edge-to-edge и отступ больше не будет приходить снаружи;
+- пройти по всем `Scaffold` (21 шт.) и `TextField` (10 файлов), а не только по списку из аудита: сверить `innerPadding`, `consumeWindowInsets` и отсутствие двойных отступов;
+- оставить `enableEdgeToEdge()` и `windowSoftInputMode="adjustResize"` как есть.
+
+**Готово, когда:**
+- клавиатура не перекрывает поля и кнопки на login, registration и всех формах;
+- списки поиска и FAB full-map не пересекаются с navigation bar;
+- поворот телефона и fold не теряют введённые данные (существующие тесты `AUD-06` + ручная проверка);
+- нет двойных отступов на экранах с `Scaffold`/`imePadding`;
+- `:app:testDebugUnitTest` и `assembleDebug` зелёные.
+
+**Оценка:** 1.5–2 дня. **Не входит:** rail/адаптивные сетки (`AUD-07b`), Nav3 (`AUD-13`), screenshot-тесты (backlog).
+
+**Ход выполнения (2026-11-19, ветка `audit/aud-07a-edge-to-edge`):**
+- Снят `screenOrientation="portrait"`; `enableEdgeToEdge()` и `adjustResize` сохранены.
+- Для прозрачной навигационной панели отключён принудительный системный контраст после `enableEdgeToEdge()`.
+- Login, registration и формы редактирования получили обработку IME до `verticalScroll`; padding от `Scaffold` потребляется явно. В форме отчёта сохранён существующий `imePadding`, добавлено потребление `innerPadding`.
+- Запрос поиска места переведён на `rememberSaveable`, чтобы не терять введённый текст при смене ориентации.
+- Поиск отчётов и мест оставляет ручной top inset, добавляет нижний inset navigation bar спискам только когда IME скрыта; список по-прежнему поднимается над клавиатурой.
+- FAB standalone/full-map учитывает navigation bar; в табе отступ остаётся владельцем `MainShell`/`Scaffold`, чтобы не удваивать его.
+- Проверено статически: все 21 `Scaffold` и поля ввода в Compose; остальных мест с `imePadding`/`contentWindowInsets` двойного применения не обнаружено.
+- `ANDROID_HOME=/Users/vital/Library/Android/sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug` — `BUILD SUCCESSFUL`.
+- **Осталось вручную:** проверить клавиатуру на login, registration, формах и обоих поисках, а также поворот/fold и FAB full-map; подключённого устройства сейчас нет.
+
+### AUD-07b — Адаптивная навигация и контент (P2)
+
+**Проблема:** `MainShell` всегда рисует `NavigationBar` снизу, лента — одна колонка, у форм нет максимальной ширины. На планшете и развёрнутом foldable это выглядит как растянутый телефон.
+
+**Где:**
+- `app/src/main/java/com/example/fishing/ui/screens/main/MainShell.kt:129-230` — `Scaffold` + `NavigationBar`;
+- `app/src/main/java/com/example/fishing/ui/screens/main/HomeTabContent.kt:133-141` — `LazyColumn`;
+- `app/src/main/java/com/example/fishing/ui/screens/login/LoginScreen.kt:84`;
+- формы профиля/отчёта (`EditProfile`, `CreateReport`, `WaterEdit`, `CatchEdit`, `CommentEdit`);
+- детали отчёта и поисковые списки — для максимальной ширины.
+
+**Что сделать:**
+- добавить `androidx.compose.material3:material3-adaptive-navigation-suite` (версия из Compose BOM);
+- заменить `Scaffold.bottomBar` на `NavigationSuiteScaffold`: на телефоне — `NavigationBar`, на ≥ 600dp — `NavigationRail`; пункты те же (`BottomNavItem`);
+- сохранить `TopAppBar` и текущее поведение pager'а; помнить, что `NavigationSuiteScaffold` **не передаёт `PaddingValues`** — каждый экран сам владеет нижними/боковыми insets;
+- пересчитать позиционирование snackbar и `ReportUploadBanner` в `MainShell.kt:306-362` под rail/bar;
+- `HomeTabContent`: `LazyColumn` → `LazyVerticalGrid(GridCells.Adaptive(320.dp))`, сохранить `PullToRefreshBox`, пагинацию и `contentType`; для служебных элементов использовать `span = maxLineSpan`;
+- ограничить ширину контента: login/registration ~480dp, формы профиля/отчёта ~640dp, детали ~840dp, выравнивать по центру;
+- проверить phone portrait/landscape, tablet, unfolded foldable; на `w411dp` — bar, на `w840dp` — rail и 2+ колонки.
+
+**Готово, когда:**
+- на телефоне нижняя навигация, на планшете/развёрнутом foldable — rail;
+- лента на широком экране показывает 2+ колонки, пагинация и pull-to-refresh работают;
+- формы и детали не растянуты на всю ширину;
+- snackbar/баннер загрузки не перекрываются навигацией;
+- добавлены Robolectric-тесты на `w411dp`/`w840dp` (bar vs rail, число колонок);
+- `:app:testDebugUnitTest` и `assembleDebug` зелёные.
+
+**Оценка:** 2–3 дня. **Зависит от:** `AUD-07a`. **Не входит:** multi-pane list-detail (нужен `AUD-13`), desktop/tabletop-сценарии.
 
 ### AUD-08 — Nominatim
 
@@ -395,8 +470,37 @@
 - при ошибке загрузки профиль остаётся прежним, пользователь видит сообщение;
 - UI-тесты обновлены, `:app:testDebugUnitTest` зелёный.
 
+### AUD-13 — Переход на Navigation 3
+
+**Проблема:** проект использует Navigation Compose 2.10.2. `adaptive`-скилл требует Navigation 3 для multi-pane (`ListDetailSceneStrategy`/`SupportingPaneSceneStrategy`), поэтому list-detail и supporting pane сейчас недоступны. Чем позже делать миграцию, тем больше экранов и тестов придётся переписывать.
+
+**Где:**
+- `app/src/main/java/com/example/fishing/ui/navigation/FishingNavHost.kt` — `NavHost`, `composable<T>`, переходы и `savedStateHandle`;
+- `app/src/main/java/com/example/fishing/ui/navigation/Routes.kt` — типизированные маршруты;
+- `app/src/main/java/com/example/fishing/ui/navigation/AuthNavigation.kt` — `AuthNavigationEffect`, `SessionReadyEffect`;
+- `app/src/main/java/com/example/fishing/MainActivity.kt` — владение `NavHostController`;
+- тесты `AuthNavigation*`, `SessionReadyEffectTest`, `FishingAppContentTest`.
+
+**Что сделать:**
+- заменить `NavHost`/`composable<T>` на `NavDisplay` + `NavKey` (типизированные ключи сохранить);
+- перенести текущий back stack и переходы: auth redirect, `popUpTo`, `savedStateHandle`-обмен между формой отчёта и подэкранами;
+- сохранить поведение `BUG-01` (хост не покидает композицию при `Loading`, восстановленный стек не сбрасывается) и `BUG-02` (возврат в детали без спиннера);
+- добавить `sceneStrategies` только там, где реально нужен multi-pane; начинать с list-detail для ленты/деталей отчёта;
+- проверить predictive back, process death, logout→login, возврат из камеры;
+- обновить unit/Robolectric-тесты навигации.
+
+**Готово, когда:**
+- все текущие маршруты и сценарии входа/выхода работают как раньше;
+- process death и возврат из камеры не теряют стек;
+- при необходимости list-detail на планшете открывается через `SceneStrategy`, на телефоне — обычный переход;
+- `:app:testDebugUnitTest` и `assembleDebug` зелёные.
+
+**Оценка:** 3–5 дней. **Зависит от:** `AUD-07b`. **Разблокирует:** multi-pane list-detail/supporting pane (не обязательны для релиза).
+
 ## Backlog / низкий приоритет
 
+- **Compose Preview Screenshot Testing для form factors** (phone/foldable/tablet/desktop) — Step 1 из `adaptive`-скилла; инфраструктуры в проекте нет, добавить после `AUD-07b`.
+- **Multi-pane list-detail** для ленты/деталей отчёта — только после `AUD-13`; на телефоне оставить обычный переход.
 - `FileProvider` отдаёт весь cacheDir: `app/src/main/res/xml/file_paths.xml:3`.
 - Захардкоженные строки и неполные переводы: `app/src/main/java/com/example/fishing/ui/screens/report/create/CreateReportComponents.kt:278`, `app/src/main/java/com/example/fishing/ui/screens/report/create/ReportFieldRenderer.kt:142`, `app/src/main/res/values/strings.xml:48-50`.
 - Доступность: `contentDescription = null` у навигационных иконок, английский "Change photo": `app/src/main/java/com/example/fishing/ui/screens/profile/EditProfileScreen.kt:119`, `:213`.
@@ -428,7 +532,7 @@
 - Динамический ANR-профайлинг не выполнялся; вывод по ANR основан на подтверждённом main-thread path.
 - `lintDebug` запущен 2026-11-15: 7 ошибок (все `MissingTranslation` в `strings.xml`, уже в backlog) и 75 предупреждений; новых замечаний по AUD-11 нет.
 - RLS повторно не прогонялся; использованы существующий аудит и миграции.
-- 364 unit/Compose-теста проходят; 21 instrumented-тест проходил на устройстве 16 октября (после v13 миграции instrumented-тесты обновлены, но на устройстве не перезапускались).
+- 458 unit/Compose-тестов проходят (на 2026-11-18); 21 instrumented-тест проходил на устройстве 16 октября (после v13 миграции instrumented-тесты обновлены, но на устройстве не перезапускались).
 - Encrypted session manager покрыт JVM-тестами на уровне логики; сам Android Keystore проверяется только на устройстве (вход → перезапуск → logout → обновление поверх сборки с plaintext-сессией).
 - Ручная проверка сохранения аватара на устройстве выполнена владельцем: фото сохраняется. Сам сценарий выбора аватара остаётся прежним до `AUD-12`.
 - Смена приватности, смена пароля и удаление аккаунта проверены unit/Compose-тестами. Удаление аккаунта дополнительно проверено вручную на устройстве и в Supabase 2026-11-15. Объекты Storage при удалении аккаунта не чистятся (остаточный риск, см. AUD-09).

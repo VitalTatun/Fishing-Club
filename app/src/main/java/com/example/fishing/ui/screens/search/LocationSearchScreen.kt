@@ -14,11 +14,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,10 +41,16 @@ fun LocationSearchScreen(
     onBack: () -> Unit,
     nominatimService: NominatimService = remember { NominatimService() }
 ) {
-    var query by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
     var results by remember { mutableStateOf<List<NominatimResponse>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val density = LocalDensity.current
+    val navigationBarBottom = if (WindowInsets.ime.getBottom(density) == 0) {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    } else {
+        0.dp
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -101,7 +109,12 @@ fun LocationSearchScreen(
                     ) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(8.dp),
+                            contentPadding = PaddingValues(
+                                start = 8.dp,
+                                top = 8.dp,
+                                end = 8.dp,
+                                bottom = 8.dp + navigationBarBottom
+                            ),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             items(results, key = { it.placeId }) { result ->
