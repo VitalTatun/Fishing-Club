@@ -2,6 +2,8 @@
 
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
+  "skills": ["./skills"],
   "provider": {
     "opencode": {
       "options": {

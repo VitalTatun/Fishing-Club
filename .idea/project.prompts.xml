@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PromptTemplates">
+    <option name="builtInPromptOverrides">
+      <list>
+        <BuiltInPromptOverride>
+          <option name="groupId" value="rules" />
+          <option name="promptId" value="project" />
+          <option name="text" value="еред работой показать план работы&#10;Делай ТОЛЬКО то, что я прошу&#10;Если есть чтото добавть сначала спроси&#10;После проверяй на наличие ошибок&#10;ПОсле каждого ответа указывай какие skills были задейстовованы" />
+        </BuiltInPromptOverride>
+      </list>
+    </option>
+  </component>
+</project>

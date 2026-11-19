@@ -1,18 +1,78 @@
-# Fishing Project Architecture & Agent Skills
+# Fishing Project Architecture & Agents
 
 This project follows the modern Android development practices outlined in the [Awesome Android Agent Skills](https://github.com/new-silvermoon/awesome-android-agent-skills) repository.
 
-## 🧠 Active Agent Skills
-I have the following expert skills installed and active in this project:
+## 🤖 Agents
 
-1.  **[Jetpack Compose Expert](skills/compose-expert/SKILL.md)**: High-performance UI, Modifier order, Stability, and Material 3.
-2.  **[Android Architecture Expert](skills/architecture/SKILL.md)**: Clean Architecture, MVVM, UDF, and Offline-first patterns.
-3.  **[Performance Expert](skills/performance/SKILL.md)**: Audit, Recomposition optimization, and fast build logic.
-4.  **[Testing & Automation Expert](skills/testing/SKILL.md)**: Unit tests, UI tests, and Robot pattern.
-5.  **[Android Gradle Logic Expert](skills/build-logic/SKILL.md)**: Convention Plugins, Version Catalogs, and build optimization.
-6.  **[Concurrency & Networking Expert](skills/concurrency-networking/SKILL.md)**: Coroutines, Flow, Retrofit, and Dispatcher injection.
-7.  **[Migration Expert](skills/migration/SKILL.md)**: XML to Compose, RxJava to Coroutines, and Room migrations.
-8.  **[General UI Expert](skills/ui/SKILL.md)**: Accessibility, Coil, Navigation, and Adaptive UI.
+The team is defined in `.opencode/agents/` (OpenCode V2 agent files). Each agent has
+its own prompt, its own permission set and, optionally, its own model. Permissions
+are enforced by the runtime, not by the prompt: an agent without `edit` rights
+cannot modify files even if it tries.
+
+| Agent | Mode | Role | Writes files |
+| --- | --- | --- | --- |
+| `orchestrator` | primary | Plans the work, routes it, aggregates the reports | No (read + git inspect only) |
+| `analysis` | subagent | Turns a request into a spec: goal, acceptance criteria, states, edge cases, out of scope | Only `specs/` |
+| `architect` | all | Designs the solution: layers, components, data flow, DI, risks, implementation order | Only `docs/` and `specs/` |
+| `developer` | subagent | Implements code changes and fixes build errors | Yes |
+| `tester` | subagent | Writes tests and runs `./gradlew :app:testDebugUnitTest` | Only `app/src/test`, `app/src/androidTest` |
+| `reviewer` | subagent | Read-only review of the diff, findings by severity, final verdict | No |
+
+### Workflow
+
+`orchestrator` picks the lightest path that still de-risks the task:
+
+- Small fix: `developer` → `tester`.
+- New feature or a data-layer change: `analysis` → `architect` → `developer` →
+  `tester` → `reviewer`.
+- Review only: `reviewer` against the current diff.
+
+Reviewer findings go back to `developer`, then `tester` re-runs. The loop ends at
+`APPROVE` / `APPROVE WITH NITS` (or when the rest is explicitly out of scope).
+
+Subagents run in child sessions with a fresh context: whatever the orchestrator
+needs them to know must be in the task it hands over. Call a single one directly
+when you need just that step, e.g. "use the reviewer subagent on my current
+changes".
+
+Every agent checks the available skill list first and loads the matching skill
+with the `skill` tool. If nothing fits, it says so and continues without one.
+
+### Slash commands
+
+`default_agent` is `build`, so ordinary work starts there. The team is switched
+on per task from `.opencode/commands/`:
+
+| Command | Agent | Effect |
+| --- | --- | --- |
+| `/team <task>` | `orchestrator` | Switches the current session to the orchestrator and hands it the task. |
+| `/spec <request>` | `analysis` | Runs the analyst in a child session and returns a specification. |
+| `/code-review [scope]` | `reviewer` | Runs the read-only review of the working diff in a child session. |
+
+The built-in `/review` is left untouched. Since it is a subagent command, the
+parent keeps its agent: on `build` you can use the roles without losing your
+place.
+
+## 🧠 Skills
+
+Project skills live in `skills/` and are registered through `"skills": ["./skills"]`
+in `opencode.json`. Under that path OpenCode discovers every directory with a
+`SKILL.md`, so a new skill needs nothing but a folder and a `description` in its
+frontmatter - without a description the model never sees it. Global skills from
+`~/.config/opencode/skills` load too; on an ID collision the project copy wins.
+
+The folder contains only the official Android skills from
+[android/skills](https://github.com/android/skills.git). Typical ones:
+
+- `adaptive`, `edge-to-edge` - window size classes, multi-pane and insets;
+- `jetpack-compose-performance`, `android-profiler`, `r8-analyzer` - performance;
+- `testing-setup` - test harness and Compose UI tests;
+- `navigation-3`, `navigation-event` - navigation and back handling;
+- `agp-9-upgrade` - Gradle/AGP build logic;
+- `android-*-security`, `anr-audit-and-fix`, `play-policy-insights` and others.
+
+Review `skills/` before assuming a topic is uncovered; do not invent a skill ID.
+Keep the folder in sync with the upstream repository (`android skills update --all`).
 
 ## 🏗 Project Architecture
 - **Pattern:** MVVM + Clean Architecture principles.
