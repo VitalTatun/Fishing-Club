@@ -84,7 +84,7 @@ class MarkerCacheCleanerTest {
         authState.value = AuthState.Unauthenticated
         advanceUntilIdle()
 
-        assertTrue(markerDao.getVisibleForUser(user.id).first().isEmpty())
+        assertTrue(markerDao.getVisibleForUser(user.id).first { it.isEmpty() }.isEmpty())
     }
 
     @Test
@@ -101,6 +101,6 @@ class MarkerCacheCleanerTest {
         authState.value = AuthState.Unauthenticated
         advanceUntilIdle()
 
-        assertTrue(markerDao.getVisibleForUser(user.id).first().isEmpty())
+        assertTrue(markerDao.getVisibleForUser(user.id).first { it.isEmpty() }.isEmpty())
     }
 }

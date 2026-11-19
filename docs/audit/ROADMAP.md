@@ -447,6 +447,7 @@
 **Сделано (2026-11-19):**
 - `.github/workflows/android-tests.yml` запускает тесты на pull request, push в `main` и вручную (`workflow_dispatch`); настроены JDK 17, Android SDK, Gradle cache и загрузка отчётов при ошибке.
 - `docs/testing.md` описывает триггеры workflow и сохранение HTML/JUnit-отчётов.
+- CI выявил гонку в `MarkerCacheCleanerTest`: проверка теперь ждёт Room-эмиссию пустого списка после асинхронной очистки, а не читает только первый эмит.
 - `./gradlew :app:testDebugUnitTest --rerun-tasks` — 474 теста, 0 падений; Supabase credentials и эмулятор не нужны.
 
 #### AUD-09b — Baseline Supabase и CI-проверки RLS
