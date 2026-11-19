@@ -115,7 +115,7 @@ fun ReportSearchScreen(
             ) {
                 Column(
                     modifier = Modifier
-                        .widthIn(max = ContentWidths.Detail)
+                        .widthIn(max = ContentWidths.Search)
                         .fillMaxWidth()
                         .statusBarsPadding()
                 ) {
@@ -220,7 +220,7 @@ fun ReportSearchScreen(
                     LazyColumn(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .widthIn(max = ContentWidths.Detail)
+                            .widthIn(max = ContentWidths.Search)
                             .fillMaxWidth()
                             .fillMaxHeight()
                             .imePadding(),

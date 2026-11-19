@@ -316,7 +316,7 @@ fun ReportDetailScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .widthIn(max = ContentWidths.Detail)
+                    .widthIn(max = ContentWidths.ReportDetail)
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState())

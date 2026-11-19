@@ -2,7 +2,9 @@ package com.example.fishing.ui.screens.profile
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -22,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.fishing.R
+import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.components.ProfileListItem
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.utils.AppUtils
@@ -62,47 +65,53 @@ fun ProfileScreen(
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.Start
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
     ) {
-        if (userEmail != null) {
-            ProfileHeader(
-                userName = userName ?: "Пользователь",
-                userEmail = userEmail,
-                avatarUrl = avatarUrl,
-                onClick = onEditClick
+        Column(
+            modifier = Modifier
+                .widthIn(max = ContentWidths.Form)
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.Start
+        ) {
+            if (userEmail != null) {
+                ProfileHeader(
+                    userName = userName ?: "Пользователь",
+                    userEmail = userEmail,
+                    avatarUrl = avatarUrl,
+                    onClick = onEditClick
+                )
+            }
+
+            val context = LocalContext.current
+            val versionName = remember { AppUtils.getVersionName(context) }
+
+            ProfileListItem(
+                label = "Оформление",
+                value = "Выбор варианта отображения отчетов",
+                onClick = onAppearanceClick
             )
+
+            ProfileListItem(
+                label = "Версия приложения",
+                value = versionName,
+                onClick = onChangeHistoryClick
+            )
+
+            OutlinedButton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
+                onClick = {
+                    showLogoutDialog = true
+                }
+            ) {
+                Text("Выйти", maxLines = 1)
+            }
         }
-        
-        val context = LocalContext.current
-        val versionName = remember { AppUtils.getVersionName(context) }
-        
-        ProfileListItem(
-            label = "Оформление",
-            value = "Выбор варианта отображения отчетов",
-            onClick = onAppearanceClick
-        )
-
-        ProfileListItem(
-            label = "Версия приложения",
-            value = versionName,
-            onClick = onChangeHistoryClick
-        )
-
-       OutlinedButton(
-           onClick = {
-               showLogoutDialog = true
-           }
-       ) {
-            Text("Выйти")
-        }
-            
-
-
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -176,5 +185,3 @@ fun ProfileScreenOnlyEmailPreview() {
         )
     }
 }
-
-

@@ -80,7 +80,7 @@ fun LocationSearchScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .widthIn(max = ContentWidths.Detail)
+                        .widthIn(max = ContentWidths.Search)
                         .fillMaxWidth()
                 ) {
                     SearchFieldHeader(
@@ -122,7 +122,7 @@ fun LocationSearchScreen(
                         LazyColumn(
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
-                                .widthIn(max = ContentWidths.Detail)
+                                .widthIn(max = ContentWidths.Search)
                                 .fillMaxWidth()
                                 .fillMaxHeight(),
                             contentPadding = PaddingValues(
