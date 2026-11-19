@@ -53,15 +53,17 @@ JUnit XML: `app/build/test-results/testDebugUnitTest/`.
 
 ### CI
 
-В репозитории пока нет CI-конфигурации (нет `.github/workflows` и других
-пайплайнов). Когда CI появится, достаточный шаг — команда выше:
+GitHub Actions workflow `.github/workflows/android-tests.yml` запускает unit-
+и Compose UI-тесты:
 
-```bash
-./gradlew :app:testDebugUnitTest
-```
+- на каждом pull request;
+- при push в `main`;
+- вручную через `workflow_dispatch`.
 
-Она не требует эмулятора, секретов Supabase или подключения к сети после
-прогрева Gradle-кэша.
+Workflow использует JDK 17 и Android SDK, затем запускает
+`./gradlew :app:testDebugUnitTest --stacktrace`. Эмулятор и Supabase credentials
+не нужны; Compose UI-тесты выполняются под Robolectric. При ошибке CI сохраняет
+JUnit XML и HTML-отчёты как GitHub Actions artifact `android-test-reports`.
 
 ## Что покрыто
 
