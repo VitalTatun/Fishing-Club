@@ -6,5 +6,5 @@ internal object ContentWidths {
     val Authentication = 480.dp
     val Form = 640.dp
     val ReportDetail = 640.dp
-    val Search = 840.dp
+    val Search = 640.dp
 }
