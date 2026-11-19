@@ -19,10 +19,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.ComposeNavigator
-import androidx.navigation.compose.composable
-import androidx.navigation.createGraph
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.example.fishing.model.AuthState
 import com.example.fishing.ui.navigation.LoginRoute
 import com.example.fishing.ui.navigation.MainRoute
@@ -34,7 +32,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /**
@@ -59,34 +56,25 @@ class FishingAppContentTest {
 
     private val authState = mutableStateOf<AuthState>(AuthState.Loading)
 
-    private lateinit var navController: NavHostController
+    private lateinit var backStack: NavBackStack<NavKey>
 
     @Before
     fun setUp() {
         // Most tests start on the destination a restored session lands on.
-        navController = newNavController()
-        navController.navigate(MainRoute)
+        backStack = newBackStack()
+        backStack.add(MainRoute)
     }
 
-    private fun newNavController(): NavHostController {
-        val controller = NavHostController(RuntimeEnvironment.getApplication())
-        controller.navigatorProvider.addNavigator(ComposeNavigator())
-        controller.graph = controller.createGraph(startDestination = SplashRoute) {
-            composable<SplashRoute> { }
-            composable<LoginRoute> { }
-            composable<MainRoute> { }
-        }
-        return controller
-    }
+    private fun newBackStack() = NavBackStack<NavKey>(SplashRoute)
 
     private fun setContent(
-        controller: NavHostController = navController,
+        stack: NavBackStack<NavKey> = backStack,
         contentLaunches: (() -> Unit)? = null,
         onClick: (() -> Unit)? = null
     ) {
         composeRule.setContent {
             FishingTheme(darkTheme = false, dynamicColor = false) {
-                FishingAppContent(authState = authState.value, navController = controller) {
+                FishingAppContent(authState = authState.value, backStack = stack) {
                     if (contentLaunches != null) {
                         LaunchedEffect(Unit) { contentLaunches() }
                     }
@@ -185,7 +173,7 @@ class FishingAppContentTest {
                 Box(modifier = Modifier.fillMaxSize().clickable { parentClicks++ }) {
                     FishingAppContent(
                         authState = authState.value,
-                        navController = navController
+                        backStack = backStack
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) { Text("nav-host") }
                     }
@@ -213,7 +201,7 @@ class FishingAppContentTest {
             FishingTheme(darkTheme = false, dynamicColor = false) {
                 backDispatcher = checkNotNull(LocalOnBackPressedDispatcherOwner.current)
                     .onBackPressedDispatcher
-                FishingAppContent(authState = authState.value, navController = navController) {
+                FishingAppContent(authState = authState.value, backStack = backStack) {
                     // Stands in for the restored form's draft discard handler.
                     BackHandler { contentBackPresses++ }
                     Text("nav-host")
@@ -235,15 +223,15 @@ class FishingAppContentTest {
 
     @Test
     fun `overlay covers the empty splash destination after the session is restored`() {
-        val splashController = newNavController()
+        val splashBackStack = newBackStack()
         authState.value = AuthState.Unauthenticated
-        setContent(controller = splashController)
+        setContent(stack = splashBackStack)
 
         // Dropping the spinner together with Loading would flash a blank frame before
         // the auth effect moves the back stack off the splash destination.
         assertOverlayVisible()
 
-        composeRule.runOnIdle { splashController.navigate(LoginRoute) }
+        composeRule.runOnIdle { splashBackStack.add(LoginRoute) }
         composeRule.waitForIdle()
 
         assertOverlayHidden()

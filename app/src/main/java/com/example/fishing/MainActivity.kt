@@ -19,12 +19,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.core.app.ActivityCompat
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberNavBackStack
 import com.example.fishing.model.AuthState
 import com.example.fishing.ui.navigation.FishingNavHost
+import com.example.fishing.ui.navigation.SplashRoute
 import com.example.fishing.ui.navigation.isAuthOverlayVisible
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.AuthViewModel
@@ -66,13 +67,13 @@ class MainActivity : ComponentActivity() {
                     authRepository.loadSession()
                 }
 
-                FishingAppContent(authState = authState) { navController ->
+                FishingAppContent(authState = authState) { backStack ->
                     FishingNavHost(
                         authState = authState,
                         fishingRepository = fishingRepository,
                         authRepository = authRepository,
                         modifier = Modifier.fillMaxSize(),
-                        navController = navController
+                        backStack = backStack
                     )
                 }
             }
@@ -112,11 +113,10 @@ class MainActivity : ComponentActivity() {
 internal fun FishingAppContent(
     authState: AuthState,
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
-    content: @Composable (NavHostController) -> Unit
+    backStack: NavBackStack<NavKey> = rememberNavBackStack(SplashRoute),
+    content: @Composable (NavBackStack<NavKey>) -> Unit
 ) {
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val isOverlayVisible = isAuthOverlayVisible(authState, currentBackStackEntry?.destination)
+    val isOverlayVisible = isAuthOverlayVisible(authState, backStack.lastOrNull())
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -136,7 +136,7 @@ internal fun FishingAppContent(
                         }
                     )
             ) {
-                content(navController)
+                content(backStack)
             }
 
             if (isOverlayVisible) {

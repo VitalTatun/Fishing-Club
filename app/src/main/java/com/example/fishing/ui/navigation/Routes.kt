@@ -1,6 +1,7 @@
 package com.example.fishing.ui.navigation
 
 import kotlinx.serialization.Serializable
+import androidx.navigation3.runtime.NavKey
 
 /**
  * Type-safe navigation destinations.
@@ -18,48 +19,51 @@ import kotlinx.serialization.Serializable
  * after process death (BUG-01).
  */
 @Serializable
-data object SplashRoute
+data object SplashRoute : NavKey
 
 @Serializable
-data object LoginRoute
+data object LoginRoute : NavKey
 
 @Serializable
-data object RegistrationRoute
+data object RegistrationRoute : NavKey
 
 // --- Top level ---
 
 @Serializable
-data object MainRoute
+data object MainRoute : NavKey
 
 // --- Search ---
 
 /** Report list search opened from the home tab. */
 @Serializable
-data object ReportListSearchRoute
+data object ReportListSearchRoute : NavKey
 
 /** Place search opened from the map tab or from the fishing location editor. */
 @Serializable
-data object LocationSearchRoute
+data class LocationSearchRoute(val fromWaterEdit: Boolean = false) : NavKey
 
 // --- Report creation flow ---
 
 @Serializable
-data object CreateReportRoute
+data object CreateReportRoute : NavKey
 
 @Serializable
-data object FishingLocationRoute
+data class FishingLocationRoute(
+    val searchLatitude: Double? = null,
+    val searchLongitude: Double? = null
+) : NavKey
 
 @Serializable
-data object WaterNameEditRoute
+data object WaterNameEditRoute : NavKey
 
 @Serializable
-data object CommentEditRoute
+data object CommentEditRoute : NavKey
 
 @Serializable
-data object MethodBaitEditRoute
+data object MethodBaitEditRoute : NavKey
 
 @Serializable
-data object CatchEditRoute
+data object CatchEditRoute : NavKey
 
 // --- Report detail ---
 
@@ -72,10 +76,10 @@ data object CatchEditRoute
 data class ReportDetailRoute(
     val reportId: String,
     val allowAuthorNavigation: Boolean = true
-)
+) : NavKey
 
 @Serializable
-data class FullMapRoute(val reportId: String)
+data class FullMapRoute(val reportId: String) : NavKey
 
 // --- Users ---
 
@@ -88,18 +92,18 @@ data class UserProfileRoute(
     val userId: String,
     val userName: String = "",
     val userAvatar: String = ""
-)
+) : NavKey
 
 // --- Profile ---
 
 @Serializable
-data object ChangeHistoryRoute
+data object ChangeHistoryRoute : NavKey
 
 @Serializable
-data object EditProfileRoute
+data object EditProfileRoute : NavKey
 
 @Serializable
-data object ChangePasswordRoute
+data object ChangePasswordRoute : NavKey
 
 @Serializable
-data object AppearanceRoute
+data object AppearanceRoute : NavKey

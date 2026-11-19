@@ -8,13 +8,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import com.example.fishing.model.*
 import com.example.fishing.ui.screens.main.MainScreen
 import com.example.fishing.ui.screens.profile.ChangeHistoryScreen
@@ -33,7 +35,6 @@ import com.example.fishing.ui.screens.user.UserProfileScreen
 import com.example.fishing.ui.screens.login.LoginScreen
 import com.example.fishing.ui.screens.login.RegistrationScreen
 import com.example.fishing.ui.screens.map.MapScreen
-import com.example.fishing.ui.theme.FishingTransitions
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.ReportDetailUiState
 import com.example.fishing.viewmodel.CreateReportViewModel
@@ -53,10 +54,11 @@ fun FishingNavHost(
     fishingRepository: FishingRepository,
     authRepository: AuthRepository,
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
+    backStack: NavBackStack<NavKey>,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val navigator = remember(backStack) { FishingNavigator(backStack) }
 
     val viewModel: MainViewModel = hiltViewModel()
     val createReportViewModel: CreateReportViewModel = hiltViewModel()
@@ -88,589 +90,548 @@ fun FishingNavHost(
     // back stack only when the current destination belongs to the signed out entry
     // points, so a stack restored after process death survives the session restore
     // (the report form reopened after the system camera).
-    AuthNavigationEffect(authState = authState, navController = navController)
+    AuthNavigationEffect(authState = authState, backStack = backStack)
 
-    NavHost(
-        navController = navController,
-        startDestination = SplashRoute,
+    NavDisplay(
+        backStack = backStack,
+        onBack = { navigator.popBackStack() },
         modifier = modifier,
-        enterTransition = FishingTransitions.defaultEnterTransition,
-        exitTransition = FishingTransitions.defaultExitTransition,
-        popEnterTransition = FishingTransitions.defaultPopEnterTransition,
-        popExitTransition = FishingTransitions.defaultPopExitTransition,
-        predictivePopEnterTransition = FishingTransitions.predictivePopEnterTransition,
-        predictivePopExitTransition = FishingTransitions.predictivePopExitTransition
-    ) {
-        // Deliberately empty: while the session is being restored the activity
-        // draws the progress indicator over it, so the host never leaves the
-        // composition and a restored back stack is kept.
-        composable<SplashRoute> { }
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
+            rememberViewModelStoreNavEntryDecorator<NavKey>()
+        ),
+        transitionSpec = {
+            (slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(300)
+            ) + fadeIn(tween(300))) togetherWith
+                (slideOutHorizontally(
+                    targetOffsetX = { -it / 7 },
+                    animationSpec = tween(300)
+                ) + fadeOut(tween(300)))
+        },
+        popTransitionSpec = {
+            (slideInHorizontally(
+                initialOffsetX = { -it / 7 },
+                animationSpec = tween(300)
+            ) + fadeIn(tween(300))) togetherWith
+                (slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(300)
+                ) + fadeOut(tween(300)))
+        },
+        predictivePopTransitionSpec = {
+            (slideInHorizontally(
+                initialOffsetX = { -it / 7 },
+                animationSpec = tween(300)
+            ) + fadeIn(tween(300))) togetherWith
+                (slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(300)
+                ) + fadeOut(tween(300)))
+        },
+        entryProvider = entryProvider {
+            // Deliberately empty: while the session is being restored the activity
+            // draws the progress indicator over it, so the host never leaves the
+            // composition and a restored back stack is kept.
+            entry<SplashRoute> { }
 
-        composable<LoginRoute> {
-            val loginViewModel: LoginViewModel = hiltViewModel()
-            LoginScreen(
-                viewModel = loginViewModel,
-                onNavigateToRegistration = {
-                    navController.navigate(RegistrationRoute)
-                }
-            )
-        }
-
-        composable<RegistrationRoute> {
-            val registrationViewModel: RegistrationViewModel = hiltViewModel()
-            RegistrationScreen(
-                viewModel = registrationViewModel,
-                onBackClick = { navController.popBackStack() },
-                onConfirmedLogin = { navController.popBackStack() }
-            )
-        }
-
-        composable<MainRoute> {
-            MainScreen(
-                homeUiState = homeUiState,
-                isRefreshing = isRefreshing,
-                isLoadingMore = isLoadingMore,
-                loadMoreError = loadMoreError,
-                hasMoreReports = hasMoreReports,
-                onLoadMore = { viewModel.loadMoreReports() },
-                onRetryLoadMore = { viewModel.loadMoreReports() },
-                mapIsLoading = mapIsLoading,
-                mapIsRefreshing = mapIsRefreshing,
-                mapErrorMessage = mapErrorMessage,
-                selectedTab = selectedTab,
-                mapMarkers = mapMarkers,
-                viewModel = viewModel,
-                repository = fishingRepository,
-                onTabSelected = { index -> viewModel.selectTab(index) },
-                onCreateReportClick = {
-                    navController.navigate(CreateReportRoute)
-                },
-                onReportClick = { report ->
-                    navController.navigate(ReportDetailRoute(report.id.toString()))
-                },
-                onSearchClick = {
-                    if (selectedTab == 0) {
-                        navController.navigate(ReportListSearchRoute)
-                    } else {
-                        navController.navigate(LocationSearchRoute)
+            entry<LoginRoute> {
+                val loginViewModel: LoginViewModel = hiltViewModel()
+                LoginScreen(
+                    viewModel = loginViewModel,
+                    onNavigateToRegistration = {
+                        navigator.navigate(RegistrationRoute)
                     }
-                },
-                userEmail = currentUser?.email,
-                userName = currentUser?.name,
-                userImage = currentUser?.image,
-                currentUserId = currentUser?.id,
-                onLogout = {
-                    coroutineScope.launch {
-                        authRepository.logout()
+                )
+            }
+
+            entry<RegistrationRoute> {
+                val registrationViewModel: RegistrationViewModel = hiltViewModel()
+                RegistrationScreen(
+                    viewModel = registrationViewModel,
+                    onBackClick = { navigator.popBackStack() },
+                    onConfirmedLogin = { navigator.popBackStack() }
+                )
+            }
+
+            entry<MainRoute> {
+                MainScreen(
+                    homeUiState = homeUiState,
+                    isRefreshing = isRefreshing,
+                    isLoadingMore = isLoadingMore,
+                    loadMoreError = loadMoreError,
+                    hasMoreReports = hasMoreReports,
+                    onLoadMore = { viewModel.loadMoreReports() },
+                    onRetryLoadMore = { viewModel.loadMoreReports() },
+                    mapIsLoading = mapIsLoading,
+                    mapIsRefreshing = mapIsRefreshing,
+                    mapErrorMessage = mapErrorMessage,
+                    selectedTab = selectedTab,
+                    mapMarkers = mapMarkers,
+                    viewModel = viewModel,
+                    repository = fishingRepository,
+                    onTabSelected = { index -> viewModel.selectTab(index) },
+                    onCreateReportClick = {
+                        navigator.navigate(CreateReportRoute)
+                    },
+                    onReportClick = { report ->
+                        navigator.navigate(ReportDetailRoute(report.id.toString()))
+                    },
+                    onSearchClick = {
+                        if (selectedTab == 0) {
+                            navigator.navigate(ReportListSearchRoute)
+                        } else {
+                            navigator.navigate(LocationSearchRoute())
+                        }
+                    },
+                    userEmail = currentUser?.email,
+                    userName = currentUser?.name,
+                    userImage = currentUser?.image,
+                    currentUserId = currentUser?.id,
+                    onLogout = {
+                        coroutineScope.launch {
+                            authRepository.logout()
+                        }
+                    },
+                    onEditProfileClick = {
+                        navigator.navigate(EditProfileRoute)
+                    },
+                    onChangeHistoryClick = {
+                        navigator.navigate(ChangeHistoryRoute)
+                    },
+                    onAppearanceClick = {
+                        navigator.navigate(AppearanceRoute)
+                    },
+                    errorText = viewModel.error.collectAsState().value,
+                    onErrorDismiss = { viewModel.refresh() },
+                    deleteErrorText = viewModel.deleteReportError.collectAsState().value,
+                    onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
+                    favoriteErrorText = favoriteError,
+                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
+                    likeErrorText = likeError,
+                    onLikeErrorDismiss = { viewModel.clearLikeError() },
+                    pendingUploads = pendingUploads,
+                    uploadNotice = uploadNotice,
+                    onRetryPendingUpload = { viewModel.retryPendingUpload(it) },
+                    onCancelPendingUpload = { viewModel.cancelPendingUpload(it) },
+                    onUploadNoticeConsumed = { viewModel.consumeUploadNotice() }
+                )
+            }
+
+            entry<ReportListSearchRoute> {
+                val searchState by viewModel.searchState.collectAsStateWithLifecycle()
+                // Favourites are per user: the load is a silent no-op without a session.
+                SessionReadyEffect(searchState.filters.isFavoritesSelected, authState) {
+                    if (searchState.filters.isFavoritesSelected) {
+                        viewModel.loadFilterFavoriteReports(force = true)
                     }
-                },
-                onEditProfileClick = {
-                    navController.navigate(EditProfileRoute)
-                },
-                onChangeHistoryClick = {
-                    navController.navigate(ChangeHistoryRoute)
-                },
-                onAppearanceClick = {
-                    navController.navigate(AppearanceRoute)
-                },
-                errorText = viewModel.error.collectAsState().value,
-                onErrorDismiss = { viewModel.refresh() },
-                deleteErrorText = viewModel.deleteReportError.collectAsState().value,
-                onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
-                favoriteErrorText = favoriteError,
-                onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
-                likeErrorText = likeError,
-                onLikeErrorDismiss = { viewModel.clearLikeError() },
-                pendingUploads = pendingUploads,
-                uploadNotice = uploadNotice,
-                onRetryPendingUpload = { viewModel.retryPendingUpload(it) },
-                onCancelPendingUpload = { viewModel.cancelPendingUpload(it) },
-                onUploadNoticeConsumed = { viewModel.consumeUploadNotice() }
-            )
-        }
-
-        composable<ReportListSearchRoute> {
-            val searchState by viewModel.searchState.collectAsStateWithLifecycle()
-            // Favourites are per user: the load is a silent no-op without a session.
-            SessionReadyEffect(searchState.filters.isFavoritesSelected, authState) {
-                if (searchState.filters.isFavoritesSelected) {
-                    viewModel.loadFilterFavoriteReports(force = true)
                 }
+                ReportSearchScreen(
+                    reports = reports,
+                    favoriteReports = filterFavoriteReports,
+                    state = searchState,
+                    onStateChange = viewModel::updateSearchState,
+                    onReportClick = { report ->
+                        navigator.navigate(ReportDetailRoute(report.id.toString()))
+                    },
+                    onBack = { navigator.popBackStack() },
+                    favoriteError = viewModel.favoriteError.collectAsState().value,
+                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
+                )
             }
-            ReportSearchScreen(
-                reports = reports,
-                favoriteReports = filterFavoriteReports,
-                state = searchState,
-                onStateChange = viewModel::updateSearchState,
-                onReportClick = { report ->
-                    navController.navigate(ReportDetailRoute(report.id.toString()))
-                },
-                onBack = { navController.popBackStack() },
-                favoriteError = viewModel.favoriteError.collectAsState().value,
-                onFavoriteErrorDismiss = { viewModel.clearFavoriteError() }
-            )
-        }
 
-        composable<LocationSearchRoute> {
-            val isFromWaterEdit = navController.previousBackStackEntry
-                ?.destination
-                ?.hasRoute<FishingLocationRoute>() == true
+            entry<LocationSearchRoute> { route ->
 
-            LocationSearchScreen(
-                onLocationSelected = { point, _, polygon ->
-                    if (isFromWaterEdit) {
-                        navController.previousBackStackEntry
-                            ?.savedStateHandle
-                            ?.set("searchLocation", point)
-                    } else {
-                        viewModel.selectTab(1)
-                        viewModel.requestMapLocation(point)
-                        viewModel.setHighlightedPolygon(polygon)
+                LocationSearchScreen(
+                    onLocationSelected = { point, _, polygon ->
+                        if (route.fromWaterEdit) {
+                            navigator.replaceCurrentAndPrevious(
+                                FishingLocationRoute(
+                                    searchLatitude = point.latitude,
+                                    searchLongitude = point.longitude
+                                )
+                            )
+                        } else {
+                            viewModel.selectTab(1)
+                            viewModel.requestMapLocation(point)
+                            viewModel.setHighlightedPolygon(polygon)
+                            navigator.popBackStack()
+                        }
+                    },
+                    onBack = { navigator.popBackStack() }
+                )
+            }
+
+            entry<CreateReportRoute> {
+                CreateReportScreen(
+                    viewModel = createReportViewModel,
+                    onBackClick = { navigator.popBackStack() },
+                    onSaveComplete = {
+                        viewModel.refresh()
+                        if (navigator.currentKey == CreateReportRoute) {
+                            navigator.popBackStack()
+                        }
+                    },
+                    onNavigateToCatchEdit = {
+                        navigator.navigate(CatchEditRoute)
+                    },
+                    onNavigateToMethodAndBaitEdit = {
+                        navigator.navigate(MethodBaitEditRoute)
+                    },
+                    onNavigateToCommentEdit = {
+                        navigator.navigate(CommentEditRoute)
+                    },
+                    onNavigateToWaterEdit = {
+                        navigator.navigate(FishingLocationRoute())
+                    },
+                    onNavigateToWaterNameEdit = {
+                        navigator.navigate(WaterNameEditRoute)
                     }
-                    navController.popBackStack()
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable<CreateReportRoute> {
-            val currentEntry = navController.currentBackStackEntry!!
-
-            currentEntry.savedStateHandle.get<FishingMethod>("method")?.let {
-                createReportViewModel.formSelectedMethod = it
-            }
-            currentEntry.savedStateHandle.get<List<Bait>>("baits")?.let {
-                createReportViewModel.formSelectedBaits = it
-            }
-            currentEntry.savedStateHandle.get<List<Fish>>("fish")?.let {
-                createReportViewModel.formSelectedFish = it
-            }
-            currentEntry.savedStateHandle.get<Float>("weight")?.let {
-                createReportViewModel.formWeight = it
-            }
-            currentEntry.savedStateHandle.get<String>("comment")?.let {
-                createReportViewModel.formComment = it
-            }
-            currentEntry.savedStateHandle.get<GeoPoint>("location")?.let {
-                createReportViewModel.formLocation = it
+                )
             }
 
-            CreateReportScreen(
-                viewModel = createReportViewModel,
-                onBackClick = { navController.popBackStack() },
-                onSaveComplete = {
-                    viewModel.refresh()
-                    if (navController.currentBackStackEntry
-                            ?.destination
-                            ?.hasRoute<CreateReportRoute>() == true
-                    ) {
-                        navController.popBackStack()
+            entry<FishingLocationRoute> { route ->
+                val searchLocation = remember(route.searchLatitude, route.searchLongitude) {
+                    if (route.searchLatitude != null && route.searchLongitude != null) {
+                        GeoPoint(route.searchLatitude, route.searchLongitude)
+                    } else null
+                }
+                FishingLocationScreen(
+                    initialLocation = createReportViewModel.formLocation,
+                    searchLocation = searchLocation,
+                    onBackClick = { navigator.popBackStack() },
+                    onSaveClick = { point ->
+                        createReportViewModel.formLocation = point
+                        navigator.popBackStack()
+                    },
+                    onSearchClick = {
+                        navigator.navigate(LocationSearchRoute(fromWaterEdit = true))
                     }
-                },
-                onNavigateToCatchEdit = {
-                    currentEntry.savedStateHandle["fish"] = ArrayList(createReportViewModel.formSelectedFish)
-                    currentEntry.savedStateHandle["weight"] = createReportViewModel.formWeight
-                    navController.navigate(CatchEditRoute)
-                },
-                onNavigateToMethodAndBaitEdit = {
-                    currentEntry.savedStateHandle["method"] = createReportViewModel.formSelectedMethod
-                    currentEntry.savedStateHandle["baits"] = ArrayList(createReportViewModel.formSelectedBaits)
-                    navController.navigate(MethodBaitEditRoute)
-                },
-                onNavigateToCommentEdit = {
-                    currentEntry.savedStateHandle["comment"] = createReportViewModel.formComment
-                    navController.navigate(CommentEditRoute)
-                },
-                onNavigateToWaterEdit = {
-                    currentEntry.savedStateHandle["location"] = createReportViewModel.formLocation
-                    navController.navigate(FishingLocationRoute)
-                },
-                onNavigateToWaterNameEdit = {
-                    navController.navigate(WaterNameEditRoute)
-                }
-            )
-        }
-
-        composable<FishingLocationRoute> { backStackEntry ->
-            val currentLocation = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<GeoPoint>("location")
-
-            val searchLocation =
-                backStackEntry.savedStateHandle.get<GeoPoint>("searchLocation")
-
-            if (searchLocation != null) {
-                backStackEntry.savedStateHandle.remove<GeoPoint>("searchLocation")
+                )
             }
 
-            FishingLocationScreen(
-                initialLocation = currentLocation,
-                searchLocation = searchLocation,
-                onBackClick = { navController.popBackStack() },
-                onSaveClick = { point ->
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("location", point)
-                    navController.popBackStack()
-                },
-                onSearchClick = {
-                    navController.navigate(LocationSearchRoute)
-                }
-            )
-        }
-
-        composable<WaterNameEditRoute> {
-            WaterEditScreen(
-                viewModel = createReportViewModel,
-                reportsViewModel = viewModel,
-                onBackClick = { navController.popBackStack() },
-                onSaveClick = { navController.popBackStack() }
-            )
-        }
-
-        composable<CommentEditRoute> {
-            val currentComment = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<String>("comment") ?: ""
-
-            CommentEditScreen(
-                initialComment = currentComment,
-                onBackClick = { navController.popBackStack() },
-                onSaveClick = { comment ->
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("comment", comment)
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        composable<MethodBaitEditRoute> {
-            val currentMethod = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<FishingMethod>("method") ?: FishingMethod.NONE
-            val currentBaits = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<List<Bait>>("baits") ?: emptyList()
-
-            FishingMethodAndBaitScreen(
-                initialMethod = currentMethod,
-                initialBaits = currentBaits,
-                onBackClick = { navController.popBackStack() },
-                onSaveClick = { method, baits ->
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("method", method)
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("baits", ArrayList(baits))
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        composable<CatchEditRoute> {
-            val currentFish = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<List<Fish>>("fish") ?: emptyList()
-            val currentWeight = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<Float>("weight") ?: 0f
-            val isTrophy = createReportViewModel.formReportType == FishingType.HAUL
-
-            CatchEditScreen(
-                fishList = currentFish,
-                initialWeight = currentWeight,
-                onBackClick = { navController.popBackStack() },
-                onSaveClick = { fish, weight ->
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("fish", ArrayList(fish))
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("weight", weight)
-                    navController.popBackStack()
-                },
-                isTrophy = isTrophy
-            )
-        }
-
-        composable<ReportDetailRoute> { backStackEntry ->
-            // Consume the back gesture so the system predictive preview is not
-            // shown on this destination; the regular pop slide still plays.
-            BackHandler { navController.popBackStack() }
-
-            val reportDetailRoute = backStackEntry.toRoute<ReportDetailRoute>()
-            val reportId = runCatching {
-                UUID.fromString(reportDetailRoute.reportId)
-            }.getOrNull()
-
-            // Without a session the store answers NoSession and the screen would stay
-            // in Loading (the key no longer changes), so wait for the session.
-            SessionReadyEffect(reportId, authState) {
-                reportId?.let { viewModel.loadReportDetails(it) }
+            entry<WaterNameEditRoute> {
+                WaterEditScreen(
+                    viewModel = createReportViewModel,
+                    reportsViewModel = viewModel,
+                    onBackClick = { navigator.popBackStack() },
+                    onSaveClick = { navigator.popBackStack() }
+                )
             }
 
-            val reportDetailState by viewModel.reportDetailUiState.collectAsState()
-            val isDeletingReport by viewModel.isDeletingReport.collectAsState()
-            val deleteReportError by viewModel.deleteReportError.collectAsState()
-            val deletedReportId by viewModel.deletedReportId.collectAsState()
-            val isUpdatingReportVisibility by
-                viewModel.isUpdatingReportVisibility.collectAsState()
-            val reportVisibilityError by
-                viewModel.reportVisibilityError.collectAsState()
-            val reportVisibilityResult by
-                viewModel.reportVisibilityResult.collectAsState()
-
-            var photoViewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
-
-            LaunchedEffect(deletedReportId, reportId) {
-                if (deletedReportId == reportId) {
-                    viewModel.clearDeletedReport()
-                    navController.popBackStack()
-                }
+            entry<CommentEditRoute> {
+                CommentEditScreen(
+                    initialComment = createReportViewModel.formComment,
+                    onBackClick = { navigator.popBackStack() },
+                    onSaveClick = { comment ->
+                        createReportViewModel.formComment = comment
+                        navigator.popBackStack()
+                    }
+                )
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (val state = reportDetailState) {
-                    is ReportDetailUiState.Success ->
-                        if (state.report.id == reportId) {
-                            ReportDetailScreen(
-                                report = state.report,
-                                onBackClick = { navController.popBackStack() },
-                                isFavorite = state.report.id in favoriteIds,
-                                isFavoriteUpdating = state.report.id in favoriteOpsInFlight,
-                                onToggleFavorite = { viewModel.toggleFavorite(state.report) },
-                                onMapClick = { point ->
-                                    viewModel.requestMapLocation(point)
-                                    navController.navigate(FullMapRoute(state.report.id.toString()))
-                                },
-                                isOwnReport = state.report.userId == currentUser?.id,
-                                isDeleting = isDeletingReport,
-                                onDeleteReport = { viewModel.deleteReport(state.report.id) },
-                                isUpdatingVisibility = isUpdatingReportVisibility,
-                                onToggleVisibility = { isPublic ->
-                                    viewModel.setReportVisibility(state.report.id, isPublic)
-                                },
-                                visibilityError = reportVisibilityError,
-                                onVisibilityErrorDismiss = {
-                                    viewModel.clearReportVisibilityError()
-                                },
-                                visibilityResult = reportVisibilityResult,
-                                onVisibilityResultShown = {
-                                    viewModel.clearReportVisibilityResult()
-                                },
-                                onPhotoClick = { index ->
-                                    photoViewerIndex = index
-                                },
-                                deleteError = deleteReportError,
-                                onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
-                                favoriteError = favoriteError,
-                                onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
-                                likeState = likeStates[state.report.id],
-                                onToggleLike = { viewModel.toggleLike(state.report) },
-                                likeError = likeError,
-                                onLikeErrorDismiss = { viewModel.clearLikeError() },
-                                // Opened from a user page: the author of this
-                                // report is that same user, so the row must not
-                                // push another profile onto the back stack.
-                                onUserClick = if (reportDetailRoute.allowAuthorNavigation) {
-                                    {
-                                        navController.navigate(
-                                            UserProfileRoute(
-                                                userId = state.report.userId.toString(),
-                                                userName = state.report.user.name,
-                                                userAvatar = state.report.user.image
+            entry<MethodBaitEditRoute> {
+                FishingMethodAndBaitScreen(
+                    initialMethod = createReportViewModel.formSelectedMethod,
+                    initialBaits = createReportViewModel.formSelectedBaits,
+                    onBackClick = { navigator.popBackStack() },
+                    onSaveClick = { method, baits ->
+                        createReportViewModel.formSelectedMethod = method
+                        createReportViewModel.formSelectedBaits = baits
+                        navigator.popBackStack()
+                    }
+                )
+            }
+
+            entry<CatchEditRoute> {
+                val isTrophy = createReportViewModel.formReportType == FishingType.HAUL
+
+                CatchEditScreen(
+                    fishList = createReportViewModel.formSelectedFish,
+                    initialWeight = createReportViewModel.formWeight,
+                    onBackClick = { navigator.popBackStack() },
+                    onSaveClick = { fish, weight ->
+                        createReportViewModel.formSelectedFish = fish
+                        createReportViewModel.formWeight = weight
+                        navigator.popBackStack()
+                    },
+                    isTrophy = isTrophy
+                )
+            }
+
+            entry<ReportDetailRoute> { reportDetailRoute ->
+                // Consume the back gesture so the system predictive preview is not
+                // shown on this destination; the regular pop slide still plays.
+                BackHandler { navigator.popBackStack() }
+
+                val reportId = runCatching {
+                    UUID.fromString(reportDetailRoute.reportId)
+                }.getOrNull()
+
+                // Without a session the store answers NoSession and the screen would stay
+                // in Loading (the key no longer changes), so wait for the session.
+                SessionReadyEffect(reportId, authState) {
+                    reportId?.let { viewModel.loadReportDetails(it) }
+                }
+
+                val reportDetailState by viewModel.reportDetailUiState.collectAsState()
+                val isDeletingReport by viewModel.isDeletingReport.collectAsState()
+                val deleteReportError by viewModel.deleteReportError.collectAsState()
+                val deletedReportId by viewModel.deletedReportId.collectAsState()
+                val isUpdatingReportVisibility by
+                    viewModel.isUpdatingReportVisibility.collectAsState()
+                val reportVisibilityError by
+                    viewModel.reportVisibilityError.collectAsState()
+                val reportVisibilityResult by
+                    viewModel.reportVisibilityResult.collectAsState()
+
+                var photoViewerIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+
+                LaunchedEffect(deletedReportId, reportId) {
+                    if (deletedReportId == reportId) {
+                        viewModel.clearDeletedReport()
+                        navigator.popBackStack()
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (val state = reportDetailState) {
+                        is ReportDetailUiState.Success ->
+                            if (state.report.id == reportId) {
+                                ReportDetailScreen(
+                                    report = state.report,
+                                    onBackClick = { navigator.popBackStack() },
+                                    isFavorite = state.report.id in favoriteIds,
+                                    isFavoriteUpdating = state.report.id in favoriteOpsInFlight,
+                                    onToggleFavorite = { viewModel.toggleFavorite(state.report) },
+                                    onMapClick = { point ->
+                                        viewModel.requestMapLocation(point)
+                                        navigator.navigate(FullMapRoute(state.report.id.toString()))
+                                    },
+                                    isOwnReport = state.report.userId == currentUser?.id,
+                                    isDeleting = isDeletingReport,
+                                    onDeleteReport = { viewModel.deleteReport(state.report.id) },
+                                    isUpdatingVisibility = isUpdatingReportVisibility,
+                                    onToggleVisibility = { isPublic ->
+                                        viewModel.setReportVisibility(state.report.id, isPublic)
+                                    },
+                                    visibilityError = reportVisibilityError,
+                                    onVisibilityErrorDismiss = {
+                                        viewModel.clearReportVisibilityError()
+                                    },
+                                    visibilityResult = reportVisibilityResult,
+                                    onVisibilityResultShown = {
+                                        viewModel.clearReportVisibilityResult()
+                                    },
+                                    onPhotoClick = { index ->
+                                        photoViewerIndex = index
+                                    },
+                                    deleteError = deleteReportError,
+                                    onDeleteErrorDismiss = { viewModel.clearDeleteReportError() },
+                                    favoriteError = favoriteError,
+                                    onFavoriteErrorDismiss = { viewModel.clearFavoriteError() },
+                                    likeState = likeStates[state.report.id],
+                                    onToggleLike = { viewModel.toggleLike(state.report) },
+                                    likeError = likeError,
+                                    onLikeErrorDismiss = { viewModel.clearLikeError() },
+                                    // Opened from a user page: the author of this
+                                    // report is that same user, so the row must not
+                                    // push another profile onto the back stack.
+                                    onUserClick = if (reportDetailRoute.allowAuthorNavigation) {
+                                        {
+                                            navigator.navigate(
+                                                UserProfileRoute(
+                                                    userId = state.report.userId.toString(),
+                                                    userName = state.report.user.name,
+                                                    userAvatar = state.report.user.image
+                                                )
                                             )
-                                        )
+                                        }
+                                    } else {
+                                        null
                                     }
-                                } else {
-                                    null
-                                }
-                            )
-                        } else {
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
+                                    onBackClick = { navigator.popBackStack() }
+                                )
+                            }
+
+                        is ReportDetailUiState.Empty ->
+                            if (state.reportId == reportId) {
+                                ReportDetailUnavailableScreen(
+                                    onBackClick = { navigator.popBackStack() }
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
+                                    onBackClick = { navigator.popBackStack() }
+                                )
+                            }
+
+                        is ReportDetailUiState.Error ->
+                            if (state.reportId == reportId) {
+                                ReportDetailErrorScreen(
+                                    message = state.message,
+                                    onBackClick = { navigator.popBackStack() },
+                                    onRetry = { reportId?.let(viewModel::loadReportDetails) }
+                                )
+                            } else {
+                                ReportDetailLoadingScreen(
+                                    onBackClick = { navigator.popBackStack() }
+                                )
+                            }
+
+                        ReportDetailUiState.Loading ->
                             ReportDetailLoadingScreen(
-                                onBackClick = { navController.popBackStack() }
+                                onBackClick = { navigator.popBackStack() }
                             )
-                        }
-
-                    is ReportDetailUiState.Empty ->
-                        if (state.reportId == reportId) {
-                            ReportDetailUnavailableScreen(
-                                onBackClick = { navController.popBackStack() }
-                            )
-                        } else {
-                            ReportDetailLoadingScreen(
-                                onBackClick = { navController.popBackStack() }
-                            )
-                        }
-
-                    is ReportDetailUiState.Error ->
-                        if (state.reportId == reportId) {
-                            ReportDetailErrorScreen(
-                                message = state.message,
-                                onBackClick = { navController.popBackStack() },
-                                onRetry = { reportId?.let(viewModel::loadReportDetails) }
-                            )
-                        } else {
-                            ReportDetailLoadingScreen(
-                                onBackClick = { navController.popBackStack() }
-                            )
-                        }
-
-                    ReportDetailUiState.Loading ->
-                        ReportDetailLoadingScreen(
-                            onBackClick = { navController.popBackStack() }
-                        )
-                }
-
-                val currentReport = (reportDetailState as? ReportDetailUiState.Success)?.report
-                if (photoViewerIndex != null && currentReport != null && currentReport.id == reportId) {
-                    PhotoViewerOverlay(
-                        photos = currentReport.photos.map { it.url },
-                        initialIndex = photoViewerIndex!!,
-                        onDismiss = { photoViewerIndex = null }
-                    )
-                }
-            }
-        }
-
-        composable<FullMapRoute> { backStackEntry ->
-            val fullMapRoute = backStackEntry.toRoute<FullMapRoute>()
-            val reportId = runCatching {
-                UUID.fromString(fullMapRoute.reportId)
-            }.getOrNull()
-
-            val singleMarker = reportId?.let { id ->
-                mapMarkers.firstOrNull { it.id == id }
-            }
-
-            val mapFilters by viewModel.mapFilters.collectAsStateWithLifecycle()
-            SessionReadyEffect(mapFilters.isFavoritesSelected, authState) {
-                if (mapFilters.isFavoritesSelected) {
-                    viewModel.loadFilterFavoriteReports(force = true)
-                }
-            }
-            MapScreen(
-                markers = if (singleMarker != null) listOf(singleMarker) else mapMarkers,
-                viewModel = viewModel,
-                onBackClick = {
-                    navController.popBackStack()
-                },
-                onMarkerClick = { marker ->
-                    navController.navigate(ReportDetailRoute(marker.id.toString())) {
-                        popUpTo(fullMapRoute) { inclusive = true }
                     }
-                },
-                markersInteractive = false,
-                initialReportId = reportId,
-                selectedMarkerDotStyle = true,
-                repository = fishingRepository,
-                favoriteReports = filterFavoriteReports
-            )
-        }
 
-        composable<UserProfileRoute> { backStackEntry ->
-            val userProfileRoute = backStackEntry.toRoute<UserProfileRoute>()
-            val profileUserId = runCatching {
-                UUID.fromString(userProfileRoute.userId)
-            }.getOrNull()
-
-            // The profile page is fetched from the server, which needs the session.
-            SessionReadyEffect(profileUserId, authState) {
-                profileUserId?.let(viewModel::loadUserProfile)
+                    val currentReport = (reportDetailState as? ReportDetailUiState.Success)?.report
+                    if (photoViewerIndex != null && currentReport != null && currentReport.id == reportId) {
+                        PhotoViewerOverlay(
+                            photos = currentReport.photos.map { it.url },
+                            initialIndex = photoViewerIndex!!,
+                            onDismiss = { photoViewerIndex = null }
+                        )
+                    }
+                }
             }
 
-            val userProfileState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
-            val userProfileSortOrder by viewModel.userProfileSortOrder
-                .collectAsStateWithLifecycle()
-            val userProfileCanChangeSortOrder by viewModel.userProfileCanChangeSortOrder
-                .collectAsStateWithLifecycle()
+            entry<FullMapRoute> { fullMapRoute ->
+                val reportId = runCatching {
+                    UUID.fromString(fullMapRoute.reportId)
+                }.getOrNull()
 
-            UserProfileScreen(
-                uiState = userProfileState,
-                sortOrder = userProfileSortOrder,
-                canChangeSortOrder = userProfileCanChangeSortOrder,
-                fallbackUserName = userProfileRoute.userName,
-                fallbackUserAvatar = userProfileRoute.userAvatar,
-                onSetSortOrder = viewModel::setUserProfileSortOrder,
-                onBackClick = {
-                    viewModel.clearUserProfile()
-                    navController.popBackStack()
-                },
-                onReportClick = { report ->
-                    navController.navigate(
-                        ReportDetailRoute(
-                            reportId = report.id.toString(),
-                            // The author row of these details is this same page,
-                            // so it must not push another profile on top.
-                            allowAuthorNavigation = false
-                        )
-                    )
-                },
-                onRetry = { profileUserId?.let(viewModel::loadUserProfile) }
-            )
-        }
-
-        composable<ChangeHistoryRoute> {
-            ChangeHistoryScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-
-        composable<EditProfileRoute> {
-            val editProfileViewModel: EditProfileViewModel = hiltViewModel()
-            val user by editProfileViewModel.user.collectAsState()
-            val isLoading by editProfileViewModel.isLoading.collectAsState()
-            val error by editProfileViewModel.error.collectAsState()
-            val saveSuccess by editProfileViewModel.saveSuccess.collectAsState()
-            val isDeletingAccount by editProfileViewModel.isDeletingAccount.collectAsState()
-            val deleteAccountError by editProfileViewModel.deleteAccountError.collectAsState()
-            val context = LocalContext.current
-
-            EditProfileScreen(
-                initialName = user?.name ?: "",
-                email = user?.email ?: "",
-                avatarUrl = user?.image,
-                isLoading = isLoading,
-                error = error,
-                saveSuccess = saveSuccess,
-                isDeletingAccount = isDeletingAccount,
-                deleteAccountError = deleteAccountError,
-                onBackClick = { navController.popBackStack() },
-                onSaveClick = { name, imageUri ->
-                    editProfileViewModel.updateProfile(
-                        context.contentResolver,
-                        context.filesDir,
-                        name,
-                        imageUri
-                    )
-                },
-                onResetSaveSuccess = { editProfileViewModel.resetSuccess() },
-                onChangePasswordClick = {
-                    navController.navigate(ChangePasswordRoute)
-                },
-                onDeleteAccount = { editProfileViewModel.deleteAccount() },
-                onClearDeleteAccountError = {
-                    editProfileViewModel.clearDeleteAccountError()
+                val singleMarker = reportId?.let { id ->
+                    mapMarkers.firstOrNull { it.id == id }
                 }
-            )
-        }
 
-        composable<ChangePasswordRoute> {
-            val changePasswordViewModel: ChangePasswordViewModel = hiltViewModel()
-            ChangePasswordScreen(
-                viewModel = changePasswordViewModel,
-                onBackClick = { navController.popBackStack() }
-            )
-        }
+                val mapFilters by viewModel.mapFilters.collectAsStateWithLifecycle()
+                SessionReadyEffect(mapFilters.isFavoritesSelected, authState) {
+                    if (mapFilters.isFavoritesSelected) {
+                        viewModel.loadFilterFavoriteReports(force = true)
+                    }
+                }
+                MapScreen(
+                    markers = if (singleMarker != null) listOf(singleMarker) else mapMarkers,
+                    viewModel = viewModel,
+                    onBackClick = {
+                        navigator.popBackStack()
+                    },
+                    onMarkerClick = { marker ->
+                        navigator.replaceCurrent(ReportDetailRoute(marker.id.toString()))
+                    },
+                    markersInteractive = false,
+                    initialReportId = reportId,
+                    selectedMarkerDotStyle = true,
+                    repository = fishingRepository,
+                    favoriteReports = filterFavoriteReports
+                )
+            }
 
-        composable<AppearanceRoute> {
-            AppearanceScreen(
-                currentMode = reportDisplayMode,
-                onModeSelected = { mode -> viewModel.setDisplayMode(mode) },
-                onBackClick = { navController.popBackStack() }
-            )
+            entry<UserProfileRoute> { userProfileRoute ->
+                val profileUserId = runCatching {
+                    UUID.fromString(userProfileRoute.userId)
+                }.getOrNull()
+
+                // The profile page is fetched from the server, which needs the session.
+                SessionReadyEffect(profileUserId, authState) {
+                    profileUserId?.let(viewModel::loadUserProfile)
+                }
+
+                val userProfileState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
+                val userProfileSortOrder by viewModel.userProfileSortOrder
+                    .collectAsStateWithLifecycle()
+                val userProfileCanChangeSortOrder by viewModel.userProfileCanChangeSortOrder
+                    .collectAsStateWithLifecycle()
+
+                UserProfileScreen(
+                    uiState = userProfileState,
+                    sortOrder = userProfileSortOrder,
+                    canChangeSortOrder = userProfileCanChangeSortOrder,
+                    fallbackUserName = userProfileRoute.userName,
+                    fallbackUserAvatar = userProfileRoute.userAvatar,
+                    onSetSortOrder = viewModel::setUserProfileSortOrder,
+                    onBackClick = {
+                        viewModel.clearUserProfile()
+                        navigator.popBackStack()
+                    },
+                    onReportClick = { report ->
+                        navigator.navigate(
+                            ReportDetailRoute(
+                                reportId = report.id.toString(),
+                                // The author row of these details is this same page,
+                                // so it must not push another profile on top.
+                                allowAuthorNavigation = false
+                            )
+                        )
+                    },
+                    onRetry = { profileUserId?.let(viewModel::loadUserProfile) }
+                )
+            }
+
+            entry<ChangeHistoryRoute> {
+                ChangeHistoryScreen(
+                    onBackClick = { navigator.popBackStack() }
+                )
+            }
+
+            entry<EditProfileRoute> {
+                val editProfileViewModel: EditProfileViewModel = hiltViewModel()
+                val user by editProfileViewModel.user.collectAsState()
+                val isLoading by editProfileViewModel.isLoading.collectAsState()
+                val error by editProfileViewModel.error.collectAsState()
+                val saveSuccess by editProfileViewModel.saveSuccess.collectAsState()
+                val isDeletingAccount by editProfileViewModel.isDeletingAccount.collectAsState()
+                val deleteAccountError by editProfileViewModel.deleteAccountError.collectAsState()
+                val context = LocalContext.current
+
+                EditProfileScreen(
+                    initialName = user?.name ?: "",
+                    email = user?.email ?: "",
+                    avatarUrl = user?.image,
+                    isLoading = isLoading,
+                    error = error,
+                    saveSuccess = saveSuccess,
+                    isDeletingAccount = isDeletingAccount,
+                    deleteAccountError = deleteAccountError,
+                    onBackClick = { navigator.popBackStack() },
+                    onSaveClick = { name, imageUri ->
+                        editProfileViewModel.updateProfile(
+                            context.contentResolver,
+                            context.filesDir,
+                            name,
+                            imageUri
+                        )
+                    },
+                    onResetSaveSuccess = { editProfileViewModel.resetSuccess() },
+                    onChangePasswordClick = {
+                        navigator.navigate(ChangePasswordRoute)
+                    },
+                    onDeleteAccount = { editProfileViewModel.deleteAccount() },
+                    onClearDeleteAccountError = {
+                        editProfileViewModel.clearDeleteAccountError()
+                    }
+                )
+            }
+
+            entry<ChangePasswordRoute> {
+                val changePasswordViewModel: ChangePasswordViewModel = hiltViewModel()
+                ChangePasswordScreen(
+                    viewModel = changePasswordViewModel,
+                    onBackClick = { navigator.popBackStack() }
+                )
+            }
+
+            entry<AppearanceRoute> {
+                AppearanceScreen(
+                    currentMode = reportDisplayMode,
+                    onModeSelected = { mode -> viewModel.setDisplayMode(mode) },
+                    onBackClick = { navigator.popBackStack() }
+                )
+            }
         }
-    }
+    )
 }

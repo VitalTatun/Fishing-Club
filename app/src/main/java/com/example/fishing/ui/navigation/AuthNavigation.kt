@@ -2,15 +2,14 @@ package com.example.fishing.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavHostController
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.example.fishing.model.AuthState
 
 /**
  * Auth relevant identity of the destination that is currently on top of the back stack.
  *
- * [FishingNavHost] keeps a single [androidx.navigation.compose.NavHost] for the whole
+ * [FishingNavHost] keeps one Navigation 3 back stack for the whole
  * lifetime of the composition: recreating it when the session finished loading used to
  * drop the back stack, so returning from the system camera threw the user out of the
  * report form. Navigation on auth changes is decided from the current destination
@@ -29,15 +28,13 @@ internal enum class AuthRoute {
 
     companion object {
         /**
-         * Maps a live destination to the enum above. [destination] is `null` only
-         * before [androidx.navigation.compose.NavHost] installs its graph, which is
-         * equivalent to still being on the splash destination.
+         * Maps the current serializable key to the enum above. [key] is `null` only
+         * before the first key is displayed, which is equivalent to the splash route.
          */
-        fun of(destination: NavDestination?): AuthRoute = when {
-            destination == null -> Splash
-            destination.hasRoute<SplashRoute>() -> Splash
-            destination.hasRoute<LoginRoute>() -> Login
-            destination.hasRoute<RegistrationRoute>() -> Registration
+        fun of(key: NavKey?): AuthRoute = when (key) {
+            null, SplashRoute -> Splash
+            LoginRoute -> Login
+            RegistrationRoute -> Registration
             else -> Other
         }
     }
@@ -50,7 +47,7 @@ internal enum class AuthRoute {
  * A restored stack (for example the report form that was open when the process was
  * killed) is a regular destination and therefore survives the session restore.
  */
-internal fun resolveAuthNavigation(authState: AuthState, currentRoute: AuthRoute): Any? =
+internal fun resolveAuthNavigation(authState: AuthState, currentRoute: AuthRoute): NavKey? =
     when (authState) {
         // The session is still being restored: the spinner covers the UI and the
         // restored back stack must not be touched yet.
@@ -82,10 +79,10 @@ internal fun resolveAuthNavigation(authState: AuthState, currentRoute: AuthRoute
  * [AuthState.Loading] ends would flash a blank frame before the effect below moves
  * the back stack off [SplashRoute].
  */
-internal fun isAuthOverlayVisible(authState: AuthState, currentDestination: NavDestination?): Boolean =
+internal fun isAuthOverlayVisible(authState: AuthState, currentKey: NavKey?): Boolean =
     authState is AuthState.Loading ||
-        currentDestination == null ||
-        currentDestination.hasRoute<SplashRoute>()
+        currentKey == null ||
+        currentKey == SplashRoute
 
 /**
  * Runs [load] once the stored session is resolved.
@@ -106,25 +103,17 @@ internal fun SessionReadyEffect(key: Any?, authState: AuthState, load: () -> Uni
 }
 
 /**
- * Applies [resolveAuthNavigation] to the live [navController].
+ * Applies [resolveAuthNavigation] to the live back stack.
  *
  * This is the only place that reacts to an auth change: the nav host itself is never
  * recreated, so a stack restored after process death is kept unless the current
  * destination is one of the signed out entry points.
  */
 @Composable
-internal fun AuthNavigationEffect(authState: AuthState, navController: NavHostController) {
-    LaunchedEffect(authState, navController) {
-        // A null destination means the graph is not installed yet; navigating then
-        // would throw and the next auth emission is not guaranteed to happen.
-        val destination = navController.currentDestination ?: return@LaunchedEffect
-        val target = resolveAuthNavigation(authState, AuthRoute.of(destination))
+internal fun AuthNavigationEffect(authState: AuthState, backStack: NavBackStack<NavKey>) {
+    LaunchedEffect(authState, backStack) {
+        val target = resolveAuthNavigation(authState, AuthRoute.of(backStack.lastOrNull()))
             ?: return@LaunchedEffect
-        navController.navigate(target) {
-            popUpTo(navController.graph.id) { inclusive = true }
-            // Safety net: the graph id (and therefore the pop) can change if the root
-            // graph ever gets a route, and the target must not be pushed twice then.
-            launchSingleTop = true
-        }
+        FishingNavigator(backStack).replaceStack(target)
     }
 }

@@ -1011,10 +1011,8 @@ class CreateReportViewModel @Inject constructor(
     companion object {
         private const val TAG = "CreateReportVM"
 
-        // `form_` is a namespace for the report draft. FishingNavHost writes its
-        // sub-screen results to the destination's own SavedStateHandle, while
-        // this ViewModel gets the activity-level handle, so the prefix is
-        // hygiene rather than a collision fix.
+        // `form_` names the process-restorable report form state. Navigation
+        // sub-screens commit edits directly to this activity-scoped ViewModel.
         private const val KEY_REPORT_TYPE = "form_report_type"
         private const val KEY_WATER_NAME = "form_water_name"
         private const val KEY_PHOTOS = "form_photo_entries"
