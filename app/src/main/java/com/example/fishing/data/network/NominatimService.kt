@@ -1,30 +1,26 @@
 package com.example.fishing.data.network
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
+import java.io.Closeable
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Singleton
-class NominatimService @Inject constructor() {
-    private val client = HttpClient {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                coerceInputValues = true
-            })
-        }
-        defaultRequest {
-            header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-        }
-    }
+sealed interface NominatimSearchResult {
+    data class Success(val results: List<NominatimResponse>) : NominatimSearchResult
+    data object Failure : NominatimSearchResult
+}
 
-    suspend fun search(query: String): List<NominatimResponse> {
+@Singleton
+class NominatimService @Inject constructor(
+    private val client: HttpClient
+) : Closeable {
+
+    suspend fun search(query: String): NominatimSearchResult {
         return try {
             val response = client.get("https://nominatim.openstreetmap.org/search") {
                 parameter("q", query)
@@ -33,15 +29,19 @@ class NominatimService @Inject constructor() {
                 parameter("limit", 10)
                 parameter("accept-language", "ru")
             }
-            if (response.status.value == 200) {
-                response.body()
+            if (response.status.isSuccess()) {
+                NominatimSearchResult.Success(response.body())
             } else {
-                android.util.Log.e("Nominatim", "Error response: ${response.status}")
-                emptyList()
+                NominatimSearchResult.Failure
             }
-        } catch (e: Exception) {
-            android.util.Log.e("Nominatim", "Search failed", e)
-            emptyList()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            NominatimSearchResult.Failure
         }
+    }
+
+    override fun close() {
+        client.close()
     }
 }

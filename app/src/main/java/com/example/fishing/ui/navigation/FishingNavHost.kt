@@ -30,6 +30,7 @@ import com.example.fishing.ui.screens.report.detail.ReportDetailScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailUnavailableScreen
 import com.example.fishing.ui.screens.report.detail.ReportDetailErrorScreen
 import com.example.fishing.ui.screens.search.LocationSearchScreen
+import com.example.fishing.viewmodel.LocationSearchViewModel
 import com.example.fishing.ui.screens.search.ReportSearchScreen
 import com.example.fishing.ui.screens.user.UserProfileScreen
 import com.example.fishing.ui.screens.login.LoginScreen
@@ -242,8 +243,13 @@ fun FishingNavHost(
             }
 
             entry<LocationSearchRoute> { route ->
+                val locationSearchViewModel: LocationSearchViewModel = hiltViewModel()
+                val locationSearchUiState by locationSearchViewModel.uiState.collectAsStateWithLifecycle()
 
                 LocationSearchScreen(
+                    state = locationSearchUiState,
+                    onQueryChange = locationSearchViewModel::onQueryChanged,
+                    onRetry = locationSearchViewModel::retry,
                     onLocationSelected = { point, _, polygon ->
                         if (route.fromWaterEdit) {
                             navigator.replaceCurrentAndPrevious(

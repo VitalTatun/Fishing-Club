@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -28,23 +27,19 @@ import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.data.network.NominatimResponse
-import com.example.fishing.data.network.NominatimService
 import com.example.fishing.data.network.getPolygonPoints
+import com.example.fishing.viewmodel.LocationSearchUiState
 import org.osmdroid.util.GeoPoint
-import java.util.Locale
-
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationSearchScreen(
+    state: LocationSearchUiState,
+    onQueryChange: (String) -> Unit,
+    onRetry: () -> Unit,
     onLocationSelected: (GeoPoint, String, List<GeoPoint>?) -> Unit,
     onBack: () -> Unit,
-    nominatimService: NominatimService = remember { NominatimService() }
 ) {
-    var query by rememberSaveable { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<NominatimResponse>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val density = LocalDensity.current
     val navigationBarBottom = if (WindowInsets.ime.getBottom(density) == 0) {
@@ -55,20 +50,6 @@ fun LocationSearchScreen(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
-    }
-
-    LaunchedEffect(query) {
-        if (query.length < 3) {
-            results = emptyList()
-            return@LaunchedEffect
-        }
-        
-        // Debounce: wait for 1 second before searching
-        delay(1000L)
-        
-        isSearching = true
-        results = nominatimService.search(query)
-        isSearching = false
     }
 
     Scaffold(
@@ -84,8 +65,8 @@ fun LocationSearchScreen(
                         .fillMaxWidth()
                 ) {
                     SearchFieldHeader(
-                        query = query,
-                        onQueryChange = { query = it },
+                        query = state.query,
+                        onQueryChange = onQueryChange,
                         onBack = onBack,
                         focusRequester = focusRequester,
                     )
@@ -100,9 +81,10 @@ fun LocationSearchScreen(
                 .padding(top = innerPadding.calculateTopPadding())
         ) {
             when {
-                isSearching -> EmptySearchPlaceholder(isLoading = true)
-                query.isBlank() -> EmptySearchPlaceholder(isLoading = false)
-                results.isEmpty() -> Box(
+                state.isSearching -> EmptySearchPlaceholder(isLoading = true)
+                state.hasError -> SearchErrorPlaceholder(onRetry = onRetry)
+                state.query.isBlank() -> EmptySearchPlaceholder(isLoading = false)
+                state.results.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -133,7 +115,7 @@ fun LocationSearchScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(results, key = { it.placeId }) { result ->
+                            items(state.results, key = { it.placeId }) { result ->
                                 LocationResultItem(
                                     result = result,
                                     onClick = {
@@ -149,6 +131,31 @@ fun LocationSearchScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchErrorPlaceholder(onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            modifier = Modifier.padding(top = 120.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.location_search_error),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+            )
+            TextButton(onClick = onRetry) {
+                Text(stringResource(R.string.retry))
             }
         }
     }
