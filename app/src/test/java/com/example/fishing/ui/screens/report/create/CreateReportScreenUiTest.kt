@@ -18,6 +18,7 @@ import com.example.fishing.R
 import com.example.fishing.model.Bait
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.FishingType
 import com.example.fishing.model.ReportUploadState
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
@@ -342,5 +343,16 @@ class CreateReportScreenUiTest {
 
         val warning = context.getString(R.string.restored_photos_lost, 1)
         composeRule.onNodeWithText(warning).assertIsDisplayed()
+    }
+
+    @Test
+    fun `mandatory fields display asterisk when empty`() {
+        viewModel.formReportType = FishingType.HAUL // Trophy report requires photos
+        setCreateReportScreen()
+
+        composeRule.onNodeWithText("Водоем *").assertIsDisplayed()
+        composeRule.onNodeWithText("Способ ловли и наживка *").assertIsDisplayed()
+        composeRule.onNodeWithText("Улов *").assertIsDisplayed()
+        composeRule.onNodeWithText("Фотографии *").assertIsDisplayed()
     }
 }

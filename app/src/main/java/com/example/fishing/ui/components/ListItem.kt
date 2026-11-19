@@ -103,7 +103,7 @@ fun FishingListItem(
                     color = contentColor
                 )
             }
-            val hasData = supportingText != null || trailingText != null || trailingContent != null
+            val hasData = trailingText != null || trailingContent != null
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
