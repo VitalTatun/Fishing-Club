@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
         }
 
         enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
         setContent {
             FishingTheme(darkTheme = false, dynamicColor = false) {
                 val authViewModel: AuthViewModel = hiltViewModel()

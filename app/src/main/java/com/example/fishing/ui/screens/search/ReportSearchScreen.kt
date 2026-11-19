@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -96,6 +97,12 @@ fun ReportSearchScreen(
 
     val showEmptyPlaceholder = state.isEmpty
     val filters = state.filters
+    val density = LocalDensity.current
+    val navigationBarBottom = if (WindowInsets.ime.getBottom(density) == 0) {
+        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    } else {
+        0.dp
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -201,7 +208,11 @@ fun ReportSearchScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().imePadding(),
-                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 30.dp),
+                        contentPadding = PaddingValues(
+                            start = 8.dp,
+                            end = 8.dp,
+                            bottom = 30.dp + navigationBarBottom
+                        ),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(filteredReports, key = { it.id }) { report ->

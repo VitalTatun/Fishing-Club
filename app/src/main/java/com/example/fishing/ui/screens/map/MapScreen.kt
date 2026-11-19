@@ -445,6 +445,10 @@ fun MapScreen(
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
+                .then(
+                    if (onBackClick != null) Modifier.navigationBarsPadding()
+                    else Modifier
+                )
                 .padding(16.dp)
                 .size(56.dp)
         ) {
