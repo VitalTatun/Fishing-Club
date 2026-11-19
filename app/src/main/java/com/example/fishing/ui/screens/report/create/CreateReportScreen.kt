@@ -135,13 +135,12 @@ fun CreateReportScreen(
     val context = LocalContext.current
 
     val restoredPhotosLost = viewModel.restoredPhotosLost
+    val restoredPhotosLostMessage = stringResource(R.string.restored_photos_lost, restoredPhotosLost)
     LaunchedEffect(restoredPhotosLost) {
         if (restoredPhotosLost > 0) {
             // Show before consuming: consuming resets the effect key and would
             // cancel the suspended showSnackbar call.
-            snackbarHostState.showSnackbar(
-                context.getString(R.string.restored_photos_lost, restoredPhotosLost)
-            )
+            snackbarHostState.showSnackbar(restoredPhotosLostMessage)
             viewModel.consumeRestoredPhotosLost()
         }
     }
