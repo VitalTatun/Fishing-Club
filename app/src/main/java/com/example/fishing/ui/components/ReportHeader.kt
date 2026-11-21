@@ -230,7 +230,7 @@ fun ReportPhotoCarousel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 itemsIndexed(photos) { index, photo ->
