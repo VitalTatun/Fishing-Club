@@ -55,7 +55,8 @@ class ReportDetailScreenUiTest {
 
     private fun report(
         isPublic: Boolean = false,
-        type: FishingType = FishingType.FISHING_LOG
+        type: FishingType = FishingType.FISHING_LOG,
+        fishingFromTheShore: Boolean = true
     ): FishingReport {
         val authorId = UUID.randomUUID()
         return FishingReport(
@@ -83,7 +84,7 @@ class ReportDetailScreenUiTest {
                 email = "ivan@example.com",
                 image = ""
             ),
-            fishingFromTheShore = true,
+            fishingFromTheShore = fishingFromTheShore,
             isPublic = isPublic,
             publishedAt = Date()
         )
@@ -156,10 +157,24 @@ class ReportDetailScreenUiTest {
         composeRule.onNodeWithText("Отчет не опубликован").assertIsDisplayed()
         composeRule.onNodeWithText("3,2 кг.").assertExists()
         composeRule.onNodeWithText("Щука — 2 шт.").assertExists()
-        composeRule.onNodeWithText("Ловля с берега").assertExists()
         composeRule.onNodeWithText("Дата").assertExists()
         composeRule.onNodeWithText("Время").assertExists()
         composeRule.onNodeWithText("Длительность").assertExists()
+    }
+
+    @Test
+    fun `shore fishing does not show a place badge`() {
+        // Shore fishing is the default, so the header stays clean.
+        setDetailScreen()
+
+        composeRule.onNodeWithText("Ловля с берега").assertDoesNotExist()
+    }
+
+    @Test
+    fun `boat fishing shows the place badge`() {
+        setDetailScreen(report = report(fishingFromTheShore = false))
+
+        composeRule.onNodeWithText("Ловля с лодки").assertExists()
     }
 
     @Test
