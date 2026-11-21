@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -35,7 +36,6 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.util.*
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 
 @Composable
@@ -150,16 +150,13 @@ fun ReportLocationSection(
         }
 
         // Water info as list item
-        val shoreText = stringResource(
-            if (report.fishingFromTheShore) R.string.fishing_from_shore else R.string.fishing_from_boat
-        )
-        val isPaidWater = report.water.isPaid
-
         val clipboard = LocalClipboard.current
         val scope = rememberCoroutineScope()
 
         FishingListItem(
+            overlineText = "Водоем",
             title = report.water.waterName.ifBlank { stringResource(R.string.not_specified) },
+            leadingIcon = Icons.Default.LocationOn,
             titleStyle = MaterialTheme.typography.bodyLarge.copy(
                 fontWeight = FontWeight.Medium
             ),
@@ -186,19 +183,7 @@ fun ReportLocationSection(
                 }
             }
         )
-        if (isPaidWater) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FishingBadge(
-                    text = stringResource(R.string.paid)
-                )
-            }
-        }
+
     }
 }
 
