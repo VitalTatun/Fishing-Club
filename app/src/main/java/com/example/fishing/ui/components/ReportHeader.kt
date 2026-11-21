@@ -10,9 +10,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.ThumbUpOffAlt
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -48,23 +50,169 @@ fun ReportHeader(
     onPhotoClick: (Int) -> Unit = {},
     onUserClick: (() -> Unit)? = null
 ) {
+    val fishFallback = stringResource(R.string.fish_fallback)
+    val methodName = stringResource(report.fishingMethod.labelRes)
+    val fishName = report.fish.firstOrNull()?.name ?: fishFallback
+    val title = "$fishName • $methodName"
+
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Profile Header (Figma node 4200:7177 "Шапка профиля")
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Avatar (48.dp)
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    if (report.user.image.isNotBlank()) {
+                        AsyncImage(
+                            model = report.user.image,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Title and Username
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (onUserClick != null) {
+                                Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable(onClick = onUserClick)
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = report.user.name.ifBlank { stringResource(R.string.fisherman) },
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Like count
+                if (likesCount != null) {
+                    ReportLikeCount(
+                        likesCount = likesCount,
+                        isLiked = isLiked,
+                        onToggleLike = onToggleLike
+                    )
+                }
+            }
+
+            // Chips row (Figma node 4200:7325)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val isDraft = !report.isPublic
+                val isTrophy = report.type == FishingType.HAUL
+
+                if (isDraft) {
+                    Surface(
+                        color = Color(0xFF575E71),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VisibilityOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White
+                            )
+                            Text(
+                                text = stringResource(R.string.draft),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+
+                if (isTrophy) {
+                    TrophyBadge()
+                }
+
+                val shoreText = if (report.fishingFromTheShore) {
+                    stringResource(R.string.fishing_from_shore)
+                } else {
+                    stringResource(R.string.fishing_from_boat)
+                }
+                Surface(
+                    color = Color(0xFFDBE2F9),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Anchor,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFF3F4759)
+                        )
+                        Text(
+                            text = shoreText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFF3F4759)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Photo Carousel
         ReportPhotoCarousel(
             photos = report.photos,
             showTrophyBadge = report.type == FishingType.HAUL,
             onPhotoClick = onPhotoClick
-        )
-        UserInfoBlock(
-            user = report.user,
-            date = report.publishedAt ?: report.fishingStartAt?.let { Date.from(it) } ?: Date(),
-            modifier = Modifier.padding(horizontal = 16.dp),
-            likesCount = likesCount,
-            isLiked = isLiked,
-            onToggleLike = onToggleLike,
-            onUserClick = onUserClick
         )
     }
 }
@@ -121,88 +269,7 @@ fun ReportPhotoCarousel(
     }
 }
 
-@Composable
-fun UserInfoBlock(
-    user: User,
-    date: Date,
-    modifier: Modifier = Modifier,
-    likesCount: Int? = null,
-    isLiked: Boolean = false,
-    onToggleLike: (() -> Unit)? = null,
-    onUserClick: (() -> Unit)? = null
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .then(
-                    if (onUserClick != null) {
-                        Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .clickable(onClick = onUserClick)
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                if (user.image.isNotBlank()) {
-                    AsyncImage(
-                        model = user.image,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
 
-            Column(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = user.name.ifBlank { stringResource(R.string.fisherman) },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        if (likesCount != null) {
-            ReportLikeCount(
-                likesCount = likesCount,
-                isLiked = isLiked,
-                onToggleLike = onToggleLike
-            )
-        }
-    }
-}
 
 @Composable
 private fun ReportLikeCount(

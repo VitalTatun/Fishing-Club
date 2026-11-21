@@ -1,33 +1,41 @@
 package com.example.fishing.ui.screens.report.detail
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.fishing.R
 import com.example.fishing.model.*
 import com.example.fishing.ui.components.*
@@ -66,6 +74,16 @@ fun ReportDetailScreen(
     /** `null` disables the author row (details opened from a user page). */
     onUserClick: (() -> Unit)? = null,
 ) {
+    val fishFallback = stringResource(R.string.fish_fallback)
+    val methodName = stringResource(report.fishingMethod.labelRes)
+    val fishName = report.fish.firstOrNull()?.name ?: fishFallback
+    val title = "$fishName • $methodName"
+
+    val scrollState = rememberScrollState()
+    val showHeaderDetails by remember {
+        derivedStateOf { scrollState.value > 150 }
+    }
+
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showVisibilityDialog by remember { mutableStateOf(false) }
@@ -187,35 +205,60 @@ fun ReportDetailScreen(
         containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            val fishFallback = stringResource(R.string.fish_fallback)
-            val methodName = stringResource(report.fishingMethod.labelRes)
-            val fishName = report.fish.firstOrNull()?.name ?: fishFallback
-            val title = "$fishName • $methodName"
-
             TopAppBar(
                 title = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    AnimatedVisibility(
+                        visible = showHeaderDetails,
+                        enter = fadeIn(),
+                        exit = fadeOut()
                     ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val isDraft = !report.isPublic
-                        val isTrophy = report.type == FishingType.HAUL
-                        if (isDraft || isTrophy) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                             ) {
-                                if (isDraft) {
-                                    DraftBadge()
+                                if (report.user.image.isNotBlank()) {
+                                    AsyncImage(
+                                        model = report.user.image,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .align(Alignment.Center)
+                                            .size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
-                                if (isTrophy) {
-                                    TrophyBadge()
-                                }
+                            }
+
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = report.user.name.ifBlank { stringResource(R.string.fisherman) },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
@@ -319,7 +362,7 @@ fun ReportDetailScreen(
                     .widthIn(max = ContentWidths.ReportDetail)
                     .fillMaxWidth()
                     .fillMaxHeight()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(paddingValues)
                     .padding(bottom = 32.dp, top = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
