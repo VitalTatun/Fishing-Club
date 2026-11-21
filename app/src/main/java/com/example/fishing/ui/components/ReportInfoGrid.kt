@@ -32,10 +32,10 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
     val timeFormatter = remember { DateTimeFormatter.ofPattern("H:mm", Locale.forLanguageTag("ru")).withZone(ZoneId.systemDefault()) }
     val fishingMethodIconRes = remember(report.fishingMethod) {
         when (report.fishingMethod) {
-            FishingMethod.BOBBER -> R.drawable.fishing_methods_bobber
-            FishingMethod.FEEDER -> R.drawable.fishing_methods_feeder
-            FishingMethod.SPINNING -> R.drawable.fishing_methods_spinning
-            FishingMethod.FLY_FISHING -> R.drawable.fishing_methods_fly
+            FishingMethod.BOBBER -> R.drawable.bobbericon24
+            FishingMethod.FEEDER -> R.drawable.feedericon24
+            FishingMethod.SPINNING -> R.drawable.spinningicon24
+            FishingMethod.FLY_FISHING -> R.drawable.flyicon24
             FishingMethod.NONE -> null
         }
     }
@@ -129,12 +129,12 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                     verticalAlignment = Alignment.Top
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.fish),
+                        painter = painterResource(id = R.drawable.fishicon24),
                         contentDescription = null,
                         modifier = Modifier
                             .padding(top = 10.dp)
-                            .size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurface,
+                            .size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
