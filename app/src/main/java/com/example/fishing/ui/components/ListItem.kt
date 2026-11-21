@@ -26,11 +26,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.TextUnit
 import com.example.fishing.ui.theme.FishingTheme
@@ -54,6 +56,9 @@ fun FishingListItem(
     onTitleClick: (() -> Unit)? = null,
     onTrailingTextClick: (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
+    leadingPainter: Painter? = null,
+    horizontalContentPadding: Dp = 16.dp,
+    verticalContentPadding: Dp = 12.dp,
 ) {
     val actualContainerColor = containerColor ?: if (isError) Color(0xFFFFEDEB) else Color.Transparent
     val contentColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
@@ -67,12 +72,12 @@ fun FishingListItem(
             .then(
                 if (onRowClick != null) Modifier.clickable(onClick = onRowClick) else Modifier
             )
-            .padding(start = 16.dp, end = 16.dp),
+            .padding(horizontal = horizontalContentPadding),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Иконка слева
-        if (leadingIcon != null) {
+        if (leadingIcon != null || leadingPainter != null) {
             Box(
                 modifier = Modifier
                     .width(24.dp)
@@ -80,11 +85,19 @@ fun FishingListItem(
                 .fillMaxHeight(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    tint = contentColor
-                )
+                if (leadingPainter != null) {
+                    Icon(
+                        painter = leadingPainter,
+                        contentDescription = null,
+                        tint = contentColor
+                    )
+                } else if (leadingIcon != null) {
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        tint = contentColor
+                    )
+                }
             }
         }
 
@@ -93,7 +106,7 @@ fun FishingListItem(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(vertical = 12.dp),
+                .padding(vertical = verticalContentPadding),
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
         ) {
             if (overlineText != null) {

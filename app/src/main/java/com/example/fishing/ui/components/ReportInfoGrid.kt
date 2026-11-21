@@ -8,8 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +39,9 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             FishingMethod.NONE -> null
         }
     }
+    val gridItemValueStyle = MaterialTheme.typography.titleMedium.copy(
+        fontWeight = FontWeight.Medium
+    )
 
     Column(
         modifier = modifier
@@ -60,26 +61,35 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            InfoGridItem(
-                title = stringResource(R.string.date),
-                value = report.fishingStartAt?.let { dateFormatter.format(it) } ?: stringResource(R.string.not_specified),
+            FishingListItem(
+                overlineText = stringResource(R.string.date),
+                title = report.fishingStartAt?.let { dateFormatter.format(it) } ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Event
+                leadingIcon = Icons.Default.Event,
+                horizontalContentPadding = 0.dp,
+                verticalContentPadding = 0.dp,
+                titleStyle = gridItemValueStyle
             )
-            InfoGridItem(
-                title = stringResource(R.string.time),
-                value = timeRangeValue ?: stringResource(R.string.not_specified),
+            FishingListItem(
+                overlineText = stringResource(R.string.time),
+                title = timeRangeValue ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Schedule
+                leadingIcon = Icons.Default.Schedule,
+                horizontalContentPadding = 0.dp,
+                verticalContentPadding = 0.dp,
+                titleStyle = gridItemValueStyle
             )
         }
         // Duration
         Row(modifier = Modifier.fillMaxWidth()) {
-            InfoGridItem(
-                title = stringResource(R.string.duration),
-                value = report.durationFormatted() ?: stringResource(R.string.not_specified),
+            FishingListItem(
+                overlineText = stringResource(R.string.duration),
+                title = report.durationFormatted() ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
-                painter = painterResource(id = R.drawable.search_activity),
+                leadingPainter = painterResource(id = R.drawable.search_activity),
+                horizontalContentPadding = 0.dp,
+                verticalContentPadding = 0.dp,
+                titleStyle = gridItemValueStyle
             )
             Spacer(modifier = Modifier.weight(1f))
         }
@@ -88,17 +98,23 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            InfoGridItem(
-                title = stringResource(R.string.bait),
-                value = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
+            FishingListItem(
+                overlineText = stringResource(R.string.bait),
+                title = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Phishing
+                leadingIcon = Icons.Default.Phishing,
+                horizontalContentPadding = 0.dp,
+                verticalContentPadding = 0.dp,
+                titleStyle = gridItemValueStyle
             )
-            InfoGridItem(
-                title = stringResource(R.string.fishing_method),
-                value = stringResource(report.fishingMethod.labelRes),
+            FishingListItem(
+                overlineText = stringResource(R.string.fishing_method),
+                title = stringResource(report.fishingMethod.labelRes),
                 modifier = Modifier.weight(1f),
-                painter = fishingMethodIconRes?.let { painterResource(id = it) }
+                leadingPainter = fishingMethodIconRes?.let { painterResource(id = it) },
+                horizontalContentPadding = 0.dp,
+                verticalContentPadding = 0.dp,
+                titleStyle = gridItemValueStyle
             )
         }
 
@@ -161,61 +177,14 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
             }
 
             Catch()
-            InfoGridItem(
-                title = stringResource(R.string.total_weight),
-                value = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} ${stringResource(R.string.weight_unit)}" else stringResource(R.string.not_specified),
+            FishingListItem(
+                overlineText = stringResource(R.string.total_weight),
+                title = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} ${stringResource(R.string.weight_unit)}" else stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Scale
-            )
-        }
-    }
-}
-
-@Composable
-private fun InfoGridItem(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
-    painter: Painter? = null
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.Top
-    ) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier
-                    .padding(top = 10.dp)
-                    .size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-        } else if (painter != null) {
-            Icon(
-                painter = painter,
-                contentDescription = null,
-                modifier = Modifier
-                    .padding(top = 10.dp)
-                    .size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-        }
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                leadingIcon = Icons.Default.Scale,
+                horizontalContentPadding = 0.dp,
+                verticalContentPadding = 0.dp,
+                titleStyle = gridItemValueStyle
             )
         }
     }
