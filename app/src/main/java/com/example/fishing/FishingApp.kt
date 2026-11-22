@@ -3,6 +3,7 @@ package com.example.fishing
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.example.fishing.data.FishCatalogRepository
 import com.example.fishing.data.cleanup.OrphanPhotoCleanupScheduler
 import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.utils.PhotoUtils
@@ -26,6 +27,9 @@ class FishingApp : Application(), Configuration.Provider {
     @Inject
     lateinit var orphanPhotoCleanupScheduler: OrphanPhotoCleanupScheduler
 
+    @Inject
+    lateinit var fishCatalogRepository: FishCatalogRepository
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val workManagerConfiguration: Configuration
@@ -44,6 +48,9 @@ class FishingApp : Application(), Configuration.Provider {
         // a queued upload must survive the restart. Cleanup finishes before the
         // queue is resumed so a worker cannot race the deletion.
         appScope.launch {
+            // The catalog is public reference data: refresh it in the background
+            // and keep the bundled seed when the device is offline.
+            fishCatalogRepository.refresh()
             runCatching {
                 reportUploadQueue.cleanupStale()
                 val keepPaths = reportUploadQueue.referencedLocalPaths()

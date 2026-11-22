@@ -352,9 +352,16 @@ fun FishingNavHost(
 
             entry<CatchEditRoute> {
                 val isTrophy = createReportViewModel.formReportType == FishingType.HAUL
+                val catchSearchState by createReportViewModel.catchSearchState.collectAsStateWithLifecycle()
+                val fishCatalog by createReportViewModel.fishCatalog.collectAsStateWithLifecycle()
 
                 CatchEditScreen(
                     fishList = createReportViewModel.formSelectedFish,
+                    catalog = fishCatalog,
+                    searchState = catchSearchState,
+                    onOpenSearch = createReportViewModel::openCatchSearch,
+                    onCloseSearch = createReportViewModel::closeCatchSearch,
+                    onSearchQueryChange = createReportViewModel::onCatchSearchQueryChange,
                     initialWeight = createReportViewModel.formWeight,
                     onBackClick = { navigator.popBackStack() },
                     onSaveClick = { fish, weight ->

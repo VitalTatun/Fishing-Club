@@ -72,7 +72,8 @@ internal data class PendingPhotoPayload(
 internal data class PendingFishPayload(
     @Serializable(with = UuidSerializer::class) val id: UUID,
     val name: String,
-    val count: Int
+    val count: Int,
+    val speciesId: String? = null
 )
 
 /**
@@ -131,7 +132,7 @@ private fun FishingReport.toPayload(): PendingReportPayload = PendingReportPaylo
     fishingStartAtMillis = fishingStartAt?.toEpochMilli(),
     fishingEndAtMillis = fishingEndAt?.toEpochMilli(),
     weight = weight,
-    fish = fish.map { PendingFishPayload(id = it.id, name = it.name, count = it.count) },
+    fish = fish.map { PendingFishPayload(id = it.id, name = it.name, count = it.count, speciesId = it.speciesId) },
     fishingMethod = fishingMethod.name,
     bait = bait.map { it.name },
     comment = comment,
@@ -164,7 +165,7 @@ private fun PendingReportPayload.toDomain(): FishingReport = FishingReport(
     fishingStartAt = fishingStartAtMillis?.let(Instant::ofEpochMilli),
     fishingEndAt = fishingEndAtMillis?.let(Instant::ofEpochMilli),
     weight = weight,
-    fish = fish.map { Fish(id = it.id, name = it.name, count = it.count) },
+    fish = fish.map { Fish(id = it.id, name = it.name, count = it.count, speciesId = it.speciesId) },
     fishingMethod = runCatching { FishingMethod.valueOf(fishingMethod) }
         .getOrDefault(FishingMethod.NONE),
     bait = bait.mapNotNull { name -> runCatching { Bait.valueOf(name) }.getOrNull() },

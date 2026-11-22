@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -17,8 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
 import com.example.fishing.ui.components.ContentWidths
+import com.example.fishing.ui.components.SearchInputField
 import com.example.fishing.data.network.NominatimResponse
 import com.example.fishing.data.network.getPolygonPoints
 import com.example.fishing.viewmodel.LocationSearchUiState
@@ -254,15 +252,13 @@ private fun SearchFieldHeader(
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        TextField(
+        SearchInputField(
             value = query,
             onValueChange = onQueryChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .focusRequester(focusRequester),
-            placeholder = { Text(stringResource(R.string.search_placeholder)) },
-            leadingIcon = {
+            placeholder = stringResource(R.string.search_placeholder),
+            modifier = Modifier.fillMaxWidth(),
+            focusRequester = focusRequester,
+            leadingContent = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -270,17 +266,7 @@ private fun SearchFieldHeader(
                     )
                 }
             },
-            shape = CircleShape,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                disabledContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent,
-            ),
-            singleLine = true,
-            trailingIcon = {
+            trailingContent = {
                 AnimatedVisibility(
                     visible = query.isNotEmpty(),
                     enter = fadeIn(),

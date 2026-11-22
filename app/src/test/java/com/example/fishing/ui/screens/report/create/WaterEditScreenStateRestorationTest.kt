@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
+import com.example.fishing.testutil.FakeFishCatalogRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeReportUploadQueue
 import com.example.fishing.testutil.FakeUserPreferencesRepository
@@ -67,6 +68,7 @@ class WaterEditScreenStateRestorationTest {
         val uploadQueue = FakeReportUploadQueue()
         viewModel = CreateReportViewModel(
             repository = fishingRepository,
+            fishCatalogRepository = FakeFishCatalogRepository(),
             authRepository = authRepository,
             reportUploadQueue = uploadQueue,
             context = context,

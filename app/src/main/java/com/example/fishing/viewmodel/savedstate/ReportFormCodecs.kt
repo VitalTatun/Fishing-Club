@@ -20,6 +20,13 @@ import java.util.UUID
  */
 private const val SEPARATOR = '\u001F'
 
+/**
+ * Fish entries gained a catalog species id. Versioned entries carry it as the
+ * third field; legacy three-field entries (id, count, name) are still decoded
+ * and simply produce a fish without a species id.
+ */
+private const val FISH_VERSION_PREFIX = "v2$SEPARATOR"
+
 fun photosToSaved(photos: List<ReportPhoto>): ArrayList<String> {
     return photos.mapTo(ArrayList(photos.size)) { photo ->
         "${photo.id}$SEPARATOR${photo.uri}"
@@ -42,7 +49,7 @@ fun photosFromSaved(saved: Any?): List<ReportPhoto> {
 
 fun fishToSaved(fish: List<Fish>): ArrayList<String> {
     return fish.mapTo(ArrayList(fish.size)) {
-        "${it.id}$SEPARATOR${it.count}$SEPARATOR${it.name}"
+        "$FISH_VERSION_PREFIX${it.id}$SEPARATOR${it.count}$SEPARATOR${it.speciesId.orEmpty()}$SEPARATOR${it.name}"
     }
 }
 
@@ -50,15 +57,36 @@ fun fishFromSaved(saved: Any?): List<Fish> {
     val entries = saved as? List<*> ?: return emptyList()
     return entries.mapNotNull { entry ->
         val raw = entry as? String ?: return@mapNotNull null
-        val idEnd = raw.indexOf(SEPARATOR)
-        if (idEnd <= 0) return@mapNotNull null
-        val countEnd = raw.indexOf(SEPARATOR, idEnd + 1)
-        if (countEnd <= idEnd + 1) return@mapNotNull null
-        val id = runCatching { UUID.fromString(raw.substring(0, idEnd)) }.getOrNull()
-            ?: return@mapNotNull null
-        val count = raw.substring(idEnd + 1, countEnd).toIntOrNull() ?: return@mapNotNull null
-        Fish(id = id, name = raw.substring(countEnd + 1), count = count)
+        decodeFishEntry(raw)
     }
+}
+
+private fun decodeFishEntry(raw: String): Fish? {
+    val versioned = raw.startsWith(FISH_VERSION_PREFIX)
+    val body = if (versioned) raw.removePrefix(FISH_VERSION_PREFIX) else raw
+
+    val idEnd = body.indexOf(SEPARATOR)
+    if (idEnd <= 0) return null
+    val countEnd = body.indexOf(SEPARATOR, idEnd + 1)
+    if (countEnd <= idEnd + 1) return null
+
+    val id = runCatching { UUID.fromString(body.substring(0, idEnd)) }.getOrNull()
+        ?: return null
+    val count = body.substring(idEnd + 1, countEnd).toIntOrNull() ?: return null
+
+    if (!versioned) {
+        return Fish(id = id, name = body.substring(countEnd + 1), count = count)
+    }
+
+    val speciesEnd = body.indexOf(SEPARATOR, countEnd + 1)
+    if (speciesEnd == -1) return null
+
+    return Fish(
+        id = id,
+        name = body.substring(speciesEnd + 1),
+        count = count,
+        speciesId = body.substring(countEnd + 1, speciesEnd).takeIf { it.isNotEmpty() }
+    )
 }
 
 fun baitsToSaved(baits: List<Bait>): ArrayList<String> {

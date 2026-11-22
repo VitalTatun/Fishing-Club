@@ -136,6 +136,11 @@
 
     <!-- Улов -->
     <string name="fish_name_label">Название рыбы</string>
+    <string name="fish_search_placeholder">Напишите название рыбы</string>
+    <string name="fish_recently_added">Недавно добавляли</string>
+    <string name="fish_popular_species">Популярные виды</string>
+    <string name="fish_search_results">Результат поиска</string>
+    <string name="fish_added_section">Добавлено</string>
     <string name="caught_fish">Пойманная рыба</string>
     <string name="already_in_list">Уже есть в списке</string>
     <string name="weight_limit_hint">Максимум %1$s %2$s</string>

@@ -140,7 +140,7 @@ internal fun ReportDetailsEntity.toDomain(): FishingReport {
         fishingStartAt = SupabaseDateFormats.parseInstant(fishingStartAt),
         fishingEndAt = SupabaseDateFormats.parseInstant(fishingEndAt),
         weight = weight,
-        fish = fish.map { Fish(id = it.id, name = it.name, count = it.count) },
+        fish = fish.map { Fish(id = it.id, name = it.name, count = it.count, speciesId = it.speciesId) },
         fishingMethod = parseEnumValue(fishingMethod, FishingMethod.entries.toTypedArray()) ?: FishingMethod.NONE,
         bait = baits.map {
             parseEnumValue(it.baitCode, Bait.entries.toTypedArray()) ?: Bait.NONE
@@ -243,6 +243,7 @@ internal fun Fish.toFishDto(fishingId: UUID): FishDto {
         id = id,
         fishingId = fishingId,
         name = name,
-        count = count
+        count = count,
+        speciesId = speciesId
     )
 }

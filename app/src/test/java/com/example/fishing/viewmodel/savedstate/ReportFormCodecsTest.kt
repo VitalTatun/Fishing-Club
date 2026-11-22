@@ -76,6 +76,26 @@ class ReportFormCodecsTest {
     }
 
     @Test
+    fun `fish species id survives a round trip`() {
+        val fish = listOf(
+            Fish(id = UUID.randomUUID(), name = "Щука", count = 2, speciesId = "esox_lucius")
+        )
+
+        val restored = fishFromSaved(fishToSaved(fish))
+
+        assertEquals(fish, restored)
+    }
+
+    @Test
+    fun `legacy fish entries without a species id still decode`() {
+        val id = UUID.randomUUID()
+
+        val restored = fishFromSaved(arrayListOf<Any?>("$id\u001F2\u001FЩука"))
+
+        assertEquals(listOf(Fish(id = id, name = "Щука", count = 2)), restored)
+    }
+
+    @Test
     fun `fish name containing the separator is preserved`() {
         val fish = Fish(id = UUID.randomUUID(), name = "Щ\u001Fука", count = 2)
 

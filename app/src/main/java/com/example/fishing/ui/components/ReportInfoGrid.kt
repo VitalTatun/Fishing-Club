@@ -66,7 +66,8 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 title = report.fishingStartAt?.let { dateFormatter.format(it) } ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Default.Event,
-                horizontalContentPadding = 0.dp,
+                contentPaddingStart = 0.dp,
+                contentPaddingEnd = 0.dp,
                 verticalContentPadding = 0.dp,
                 titleStyle = gridItemValueStyle
             )
@@ -75,7 +76,8 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 title = timeRangeValue ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Default.Schedule,
-                horizontalContentPadding = 0.dp,
+                contentPaddingStart = 0.dp,
+                contentPaddingEnd = 0.dp,
                 verticalContentPadding = 0.dp,
                 titleStyle = gridItemValueStyle
             )
@@ -87,7 +89,8 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 title = report.durationFormatted() ?: stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
                 leadingPainter = painterResource(id = R.drawable.search_activity),
-                horizontalContentPadding = 0.dp,
+                contentPaddingStart = 0.dp,
+                contentPaddingEnd = 0.dp,
                 verticalContentPadding = 0.dp,
                 titleStyle = gridItemValueStyle
             )
@@ -103,7 +106,8 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 title = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Default.Phishing,
-                horizontalContentPadding = 0.dp,
+                contentPaddingStart = 0.dp,
+                contentPaddingEnd = 0.dp,
                 verticalContentPadding = 0.dp,
                 titleStyle = gridItemValueStyle
             )
@@ -112,7 +116,8 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 title = stringResource(report.fishingMethod.labelRes),
                 modifier = Modifier.weight(1f),
                 leadingPainter = fishingMethodIconRes?.let { painterResource(id = it) },
-                horizontalContentPadding = 0.dp,
+                contentPaddingStart = 0.dp,
+                contentPaddingEnd = 0.dp,
                 verticalContentPadding = 0.dp,
                 titleStyle = gridItemValueStyle
             )
@@ -182,7 +187,8 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
                 title = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} ${stringResource(R.string.weight_unit)}" else stringResource(R.string.not_specified),
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Default.Scale,
-                horizontalContentPadding = 0.dp,
+                contentPaddingStart = 0.dp,
+                contentPaddingEnd = 0.dp,
                 verticalContentPadding = 0.dp,
                 titleStyle = gridItemValueStyle
             )

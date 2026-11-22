@@ -14,6 +14,7 @@ import com.example.fishing.testutil.testReport
 import com.example.fishing.ui.screens.login.LoginContent
 import com.example.fishing.ui.screens.report.create.CatchEditScreen
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.CatchSearchState
 import com.example.fishing.viewmodel.HomeUiState
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -193,6 +194,11 @@ class ExpandedAdaptiveLayoutUiTest {
             FishingTheme(darkTheme = false, dynamicColor = false) {
                 CatchEditScreen(
                     fishList = emptyList(),
+                    catalog = emptyList(),
+                    searchState = CatchSearchState(),
+                    onOpenSearch = {},
+                    onCloseSearch = {},
+                    onSearchQueryChange = {},
                     onBackClick = {},
                     onSaveClick = { _, _ -> }
                 )
