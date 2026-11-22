@@ -1,6 +1,5 @@
 package com.example.fishing.ui.screens.report.create
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,10 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,7 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -47,6 +43,7 @@ import com.example.fishing.R
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishSuggestion
 import com.example.fishing.model.FishSuggestionSource
+import com.example.fishing.ui.components.FishingListItem
 import com.example.fishing.ui.components.SearchInputField
 import com.example.fishing.ui.theme.FishingTheme
 
@@ -192,16 +189,24 @@ fun FishSearchView(
                         key = { "history:${it.speciesId ?: it.name}" }
                     ) { suggestion ->
                         val added = isAlreadyAdded(suggestion.name, suggestion.speciesId)
-                        FishSuggestionRow(
-                            name = suggestion.name,
-                            alreadyAddedLabel = if (added) stringResource(R.string.already_in_list) else null,
+                        val select: () -> Unit = {
+                            onSelect(suggestion.name, suggestion.speciesId)
+                        }
+                        FishingListItem(
+                            title = suggestion.name,
+                            supportingText = if (added) {
+                                stringResource(R.string.already_in_list)
+                            } else {
+                                null
+                            },
                             leadingIcon = if (suggestion.source == FishSuggestionSource.HISTORY) {
                                 Icons.Default.History
                             } else {
                                 Icons.Default.Search
                             },
-                            enabled = !added,
-                            onClick = { onSelect(suggestion.name, suggestion.speciesId) }
+                            isError = added,
+                            onRowClick = if (added) null else select,
+                            modifier = Modifier.testTag("fish_suggestion_${suggestion.name}")
                         )
                     }
                 }
@@ -215,12 +220,20 @@ fun FishSearchView(
                         key = { "result:${it.id}" }
                     ) { species ->
                         val added = isAlreadyAdded(species.canonicalName, species.id)
-                        FishSuggestionRow(
-                            name = species.canonicalName,
-                            alreadyAddedLabel = if (added) stringResource(R.string.already_in_list) else null,
+                        val select: () -> Unit = {
+                            onSelect(species.canonicalName, species.id)
+                        }
+                        FishingListItem(
+                            title = species.canonicalName,
+                            supportingText = if (added) {
+                                stringResource(R.string.already_in_list)
+                            } else {
+                                null
+                            },
                             leadingIcon = Icons.Default.Search,
-                            enabled = !added,
-                            onClick = { onSelect(species.canonicalName, species.id) }
+                            isError = added,
+                            onRowClick = if (added) null else select,
+                            modifier = Modifier.testTag("fish_suggestion_${species.canonicalName}")
                         )
                     }
                 }
@@ -239,51 +252,6 @@ private fun FishSectionTitle(text: String) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     )
-}
-
-@Composable
-private fun FishSuggestionRow(
-    name: String,
-    alreadyAddedLabel: String?,
-    leadingIcon: ImageVector,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("fish_suggestion_$name")
-            .clickable(enabled = enabled, onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Icon(
-            imageVector = leadingIcon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (enabled) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.error
-                }
-            )
-            if (alreadyAddedLabel != null) {
-                Text(
-                    text = alreadyAddedLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
 }
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 820)

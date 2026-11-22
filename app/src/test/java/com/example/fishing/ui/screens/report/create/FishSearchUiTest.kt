@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -142,7 +143,7 @@ class FishSearchUiTest {
         }
 
         composeRule.onNodeWithText("Уже есть в списке").assertIsDisplayed()
-        composeRule.onNodeWithTag("fish_suggestion_Щука").assertIsNotEnabled()
+        composeRule.onNodeWithTag("fish_suggestion_Щука").assertHasNoClickAction()
 
         assertEquals(false, selected)
     }
