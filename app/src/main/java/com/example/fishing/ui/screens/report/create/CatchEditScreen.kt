@@ -53,6 +53,7 @@ import com.example.fishing.model.Fish
 import com.example.fishing.model.FishSuggestion
 import com.example.fishing.model.FishSuggestionSource
 import com.example.fishing.ui.components.ContentWidths
+import com.example.fishing.ui.components.FishingListItem
 import com.example.fishing.ui.components.QuantityStepper
 import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.ui.theme.FishingTheme
@@ -267,8 +268,7 @@ fun CatchEditScreen(
                     SectionGroup(title = stringResource(R.string.fish_added_section)) {
                         Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             fishList.forEach { fish ->
@@ -301,38 +301,19 @@ private fun FishQuantityRow(
     onRemove: () -> Unit,
     isMaxCount: Boolean = false
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = name,
-            color = CreateReportColors.OnSurface,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
-
-        Text(
-            text = stringResource(R.string.fish_count_short, count),
-            color = CreateReportColors.OnSurface,
-            fontWeight = FontWeight.Medium,
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(64.dp)
-        )
-
-        QuantityStepper(
-            count = count,
-            onDecrement = onDecrement,
-            onIncrement = onIncrement,
-            onRemove = onRemove,
-            modifier = Modifier.padding(start = 4.dp),
-            isIncrementEnabled = !isMaxCount
-        )
-    }
+    FishingListItem(
+        title = name,
+        trailingText = stringResource(R.string.fish_count_short, count),
+        trailingContent = {
+            QuantityStepper(
+                count = count,
+                onDecrement = onDecrement,
+                onIncrement = onIncrement,
+                onRemove = onRemove,
+                isIncrementEnabled = !isMaxCount
+            )
+        }
+    )
 }
 
 @Preview(showBackground = true, widthDp = 412)
