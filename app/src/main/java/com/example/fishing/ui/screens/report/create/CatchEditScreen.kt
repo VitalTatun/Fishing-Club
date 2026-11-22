@@ -164,7 +164,7 @@ fun CatchEditScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (searchState.chips.isNotEmpty()) {
-                    SectionGroup(title = stringResource(R.string.fish_suggestion_title)) {
+                    SectionGroup(title = stringResource(R.string.fish_suggestion_title), showDivider = false) {
                         FlowRow(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -265,11 +265,11 @@ fun CatchEditScreen(
                 )
 
                 if (fishList.isNotEmpty()) {
-                    SectionGroup(title = stringResource(R.string.fish_added_section)) {
+                    SectionGroup(title = stringResource(R.string.fish_added_section), showDivider = false) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             fishList.forEach { fish ->
                                 FishQuantityRow(
@@ -312,7 +312,8 @@ private fun FishQuantityRow(
                 onRemove = onRemove,
                 isIncrementEnabled = !isMaxCount
             )
-        }
+        },
+        contentPaddingEnd = 8.dp
     )
 }
 

@@ -35,6 +35,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -227,6 +228,7 @@ fun FishSearchView(
                         }
                         FishingListItem(
                             title = species.canonicalName,
+                            fontWeight = FontWeight.Medium,
                             supportingText = if (added) {
                                 stringResource(R.string.already_in_list)
                             } else {
