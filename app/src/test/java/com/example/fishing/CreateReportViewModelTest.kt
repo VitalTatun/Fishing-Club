@@ -18,6 +18,7 @@ import com.example.fishing.model.ReportSaveProgress
 import com.example.fishing.model.ReportUploadState
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
+import com.example.fishing.testutil.FakeFishCatalogRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeReportUploadQueue
 import com.example.fishing.testutil.MainDispatcherRule
@@ -59,6 +60,7 @@ class CreateReportViewModelTest {
 
     private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var fakeFishingRepository: FakeFishingRepository
+    private lateinit var fakeFishCatalogRepository: FakeFishCatalogRepository
     private lateinit var fakeReportUploadQueue: FakeReportUploadQueue
     private lateinit var context: Context
 
@@ -73,6 +75,7 @@ class CreateReportViewModelTest {
     fun setup() {
         fakeAuthRepository = FakeAuthRepository()
         fakeFishingRepository = FakeFishingRepository()
+        fakeFishCatalogRepository = FakeFishCatalogRepository()
         fakeReportUploadQueue = FakeReportUploadQueue()
         fakeAuthRepository.sessionUser = testUser
         context = RuntimeEnvironment.getApplication()
@@ -83,6 +86,7 @@ class CreateReportViewModelTest {
     ): CreateReportViewModel {
         return CreateReportViewModel(
             repository = fakeFishingRepository,
+            fishCatalogRepository = fakeFishCatalogRepository,
             authRepository = fakeAuthRepository,
             reportUploadQueue = fakeReportUploadQueue,
             context = context,
@@ -117,6 +121,7 @@ class CreateReportViewModelTest {
         }
         return CreateReportViewModel(
             repository = fakeFishingRepository,
+            fishCatalogRepository = fakeFishCatalogRepository,
             authRepository = fakeAuthRepository,
             reportUploadQueue = fakeReportUploadQueue,
             context = wrappedContext,

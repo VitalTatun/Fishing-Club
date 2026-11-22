@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.fishing.R
 import com.example.fishing.data.AuthRepository
+import com.example.fishing.data.FishCatalogRepository
 import com.example.fishing.data.MockFishingRepository
 import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.data.upload.ReportUploadResult
@@ -479,6 +480,7 @@ private fun CreateReportScreenPreview() {
         val viewModel = remember {
             CreateReportViewModel(
                 repository = MockFishingRepository(),
+                fishCatalogRepository = PreviewFishCatalogRepository(),
                 authRepository = object : AuthRepository {
                     override val authState: StateFlow<AuthState> = MutableStateFlow(AuthState.Unauthenticated)
                     override suspend fun login(email: String, password: String) = Result.failure<User>(Exception("mock"))
@@ -519,4 +521,20 @@ private class PreviewReportUploadQueue : ReportUploadQueue {
     override suspend fun cleanupStale(nowMillis: Long) {}
     override suspend fun clearAll() {}
     override suspend fun referencedLocalPaths(): Set<String> = emptySet()
+}
+
+/** Offline catalog for the preview; the real one is seeded from assets and Room. */
+private class PreviewFishCatalogRepository : FishCatalogRepository {
+    private val species = MutableStateFlow(
+        listOf(
+            FishSpecies("rutilus_rutilus", "Плотва", emptyList(), isPopular = true, sortOrder = 1),
+            FishSpecies("esox_lucius", "Щука", listOf("щуки"), isPopular = true, sortOrder = 3)
+        )
+    )
+
+    override fun observeAll(): Flow<List<FishSpecies>> = species
+
+    override fun observePopular(): Flow<List<FishSpecies>> = species
+
+    override suspend fun refresh(): Result<Unit> = Result.success(Unit)
 }

@@ -22,6 +22,7 @@ import com.example.fishing.model.FishingType
 import com.example.fishing.model.ReportUploadState
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
+import com.example.fishing.testutil.FakeFishCatalogRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeReportUploadQueue
 import com.example.fishing.ui.theme.FishingTheme
@@ -94,6 +95,7 @@ class CreateReportScreenUiTest {
         uploadQueue = FakeReportUploadQueue()
         viewModel = CreateReportViewModel(
             repository = fishingRepository,
+            fishCatalogRepository = FakeFishCatalogRepository(),
             authRepository = authRepository,
             reportUploadQueue = uploadQueue,
             context = context,
@@ -315,6 +317,7 @@ class CreateReportScreenUiTest {
         )
         val restoredViewModel = CreateReportViewModel(
             repository = fishingRepository,
+            fishCatalogRepository = FakeFishCatalogRepository(),
             authRepository = authRepository,
             reportUploadQueue = uploadQueue,
             context = context,

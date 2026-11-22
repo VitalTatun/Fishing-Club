@@ -23,6 +23,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.fishing.R
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.ErrorMapper
+import com.example.fishing.data.FishCatalogRepository
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.IoDispatcher
 import com.example.fishing.data.upload.ReportUploadQueue
@@ -45,11 +46,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -78,6 +89,7 @@ private data class ProcessedPhotos(
 @HiltViewModel
 class CreateReportViewModel @Inject constructor(
     private val repository: FishingRepository,
+    private val fishCatalogRepository: FishCatalogRepository,
     private val authRepository: AuthRepository,
     private val reportUploadQueue: ReportUploadQueue,
     @param:ApplicationContext private val context: Context,
@@ -150,6 +162,63 @@ class CreateReportViewModel @Inject constructor(
     var formMood by savedStateHandle.intProperty(KEY_MOOD) { 3 }
     var formComment by savedStateHandle.stringProperty(KEY_COMMENT)
     var formLocation by savedStateHandle.geoPointProperty(KEY_GEO_LAT, KEY_GEO_LNG)
+
+    /**
+     * Catch search. The catalog is shared with the achievements system; history
+     * comes from the user's own reports and falls back to the editorial popular
+     * list while the account has no reports yet.
+     */
+    private val fishCatalog: StateFlow<List<FishSpecies>> =
+        fishCatalogRepository.observeAll()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val catchHistory: Flow<List<FishSuggestion>> =
+        authRepository.authState
+            .map { state -> (state as? AuthState.Authenticated)?.user?.id }
+            .distinctUntilChanged()
+            .flatMapLatest { userId ->
+                if (userId == null) {
+                    flowOf(emptyList<FishSuggestion>())
+                } else {
+                    combine(repository.getHomeReports(userId), fishCatalog) { reports, catalog ->
+                        recentsFrom(reports, catalog, userId, SUGGESTIONS_LIMIT)
+                    }
+                }
+            }
+
+    private val popularFish: StateFlow<List<FishSuggestion>> =
+        fishCatalog
+            .map { popularFrom(it, SUGGESTIONS_LIMIT) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val catchSearchOpen: StateFlow<Boolean> =
+        savedStateHandle.getStateFlow(KEY_CATCH_SEARCH_OPEN, false)
+
+    private val catchSearchQuery: StateFlow<String> =
+        savedStateHandle.getStateFlow(KEY_CATCH_SEARCH_QUERY, "")
+
+    private val catchSearchResults: Flow<List<FishSpecies>> =
+        combine(catchSearchQuery, fishCatalog) { query, catalog ->
+            if (query.isBlank()) emptyList() else searchFishSpecies(query, catalog)
+        }
+
+    val catchSearchState: StateFlow<CatchSearchState> = combine(
+        catchSearchOpen,
+        catchSearchQuery,
+        catchHistory,
+        popularFish,
+        catchSearchResults
+    ) { open, query, history, popular, results ->
+        CatchSearchState(
+            isOpen = open,
+            query = query,
+            recent = history.take(RECENTS_IN_SEARCH_LIMIT),
+            popular = popular,
+            chips = history.ifEmpty { popular },
+            results = results
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CatchSearchState())
 
     var saveState by mutableStateOf(CreateReportSaveState.Idle)
     var saveErrorMessage by mutableStateOf<String?>(null)
@@ -664,6 +733,7 @@ class CreateReportViewModel @Inject constructor(
         formMood = 3
         formComment = ""
         formLocation = null
+        closeCatchSearch()
         updateDraftOwner(authRepository.currentUser()?.id?.toString())
         if (cleanupPhotos) {
             viewModelScope.launch(ioDispatcher) {
@@ -1008,6 +1078,95 @@ class CreateReportViewModel @Inject constructor(
         }
     }
 
+    // --- Catch search ---------------------------------------------------------
+
+    fun openCatchSearch() {
+        savedStateHandle[KEY_CATCH_SEARCH_QUERY] = ""
+        savedStateHandle[KEY_CATCH_SEARCH_OPEN] = true
+    }
+
+    fun closeCatchSearch() {
+        savedStateHandle[KEY_CATCH_SEARCH_OPEN] = false
+        savedStateHandle[KEY_CATCH_SEARCH_QUERY] = ""
+    }
+
+    fun onCatchSearchQueryChange(query: String) {
+        savedStateHandle[KEY_CATCH_SEARCH_QUERY] = query
+    }
+
+    /** True when [name]/[speciesId] resolves to a fish that is already added. */
+    fun isFishAlreadyAdded(name: String, speciesId: String?): Boolean {
+        val identity = fishIdentity(name, speciesId)
+        return formSelectedFish.any { fishIdentity(it.name, it.speciesId) == identity }
+    }
+
+    /**
+     * Adds a fish picked from the catalog or typed in the search. A known name
+     * resolves to its catalog species; an unknown one stays a free-form entry.
+     */
+    fun addFishFromSearch(name: String, speciesId: String?) {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) return
+
+        val resolved = resolveFishSpecies(trimmedName, fishCatalog.value)
+        val resolvedId = speciesId ?: resolved?.id
+        val displayName = resolved?.canonicalName ?: trimmedName
+
+        if (isFishAlreadyAdded(displayName, resolvedId)) return
+
+        val fish = Fish(id = UUID.randomUUID(), name = displayName, count = 1, speciesId = resolvedId)
+        formSelectedFish = if (formReportType == FishingType.HAUL) {
+            listOf(fish)
+        } else {
+            listOf(fish) + formSelectedFish
+        }
+        closeCatchSearch()
+    }
+
+    fun addCustomFish(name: String) {
+        addFishFromSearch(name, speciesId = null)
+    }
+
+    /** Chips toggle: tapping an added fish removes it, otherwise it is added. */
+    fun toggleFishSuggestion(name: String, speciesId: String?) {
+        val identity = fishIdentity(name, speciesId)
+        val existing = formSelectedFish.firstOrNull {
+            fishIdentity(it.name, it.speciesId) == identity
+        }
+        if (existing != null) {
+            formSelectedFish = formSelectedFish - existing
+        } else {
+            addFishFromSearch(name, speciesId)
+        }
+    }
+
+    fun incrementFish(fishId: UUID) {
+        if (formReportType == FishingType.HAUL) return
+        formSelectedFish = formSelectedFish.map { fish ->
+            if (fish.id == fishId) fish.copy(count = fish.count + 1) else fish
+        }
+    }
+
+    fun decrementFish(fishId: UUID) {
+        formSelectedFish = formSelectedFish.mapNotNull { fish ->
+            when {
+                fish.id != fishId -> fish
+                fish.count > 1 -> fish.copy(count = fish.count - 1)
+                else -> null
+            }
+        }
+    }
+
+    fun removeFish(fishId: UUID) {
+        formSelectedFish = formSelectedFish.filterNot { it.id == fishId }
+    }
+
+    private fun fishIdentity(name: String, speciesId: String?): String {
+        val trimmedName = name.trim()
+        val resolvedId = speciesId ?: resolveFishSpecies(trimmedName, fishCatalog.value)?.id
+        return resolvedId?.let { "id:$it" } ?: "name:${normalizeFishName(trimmedName)}"
+    }
+
     companion object {
         private const val TAG = "CreateReportVM"
 
@@ -1034,5 +1193,7 @@ class CreateReportViewModel @Inject constructor(
         private const val KEY_REPORT_ID = "form_report_id"
         private const val KEY_OWNER_ID = "form_owner_id"
         private const val KEY_PENDING_CAMERA = "form_pending_camera_path"
+        private const val KEY_CATCH_SEARCH_OPEN = "form_catch_search_open"
+        private const val KEY_CATCH_SEARCH_QUERY = "form_catch_search_query"
     }
 }

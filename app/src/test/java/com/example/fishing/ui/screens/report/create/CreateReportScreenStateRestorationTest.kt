@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
+import com.example.fishing.testutil.FakeFishCatalogRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeReportUploadQueue
 import com.example.fishing.ui.theme.FishingTheme
@@ -59,6 +60,7 @@ class CreateReportScreenStateRestorationTest {
         }
         viewModel = CreateReportViewModel(
             repository = FakeFishingRepository(),
+            fishCatalogRepository = FakeFishCatalogRepository(),
             authRepository = authRepository,
             reportUploadQueue = FakeReportUploadQueue(),
             context = context,
