@@ -57,7 +57,8 @@ fun FishingListItem(
     onTrailingTextClick: (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     leadingPainter: Painter? = null,
-    horizontalContentPadding: Dp = 16.dp,
+    contentPaddingStart: Dp = 16.dp,
+    contentPaddingEnd: Dp = 16.dp,
     verticalContentPadding: Dp = 12.dp,
 ) {
     val actualContainerColor = containerColor ?: if (isError) Color(0xFFFFEDEB) else Color.Transparent
@@ -72,7 +73,7 @@ fun FishingListItem(
             .then(
                 if (onRowClick != null) Modifier.clickable(onClick = onRowClick) else Modifier
             )
-            .padding(horizontal = horizontalContentPadding),
+            .padding(start = contentPaddingStart, end = contentPaddingEnd),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
