@@ -86,12 +86,12 @@ class Migration_12_13_Test {
     @Test
     fun migratingFromV12ToV13_addsMarkerAuthor_andDropsLegacyCache() {
         val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
-            .addMigrations(AppDatabase.MIGRATION_12_13)
+            .addMigrations(AppDatabase.MIGRATION_12_13, AppDatabase.MIGRATION_13_14)
             .allowMainThreadQueries()
             .build()
 
         db.openHelper.writableDatabase.use { sqlite ->
-            check(sqlite.version == 13) { "expected user_version 13, was ${sqlite.version}" }
+            check(sqlite.version == 14) { "expected user_version 14, was ${sqlite.version}" }
 
             sqlite.query("PRAGMA table_info(markers)").use { cursor ->
                 val columns = buildMap {

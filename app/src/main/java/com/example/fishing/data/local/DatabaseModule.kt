@@ -3,6 +3,7 @@ package com.example.fishing.data.local
 import android.content.Context
 import androidx.room.Room
 import com.example.fishing.data.local.dao.FavoriteReportDao
+import com.example.fishing.data.local.dao.FishSpeciesDao
 import com.example.fishing.data.local.dao.LikeDao
 import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.PendingReportUploadDao
@@ -29,7 +30,8 @@ object DatabaseModule {
             AppDatabase.MIGRATION_9_10,
             AppDatabase.MIGRATION_10_11,
             AppDatabase.MIGRATION_11_12,
-            AppDatabase.MIGRATION_12_13
+            AppDatabase.MIGRATION_12_13,
+            AppDatabase.MIGRATION_13_14
         ).build()
     }
 
@@ -56,5 +58,10 @@ object DatabaseModule {
     @Provides
     fun providePendingReportUploadDao(database: AppDatabase): PendingReportUploadDao {
         return database.pendingReportUploadDao()
+    }
+
+    @Provides
+    fun provideFishSpeciesDao(database: AppDatabase): FishSpeciesDao {
+        return database.fishSpeciesDao()
     }
 }

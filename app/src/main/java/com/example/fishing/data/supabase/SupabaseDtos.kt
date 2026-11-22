@@ -53,7 +53,17 @@ data class FishDto(
     @Serializable(with = UuidSerializer::class) val id: UUID,
     @Serializable(with = UuidSerializer::class) @SerialName("fishing_id") val fishingId: UUID,
     val name: String,
-    val count: Int = 0
+    val count: Int = 0,
+    @SerialName("species_id") val speciesId: String? = null
+)
+
+@Serializable
+data class FishSpeciesDto(
+    val id: String,
+    @SerialName("canonical_name") val canonicalName: String,
+    val aliases: List<String> = emptyList(),
+    @SerialName("is_popular") val isPopular: Boolean = false,
+    @SerialName("sort_order") val sortOrder: Int = 0
 )
 
 @Serializable

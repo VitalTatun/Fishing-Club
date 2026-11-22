@@ -7,11 +7,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.fishing.data.local.converter.Converters
 import com.example.fishing.data.local.dao.FavoriteReportDao
+import com.example.fishing.data.local.dao.FishSpeciesDao
 import com.example.fishing.data.local.dao.LikeDao
 import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.PendingReportUploadDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.entity.FavoriteReportEntity
+import com.example.fishing.data.local.entity.FishSpeciesEntity
 import com.example.fishing.data.local.entity.LikeEntity
 import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.local.entity.PendingReportUploadEntity
@@ -23,9 +25,10 @@ import com.example.fishing.data.local.entity.ReportDetailsEntity
         ReportDetailsEntity::class,
         FavoriteReportEntity::class,
         LikeEntity::class,
-        PendingReportUploadEntity::class
+        PendingReportUploadEntity::class,
+        FishSpeciesEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -35,6 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun favoriteDao(): FavoriteReportDao
     abstract fun likeDao(): LikeDao
     abstract fun pendingReportUploadDao(): PendingReportUploadDao
+    abstract fun fishSpeciesDao(): FishSpeciesDao
 
     companion object {
         val MIGRATION_9_10 = object : Migration(9, 10) {
@@ -118,6 +122,24 @@ abstract class AppDatabase : RoomDatabase() {
                         `isPublic` INTEGER NOT NULL,
                         `isPaidWater` INTEGER NOT NULL,
                         `fishNames` TEXT NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** ACH-01: local cache of the fish catalog. */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `fish_species` (
+                        `id` TEXT NOT NULL,
+                        `canonicalName` TEXT NOT NULL,
+                        `aliases` TEXT NOT NULL,
+                        `isPopular` INTEGER NOT NULL,
+                        `sortOrder` INTEGER NOT NULL,
                         PRIMARY KEY(`id`)
                     )
                     """.trimIndent()

@@ -99,4 +99,16 @@ abstract class RepositoryModule {
     abstract fun bindUserReportsStore(
         store: SupabaseUserReportsStore
     ): UserReportsStore
+
+    @Binds
+    @Singleton
+    abstract fun bindFishCatalogRepository(
+        repository: DefaultFishCatalogRepository
+    ): FishCatalogRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFishCatalogRemoteDataSource(
+        dataSource: SupabaseFishCatalogRemoteDataSource
+    ): FishCatalogRemoteDataSource
 }
