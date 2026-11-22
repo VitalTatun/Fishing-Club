@@ -1,23 +1,23 @@
 package com.example.fishing.ui.screens.report.create
 
 import android.app.Application
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import com.example.fishing.model.Fish
 import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.CatchSearchState
+import java.util.UUID
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** AUD-06: catch input and the fish list survive a configuration change / process death. */
+/** AUD-06: the catch form keeps its weight and the caller-provided fish list. */
 @RunWith(RobolectricTestRunner::class)
 @Config(
     sdk = [36],
@@ -30,30 +30,43 @@ class CatchEditScreenStateRestorationTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun `typed input and selected fish survive state restoration`() {
+    fun `weight and provided fish survive state restoration`() {
         val restorationTester = StateRestorationTester(composeRule)
         restorationTester.setContent {
             FishingTheme(darkTheme = false, dynamicColor = false) {
                 CatchEditScreen(
-                    fishList = emptyList(),
-                    initialWeight = 0f,
+                    fishList = listOf(
+                        Fish(
+                            id = UUID.randomUUID(),
+                            name = "Щука",
+                            count = 1,
+                            speciesId = "esox_lucius"
+                        )
+                    ),
+                    searchState = CatchSearchState(),
+                    isAlreadyAdded = { _, _ -> false },
+                    onOpenSearch = {},
+                    onCloseSearch = {},
+                    onSearchQueryChange = {},
+                    onAddFish = { _, _ -> },
+                    onAddCustomFish = {},
+                    onToggleSuggestion = { _, _ -> },
+                    onIncrementFish = {},
+                    onDecrementFish = {},
+                    onRemoveFish = {},
                     onBackClick = {},
                     onSaveClick = { _, _ -> }
                 )
             }
         }
 
-        composeRule.onAllNodes(hasSetTextAction())[0].performTextInput("Судак")
-        composeRule.onAllNodes(hasSetTextAction())[1].performTextInput("4.5")
-        composeRule.onNodeWithText("Щука").performClick()
+        composeRule.onAllNodes(hasSetTextAction())[0].performTextInput("4.5")
         composeRule.waitForIdle()
-        // The suggestion chip plus the quantity row.
-        composeRule.onAllNodesWithText("Щука").assertCountEquals(2)
+        composeRule.onNodeWithText("Щука").assertIsDisplayed()
 
         restorationTester.emulateSavedInstanceStateRestore()
 
-        composeRule.onNodeWithText("Судак").assertIsDisplayed()
         composeRule.onNodeWithText("4.5").assertIsDisplayed()
-        composeRule.onAllNodesWithText("Щука").assertCountEquals(2)
+        composeRule.onNodeWithText("Щука").assertIsDisplayed()
     }
 }
