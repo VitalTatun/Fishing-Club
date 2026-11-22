@@ -23,18 +23,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -47,7 +41,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,6 +53,7 @@ import com.example.fishing.model.Fish
 import com.example.fishing.model.FishSuggestion
 import com.example.fishing.model.FishSuggestionSource
 import com.example.fishing.ui.components.ContentWidths
+import com.example.fishing.ui.components.QuantityStepper
 import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.CatchSearchState
@@ -330,83 +324,14 @@ private fun FishQuantityRow(
             modifier = Modifier.width(64.dp)
         )
 
-        Row(
+        QuantityStepper(
+            count = count,
+            onDecrement = onDecrement,
+            onIncrement = onIncrement,
+            onRemove = onRemove,
             modifier = Modifier.padding(start = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            val isMinCount = count <= 1
-            FilledTonalIconButton(
-                onClick = onDecrement,
-                modifier = Modifier.size(52.dp, 40.dp),
-                shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    bottomStart = 16.dp,
-                    topEnd = 4.dp,
-                    bottomEnd = 4.dp
-                ),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = if (isMinCount) {
-                        Color(0xFFFFDAD6)
-                    } else {
-                        CreateReportColors.SecondaryContainer
-                    },
-                    contentColor = if (isMinCount) {
-                        Color(0xFF93000A)
-                    } else {
-                        CreateReportColors.OnSecondaryContainer
-                    }
-                )
-            ) {
-                Icon(
-                    imageVector = if (isMinCount) Icons.Default.Delete else Icons.Default.Remove,
-                    contentDescription = if (isMinCount) {
-                        stringResource(R.string.delete)
-                    } else {
-                        stringResource(R.string.decrease)
-                    }
-                )
-            }
-
-            FilledTonalIconButton(
-                onClick = onIncrement,
-                modifier = Modifier.size(52.dp, 40.dp),
-                enabled = !isMaxCount,
-                shape = RoundedCornerShape(
-                    topStart = 4.dp,
-                    bottomStart = 4.dp,
-                    topEnd = 16.dp,
-                    bottomEnd = 16.dp
-                ),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = if (isMaxCount) {
-                        Color(0xFFE0E0E0)
-                    } else {
-                        CreateReportColors.SecondaryContainer
-                    },
-                    contentColor = if (isMaxCount) {
-                        Color(0xFF9E9E9E)
-                    } else {
-                        CreateReportColors.OnSecondaryContainer
-                    }
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.increase)
-                )
-            }
-        }
-
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = stringResource(R.string.delete),
-                tint = CreateReportColors.OnSurfaceVariant
-            )
-        }
+            isIncrementEnabled = !isMaxCount
+        )
     }
 }
 
