@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -45,10 +47,14 @@ fun QuantityStepper(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        val hapticFeedback = LocalHapticFeedback.current
         val isRemove = count <= 1
 
         FilledTonalIconButton(
-            onClick = onDecrement,
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOff)
+                onDecrement()
+            },
             modifier = Modifier.size(52.dp, 40.dp),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
@@ -80,7 +86,10 @@ fun QuantityStepper(
         }
 
         FilledTonalIconButton(
-            onClick = onIncrement,
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                onIncrement()
+            },
             enabled = isIncrementEnabled,
             modifier = Modifier.size(52.dp, 40.dp),
             shape = RoundedCornerShape(
@@ -109,7 +118,10 @@ fun QuantityStepper(
         }
 
         IconButton(
-            onClick = onRemove,
+            onClick = {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                onRemove()
+            },
             modifier = Modifier.size(48.dp)
         ) {
             Icon(
