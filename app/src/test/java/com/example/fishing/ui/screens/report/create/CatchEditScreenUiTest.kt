@@ -8,12 +8,14 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishSuggestion
@@ -57,6 +59,7 @@ class CatchEditScreenUiTest {
         onIncrementFish: (UUID) -> Unit = {},
         onDecrementFish: (UUID) -> Unit = {},
         onRemoveFish: (UUID) -> Unit = {},
+        onWeightChange: (Float) -> Unit = {},
         onBackClick: () -> Unit = {},
         onSaveClick: (List<Fish>, Float) -> Unit = { _, _ -> }
     ) {
@@ -75,6 +78,7 @@ class CatchEditScreenUiTest {
                     onIncrementFish = onIncrementFish,
                     onDecrementFish = onDecrementFish,
                     onRemoveFish = onRemoveFish,
+                    onWeightChange = onWeightChange,
                     onBackClick = onBackClick,
                     onSaveClick = onSaveClick,
                     initialWeight = initialWeight,
@@ -231,5 +235,15 @@ class CatchEditScreenUiTest {
         composeRule.onNodeWithContentDescription("Назад").performClick()
 
         assertEquals(1, backs)
+    }
+
+    @Test
+    fun `weight edits are forwarded immediately`() {
+        val weights = mutableListOf<Float>()
+        setContent(onWeightChange = { weights += it })
+
+        composeRule.onAllNodes(hasSetTextAction())[0].performTextInput("4.5")
+
+        assertEquals(4.5f, weights.last())
     }
 }

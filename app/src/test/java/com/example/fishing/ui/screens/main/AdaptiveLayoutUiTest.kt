@@ -205,6 +205,7 @@ class ExpandedAdaptiveLayoutUiTest {
                     onIncrementFish = {},
                     onDecrementFish = {},
                     onRemoveFish = {},
+                    onWeightChange = {},
                     onBackClick = {},
                     onSaveClick = { _, _ -> }
                 )

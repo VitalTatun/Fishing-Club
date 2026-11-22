@@ -54,6 +54,7 @@ class CatchEditScreenStateRestorationTest {
                     onIncrementFish = {},
                     onDecrementFish = {},
                     onRemoveFish = {},
+                    onWeightChange = {},
                     onBackClick = {},
                     onSaveClick = { _, _ -> }
                 )

@@ -367,6 +367,7 @@ fun FishingNavHost(
                     onIncrementFish = createReportViewModel::incrementFish,
                     onDecrementFish = createReportViewModel::decrementFish,
                     onRemoveFish = createReportViewModel::removeFish,
+                    onWeightChange = { createReportViewModel.formWeight = it },
                     initialWeight = createReportViewModel.formWeight,
                     onBackClick = { navigator.popBackStack() },
                     onSaveClick = { fish, weight ->

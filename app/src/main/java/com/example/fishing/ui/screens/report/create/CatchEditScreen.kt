@@ -78,6 +78,7 @@ fun CatchEditScreen(
     onIncrementFish: (UUID) -> Unit,
     onDecrementFish: (UUID) -> Unit,
     onRemoveFish: (UUID) -> Unit,
+    onWeightChange: (Float) -> Unit,
     onBackClick: () -> Unit,
     onSaveClick: (List<Fish>, Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -232,6 +233,7 @@ fun CatchEditScreen(
                         if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,1}$"))) {
                             if ((newValue.toFloatOrNull() ?: 0f) <= MAX_TOTAL_WEIGHT_KG) {
                                 weightInput = newValue
+                                onWeightChange(newValue.toFloatOrNull() ?: 0f)
                             }
                         }
                     },
@@ -348,6 +350,7 @@ private fun CatchEditScreenPreview() {
             onIncrementFish = {},
             onDecrementFish = {},
             onRemoveFish = {},
+            onWeightChange = {},
             onBackClick = {},
             onSaveClick = { _, _ -> },
             initialWeight = 2.5f
