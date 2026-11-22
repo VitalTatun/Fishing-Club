@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -55,7 +56,9 @@ fun QuantityStepper(
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.ToggleOff)
                 onDecrement()
             },
-            modifier = Modifier.size(52.dp, 40.dp),
+            modifier = Modifier
+                .size(52.dp, 40.dp)
+                .testTag("quantity_decrement"),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 bottomStart = 16.dp,
@@ -91,7 +94,9 @@ fun QuantityStepper(
                 onIncrement()
             },
             enabled = isIncrementEnabled,
-            modifier = Modifier.size(52.dp, 40.dp),
+            modifier = Modifier
+                .size(52.dp, 40.dp)
+                .testTag("quantity_increment"),
             shape = RoundedCornerShape(
                 topStart = 4.dp,
                 bottomStart = 4.dp,
@@ -122,7 +127,9 @@ fun QuantityStepper(
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 onRemove()
             },
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier
+                .size(48.dp)
+                .testTag("quantity_remove")
         ) {
             Icon(
                 imageVector = Icons.Default.Close,

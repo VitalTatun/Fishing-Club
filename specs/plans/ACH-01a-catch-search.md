@@ -1,5 +1,7 @@
 # План: ACH-01a — поиск рыбы на экране добавления улова
 
+**Статус:** реализовано 2026-11-22 (каталог ACH-01, Android-слой, экран улова). Unit- и Compose-тесты, `:app:assembleDebug` — зелёные.
+
 ## Обзор
 
 Экран `CatchEditScreen` сейчас состоит из `TopAppBar` с заголовком «Пойманная рыба»,
@@ -266,6 +268,22 @@
 - `./gradlew :app:testDebugUnitTest`
 - Ручной сценарий: открыть экран улова → поиск → «щук» → выбрать «Щука» → «Добавлено» →
   повторный поиск той же рыбы → «Уже в списке» → `+` с новым именем → вес → сохранение.
+
+## Итог реализации
+
+- Каталог `ACH-01`: Supabase + Room + сид, `FishCatalogRepository`, `normalizeFishName`,
+  `resolveFishSpecies`, `searchFishSpecies`.
+- `CatchSearchState` в `CreateReportViewModel`: история, популярные, результаты, режим и
+  запрос в `SavedStateHandle`.
+- Общий `SearchInputField`; `FishSearchBar` / `FishSearchView`; в экране — `SectionGroup`,
+  `FishingListItem` и `QuantityStepper`.
+- `CatchEditScreen` без локального ввода и хардкода рыб: выбор и `+` закрывают поиск,
+  «Уже в списке» показывается error-состоянием, trophy заменяет рыбу.
+- Черновик: версионированный кодек с `speciesId`, legacy-записи читаются.
+- Тесты: `FishMatchingTest`, `FishSuggestionsTest`, `FishSpeciesSeedTest`,
+  `Migration_13_14_Test`, `CatchSearchViewModelTest`, `FishSearchUiTest`,
+  `CatchEditScreenUiTest`, `ReportFormCodecsTest`; `:app:testDebugUnitTest` и
+  `:app:assembleDebug` зелёные.
 
 ## References
 
