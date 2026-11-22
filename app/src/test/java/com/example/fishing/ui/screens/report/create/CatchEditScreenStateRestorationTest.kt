@@ -43,18 +43,11 @@ class CatchEditScreenStateRestorationTest {
                             speciesId = "esox_lucius"
                         )
                     ),
+                    catalog = emptyList(),
                     searchState = CatchSearchState(),
-                    isAlreadyAdded = { _, _ -> false },
                     onOpenSearch = {},
                     onCloseSearch = {},
                     onSearchQueryChange = {},
-                    onAddFish = { _, _ -> },
-                    onAddCustomFish = {},
-                    onToggleSuggestion = { _, _ -> },
-                    onIncrementFish = {},
-                    onDecrementFish = {},
-                    onRemoveFish = {},
-                    onWeightChange = {},
                     onBackClick = {},
                     onSaveClick = { _, _ -> }
                 )

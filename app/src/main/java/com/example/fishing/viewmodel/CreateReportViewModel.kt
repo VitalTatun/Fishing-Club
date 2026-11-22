@@ -168,7 +168,7 @@ class CreateReportViewModel @Inject constructor(
      * comes from the user's own reports and falls back to the editorial popular
      * list while the account has no reports yet.
      */
-    private val fishCatalog: StateFlow<List<FishSpecies>> =
+    val fishCatalog: StateFlow<List<FishSpecies>> =
         fishCatalogRepository.observeAll()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -1092,79 +1092,6 @@ class CreateReportViewModel @Inject constructor(
 
     fun onCatchSearchQueryChange(query: String) {
         savedStateHandle[KEY_CATCH_SEARCH_QUERY] = query
-    }
-
-    /** True when [name]/[speciesId] resolves to a fish that is already added. */
-    fun isFishAlreadyAdded(name: String, speciesId: String?): Boolean {
-        val identity = fishIdentity(name, speciesId)
-        return formSelectedFish.any { fishIdentity(it.name, it.speciesId) == identity }
-    }
-
-    /**
-     * Adds a fish picked from the catalog or typed in the search. A known name
-     * resolves to its catalog species; an unknown one stays a free-form entry.
-     */
-    fun addFishFromSearch(name: String, speciesId: String?) {
-        val trimmedName = name.trim()
-        if (trimmedName.isEmpty()) return
-
-        val resolved = resolveFishSpecies(trimmedName, fishCatalog.value)
-        val resolvedId = speciesId ?: resolved?.id
-        val displayName = resolved?.canonicalName ?: trimmedName
-
-        if (isFishAlreadyAdded(displayName, resolvedId)) return
-
-        val fish = Fish(id = UUID.randomUUID(), name = displayName, count = 1, speciesId = resolvedId)
-        formSelectedFish = if (formReportType == FishingType.HAUL) {
-            listOf(fish)
-        } else {
-            listOf(fish) + formSelectedFish
-        }
-        closeCatchSearch()
-    }
-
-    fun addCustomFish(name: String) {
-        addFishFromSearch(name, speciesId = null)
-    }
-
-    /** Chips toggle: tapping an added fish removes it, otherwise it is added. */
-    fun toggleFishSuggestion(name: String, speciesId: String?) {
-        val identity = fishIdentity(name, speciesId)
-        val existing = formSelectedFish.firstOrNull {
-            fishIdentity(it.name, it.speciesId) == identity
-        }
-        if (existing != null) {
-            formSelectedFish = formSelectedFish - existing
-        } else {
-            addFishFromSearch(name, speciesId)
-        }
-    }
-
-    fun incrementFish(fishId: UUID) {
-        if (formReportType == FishingType.HAUL) return
-        formSelectedFish = formSelectedFish.map { fish ->
-            if (fish.id == fishId) fish.copy(count = fish.count + 1) else fish
-        }
-    }
-
-    fun decrementFish(fishId: UUID) {
-        formSelectedFish = formSelectedFish.mapNotNull { fish ->
-            when {
-                fish.id != fishId -> fish
-                fish.count > 1 -> fish.copy(count = fish.count - 1)
-                else -> null
-            }
-        }
-    }
-
-    fun removeFish(fishId: UUID) {
-        formSelectedFish = formSelectedFish.filterNot { it.id == fishId }
-    }
-
-    private fun fishIdentity(name: String, speciesId: String?): String {
-        val trimmedName = name.trim()
-        val resolvedId = speciesId ?: resolveFishSpecies(trimmedName, fishCatalog.value)?.id
-        return resolvedId?.let { "id:$it" } ?: "name:${normalizeFishName(trimmedName)}"
     }
 
     companion object {

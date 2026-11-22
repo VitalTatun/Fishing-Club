@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.SavedStateHandle
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishSpecies
-import com.example.fishing.model.FishingType
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.FakeFishCatalogRepository
@@ -18,7 +17,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -134,97 +132,6 @@ class CatchSearchViewModelTest {
 
         assertTrue(restored.catchSearchState.value.isOpen)
         assertEquals("щу", restored.catchSearchState.value.query)
-    }
-
-    @Test
-    fun `adding from search resolves an alias closes the search and assigns the species`() = runTest {
-        val viewModel = createViewModel()
-        advance()
-        viewModel.openCatchSearch()
-        viewModel.onCatchSearchQueryChange("подлещик")
-
-        viewModel.addFishFromSearch("подлещик", speciesId = null)
-
-        assertEquals(1, viewModel.formSelectedFish.size)
-        assertEquals("Лещ", viewModel.formSelectedFish.single().name)
-        assertEquals("abramis_brama", viewModel.formSelectedFish.single().speciesId)
-        assertFalse(viewModel.catchSearchState.value.isOpen)
-    }
-
-    @Test
-    fun `custom fish keeps its name and has no species id`() {
-        val viewModel = createViewModel()
-
-        viewModel.addCustomFish("  Пескарик  ")
-
-        assertEquals("Пескарик", viewModel.formSelectedFish.single().name)
-        assertNull(viewModel.formSelectedFish.single().speciesId)
-    }
-
-    @Test
-    fun `duplicate fish is not added twice`() {
-        val viewModel = createViewModel()
-        advance()
-        viewModel.addFishFromSearch("Щука", "esox_lucius")
-        viewModel.addFishFromSearch("щука", null)
-        viewModel.addCustomFish("ЩУКА")
-
-        assertEquals(1, viewModel.formSelectedFish.size)
-    }
-
-    @Test
-    fun `trophy replaces the previous fish`() {
-        val viewModel = createViewModel()
-        viewModel.formReportType = FishingType.HAUL
-
-        viewModel.addFishFromSearch("Щука", "esox_lucius")
-        viewModel.addFishFromSearch("Окунь", "perca_fluviatilis")
-
-        assertEquals(1, viewModel.formSelectedFish.size)
-        assertEquals("Окунь", viewModel.formSelectedFish.single().name)
-    }
-
-    @Test
-    fun `increment decrement and remove update the catch`() {
-        val viewModel = createViewModel()
-        val fishId = UUID.randomUUID()
-        viewModel.formSelectedFish = listOf(Fish(fishId, "Щука", count = 1, speciesId = "esox_lucius"))
-
-        viewModel.incrementFish(fishId)
-        assertEquals(2, viewModel.formSelectedFish.single().count)
-
-        viewModel.decrementFish(fishId)
-        assertEquals(1, viewModel.formSelectedFish.single().count)
-
-        viewModel.decrementFish(fishId)
-        assertTrue(viewModel.formSelectedFish.isEmpty())
-
-        viewModel.formSelectedFish = listOf(Fish(fishId, "Щука", count = 3, speciesId = "esox_lucius"))
-        viewModel.removeFish(fishId)
-        assertTrue(viewModel.formSelectedFish.isEmpty())
-    }
-
-    @Test
-    fun `already added matches aliases and species ids`() {
-        val viewModel = createViewModel()
-        advance()
-        viewModel.addCustomFish("Подлещик")
-
-        assertTrue(viewModel.isFishAlreadyAdded("лещ", null))
-        assertTrue(viewModel.isFishAlreadyAdded("Лещ", "abramis_brama"))
-        assertFalse(viewModel.isFishAlreadyAdded("Щука", null))
-    }
-
-    @Test
-    fun `toggling a chip adds and removes it`() {
-        val viewModel = createViewModel()
-        advance()
-
-        viewModel.toggleFishSuggestion("Щука", "esox_lucius")
-        assertEquals(1, viewModel.formSelectedFish.size)
-
-        viewModel.toggleFishSuggestion("щука", null)
-        assertTrue(viewModel.formSelectedFish.isEmpty())
     }
 
     private fun fish(name: String) = Fish(id = UUID.randomUUID(), name = name, count = 1)

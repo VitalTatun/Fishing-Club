@@ -7,15 +7,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import com.example.fishing.model.Fish
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishSuggestion
@@ -46,20 +45,13 @@ class CatchEditScreenUiTest {
     private val roach = FishSuggestion("Плотва", "rutilus_rutilus", FishSuggestionSource.HISTORY)
 
     private fun setContent(
-        state: CatchSearchState = CatchSearchState(),
+        state: () -> CatchSearchState = { CatchSearchState() },
         fishList: List<Fish> = emptyList(),
+        catalog: List<FishSpecies> = listOf(pike),
         initialWeight: Float = 0f,
         isTrophy: Boolean = false,
-        isAlreadyAdded: (name: String, speciesId: String?) -> Boolean = { _, _ -> false },
         onOpenSearch: () -> Unit = {},
         onCloseSearch: () -> Unit = {},
-        onAddFish: (name: String, speciesId: String?) -> Unit = { _, _ -> },
-        onAddCustomFish: (name: String) -> Unit = {},
-        onToggleSuggestion: (name: String, speciesId: String?) -> Unit = { _, _ -> },
-        onIncrementFish: (UUID) -> Unit = {},
-        onDecrementFish: (UUID) -> Unit = {},
-        onRemoveFish: (UUID) -> Unit = {},
-        onWeightChange: (Float) -> Unit = {},
         onBackClick: () -> Unit = {},
         onSaveClick: (List<Fish>, Float) -> Unit = { _, _ -> }
     ) {
@@ -67,18 +59,11 @@ class CatchEditScreenUiTest {
             FishingTheme(darkTheme = false, dynamicColor = false) {
                 CatchEditScreen(
                     fishList = fishList,
-                    searchState = state,
-                    isAlreadyAdded = isAlreadyAdded,
+                    catalog = catalog,
+                    searchState = state(),
                     onOpenSearch = onOpenSearch,
                     onCloseSearch = onCloseSearch,
                     onSearchQueryChange = {},
-                    onAddFish = onAddFish,
-                    onAddCustomFish = onAddCustomFish,
-                    onToggleSuggestion = onToggleSuggestion,
-                    onIncrementFish = onIncrementFish,
-                    onDecrementFish = onDecrementFish,
-                    onRemoveFish = onRemoveFish,
-                    onWeightChange = onWeightChange,
                     onBackClick = onBackClick,
                     onSaveClick = onSaveClick,
                     initialWeight = initialWeight,
@@ -102,7 +87,7 @@ class CatchEditScreenUiTest {
     fun `open search replaces the normal content and back closes it`() {
         var closed = false
         setContent(
-            state = CatchSearchState(isOpen = true, query = "щу", results = listOf(pike)),
+            state = { CatchSearchState(isOpen = true, query = "щу", results = listOf(pike)) },
             onCloseSearch = { closed = true }
         )
 
@@ -116,89 +101,77 @@ class CatchEditScreenUiTest {
     }
 
     @Test
-    fun `selecting a result forwards the name and species id`() {
-        var selectedName: String? = null
-        var selectedId: String? = null
+    fun `selecting a result adds it to the local draft and closes the search`() {
+        var open by mutableStateOf(true)
+        var closes = 0
         setContent(
-            state = CatchSearchState(isOpen = true, query = "щу", results = listOf(pike)),
-            onAddFish = { name, id ->
-                selectedName = name
-                selectedId = id
+            state = { CatchSearchState(isOpen = open, query = "щу", results = listOf(pike)) },
+            onCloseSearch = {
+                open = false
+                closes++
             }
         )
 
         composeRule.onNodeWithTag("fish_suggestion_Щука").performClick()
+        composeRule.waitForIdle()
 
-        assertEquals("Щука", selectedName)
-        assertEquals("esox_lucius", selectedId)
+        assertEquals(1, closes)
+        composeRule.onNodeWithTag("fish_search_view").assertDoesNotExist()
+        composeRule.onNodeWithText("Щука").assertIsDisplayed()
+        composeRule.onNodeWithText("1 шт.").assertIsDisplayed()
     }
 
     @Test
-    fun `custom add is available for a non blank query`() {
-        var added: String? = null
+    fun `custom add creates a local fish and closes the search`() {
+        var open by mutableStateOf(true)
         setContent(
-            state = CatchSearchState(isOpen = true, query = "Пескарик"),
-            onAddCustomFish = { added = it }
+            state = { CatchSearchState(isOpen = open, query = "Пескарик") },
+            onCloseSearch = { open = false }
         )
 
         composeRule.onNodeWithTag("fish_search_add").assertIsEnabled().performClick()
+        composeRule.waitForIdle()
 
-        assertEquals("Пескарик", added)
+        composeRule.onNodeWithText("Пескарик").assertIsDisplayed()
+        composeRule.onNodeWithText("1 шт.").assertIsDisplayed()
     }
 
     @Test
-    fun `chips forward toggles and reflect the already added state`() {
-        var toggled: Pair<String, String?>? = null
-        var added by mutableStateOf(false)
+    fun `chips toggle the local draft`() {
         setContent(
-            state = CatchSearchState(chips = listOf(roach)),
-            isAlreadyAdded = { _, _ -> added },
-            onToggleSuggestion = { name, id -> toggled = name to id }
+            state = { CatchSearchState(chips = listOf(roach)) }
         )
 
         composeRule.onNodeWithTag("fish_chip_Плотва").performClick()
-
-        assertEquals("Плотва" to "rutilus_rutilus", toggled)
-
-        added = true
         composeRule.waitForIdle()
+
         composeRule.onNodeWithTag("fish_chip_Плотва").assertIsSelected()
+        composeRule.onNodeWithText("1 шт.").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("fish_chip_Плотва").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("fish_chip_Плотва").assertIsNotSelected()
+        composeRule.onNodeWithText("1 шт.").assertDoesNotExist()
     }
 
     @Test
-    fun `added fish show the count and forward stepper actions`() {
+    fun `steppers change counts and remove rows locally`() {
         val carp = Fish(UUID.randomUUID(), "Карась", count = 5, speciesId = "carassius_gibelio")
         val perch = Fish(UUID.randomUUID(), "Окунь", count = 1, speciesId = "perca_fluviatilis")
-        val incremented = mutableListOf<UUID>()
-        val decremented = mutableListOf<UUID>()
-        val removed = mutableListOf<UUID>()
+        setContent(fishList = listOf(carp, perch))
 
-        setContent(
-            fishList = listOf(carp, perch),
-            onIncrementFish = { incremented += it },
-            onDecrementFish = { decremented += it },
-            onRemoveFish = { removed += it }
-        )
-
-        composeRule.onNodeWithText("5 шт.").assertIsDisplayed()
         composeRule.onAllNodesWithTag("quantity_increment")[0].performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("6 шт.").assertIsDisplayed()
+
         composeRule.onAllNodesWithTag("quantity_decrement")[1].performClick()
-        composeRule.onAllNodesWithTag("quantity_remove")[0].performClick()
-
-        assertEquals(listOf(carp.id), incremented)
-        assertEquals(listOf(perch.id), decremented)
-        assertEquals(listOf(carp.id), removed)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Окунь").assertDoesNotExist()
     }
 
     @Test
-    fun `save is disabled without fish`() {
-        setContent(fishList = emptyList())
-
-        composeRule.onNodeWithContentDescription("Сохранить").assertIsNotEnabled()
-    }
-
-    @Test
-    fun `save passes the list and weight`() {
+    fun `save passes the local draft and weight`() {
         val fish = listOf(Fish(UUID.randomUUID(), "Щука", count = 1, speciesId = "esox_lucius"))
         var savedFish: List<Fish>? = null
         var savedWeight: Float? = null
@@ -218,6 +191,46 @@ class CatchEditScreenUiTest {
     }
 
     @Test
+    fun `save includes a fish added from a chip`() {
+        var savedFish: List<Fish>? = null
+        setContent(
+            state = { CatchSearchState(chips = listOf(roach)) },
+            onSaveClick = { list, _ -> savedFish = list }
+        )
+
+        composeRule.onNodeWithTag("fish_chip_Плотва").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithContentDescription("Сохранить").performClick()
+
+        assertEquals("Плотва", savedFish?.single()?.name)
+    }
+
+    @Test
+    fun `save is disabled without fish`() {
+        setContent(fishList = emptyList())
+
+        composeRule.onNodeWithContentDescription("Сохранить").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `back leaves the screen without saving`() {
+        var backs = 0
+        var saves = 0
+        setContent(
+            state = { CatchSearchState(chips = listOf(roach)) },
+            onBackClick = { backs++ },
+            onSaveClick = { _, _ -> saves++ }
+        )
+
+        composeRule.onNodeWithTag("fish_chip_Плотва").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithContentDescription("Назад").performClick()
+
+        assertEquals(1, backs)
+        assertEquals(0, saves)
+    }
+
+    @Test
     fun `trophy shows the hint and disables increment`() {
         val fish = listOf(Fish(UUID.randomUUID(), "Щука", count = 1, speciesId = "esox_lucius"))
         setContent(fishList = fish, isTrophy = true)
@@ -225,25 +238,5 @@ class CatchEditScreenUiTest {
         composeRule.onNodeWithText("Вы выбрали тип рыбалки «Трофей»", substring = true)
             .assertIsDisplayed()
         composeRule.onAllNodesWithTag("quantity_increment")[0].assertIsNotEnabled()
-    }
-
-    @Test
-    fun `normal app bar back invokes the callback`() {
-        var backs = 0
-        setContent(onBackClick = { backs++ })
-
-        composeRule.onNodeWithContentDescription("Назад").performClick()
-
-        assertEquals(1, backs)
-    }
-
-    @Test
-    fun `weight edits are forwarded immediately`() {
-        val weights = mutableListOf<Float>()
-        setContent(onWeightChange = { weights += it })
-
-        composeRule.onAllNodes(hasSetTextAction())[0].performTextInput("4.5")
-
-        assertEquals(4.5f, weights.last())
     }
 }
