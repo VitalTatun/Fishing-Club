@@ -60,6 +60,7 @@ import com.example.fishing.model.Fish
 import com.example.fishing.model.FishSuggestion
 import com.example.fishing.model.FishSuggestionSource
 import com.example.fishing.ui.components.ContentWidths
+import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.CatchSearchState
 import java.util.UUID
@@ -168,20 +169,11 @@ fun CatchEditScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (searchState.chips.isNotEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.fish_suggestion_title),
-                            color = CreateReportColors.OnSurface,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-
+                    SectionGroup(title = stringResource(R.string.fish_suggestion_title)) {
                         FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
@@ -278,28 +270,23 @@ fun CatchEditScreen(
                 )
 
                 if (fishList.isNotEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.fish_added_section),
-                            color = CreateReportColors.OnSurface,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-
-                        fishList.forEach { fish ->
-                            FishQuantityRow(
-                                name = fish.name,
-                                count = fish.count,
-                                onDecrement = { onDecrementFish(fish.id) },
-                                onIncrement = { onIncrementFish(fish.id) },
-                                onRemove = { onRemoveFish(fish.id) },
-                                isMaxCount = isTrophy && fish.count >= 1
-                            )
+                    SectionGroup(title = stringResource(R.string.fish_added_section)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            fishList.forEach { fish ->
+                                FishQuantityRow(
+                                    name = fish.name,
+                                    count = fish.count,
+                                    onDecrement = { onDecrementFish(fish.id) },
+                                    onIncrement = { onIncrementFish(fish.id) },
+                                    onRemove = { onRemoveFish(fish.id) },
+                                    isMaxCount = isTrophy && fish.count >= 1
+                                )
+                            }
                         }
                     }
                 }
