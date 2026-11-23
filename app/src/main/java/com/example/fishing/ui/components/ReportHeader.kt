@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -93,15 +94,7 @@ private fun ReportAuthorRow(
     onUserClick: (() -> Unit)?
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (onUserClick != null) {
-                    Modifier.clickable(onClick = onUserClick)
-                } else {
-                    Modifier
-                }
-            ),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -110,7 +103,16 @@ private fun ReportAuthorRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (onUserClick != null) {
+                        Modifier
+                            .clickable(onClick = onUserClick)
+                    } else {
+                        Modifier
+                    }
+                )
+                .testTag("user_avatar"),
         ) {
             if (report.user.image.isNotBlank()) {
                 AsyncImage(
