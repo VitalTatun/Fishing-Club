@@ -40,8 +40,8 @@ import com.example.fishing.ui.theme.FishingTheme
 
 @Composable
 fun FishingListItem(
-    title: String,
     modifier: Modifier = Modifier,
+    title: String = "",
     overlineText: String? = null,
     trailingText: String? = null,
     supportingText: String? = null,
@@ -56,6 +56,8 @@ fun FishingListItem(
     onTitleClick: (() -> Unit)? = null,
     onTrailingTextClick: (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
+    titleContent: @Composable (() -> Unit)? = null,
+    overlineContent: @Composable (() -> Unit)? = null,
     leadingPainter: Painter? = null,
     contentPaddingStart: Dp = 16.dp,
     contentPaddingEnd: Dp = 16.dp,
@@ -82,7 +84,7 @@ fun FishingListItem(
             Box(
                 modifier = Modifier
                     .width(24.dp)
-                .heightIn(max = 68.dp)
+                .heightIn(max = 64.dp)
                 .fillMaxHeight(),
                 contentAlignment = Alignment.Center
             ) {
@@ -110,7 +112,9 @@ fun FishingListItem(
                 .padding(vertical = verticalContentPadding),
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
         ) {
-            if (overlineText != null) {
+            if (overlineContent != null) {
+                overlineContent()
+            } else if (overlineText != null) {
                 Text(
                     text = overlineText,
                     style = MaterialTheme.typography.bodyMedium,
@@ -123,16 +127,26 @@ fun FishingListItem(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = if (isRequired && !hasData) "$title *" else title,
-                    style = titleStyle ?: MaterialTheme.typography.bodyLarge.let { style ->
-                        if (fontSize != TextUnit.Unspecified) style.copy(fontSize = fontSize) else style
-                    },
-                    fontWeight = if (titleStyle == null) fontWeight else null,
-                    modifier = Modifier.then(
-                        if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier
+                if (titleContent != null) {
+                    Box(
+                        modifier = Modifier.then(
+                            if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier
+                        )
+                    ) {
+                        titleContent()
+                    }
+                } else {
+                    Text(
+                        text = if (isRequired && !hasData) "$title *" else title,
+                        style = titleStyle ?: MaterialTheme.typography.bodyLarge.let { style ->
+                            if (fontSize != TextUnit.Unspecified) style.copy(fontSize = fontSize) else style
+                        },
+                        fontWeight = if (titleStyle == null) fontWeight else null,
+                        modifier = Modifier.then(
+                            if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier
+                        )
                     )
-                )
+                }
                 if (trailingText != null) {
                     Text(
                         text = trailingText,
@@ -161,7 +175,7 @@ fun FishingListItem(
         if (trailingContent != null) {
             Box(
                 modifier = Modifier
-                    .heightIn(max = 68.dp)
+                    .heightIn(max = 64.dp)
                     .fillMaxHeight(),
                 contentAlignment = Alignment.Center
             ) {
@@ -236,6 +250,33 @@ private fun FishingListItemPreview() {
                 supportingText = "Укажите вес улова",
                 leadingIcon = Icons.Default.Star,
                 isError = true
+            )
+
+            Text(
+                text = "С Composable заголовком (titleContent)",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            FishingListItem(
+                titleContent = {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Кастомный заголовок",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                supportingText = "Заголовок передан через Composable лямбду"
             )
         }
     }

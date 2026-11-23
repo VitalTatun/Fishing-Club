@@ -1,6 +1,7 @@
 package com.example.fishing.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,154 +44,118 @@ fun ReportInfoGrid(report: FishingReport, modifier: Modifier = Modifier) {
         fontWeight = FontWeight.Medium
     )
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        val timeRangeValue = when {
-            report.fishingStartAt != null && report.fishingEndAt != null ->
-                "${timeFormatter.format(report.fishingStartAt)} - ${timeFormatter.format(report.fishingEndAt)}"
-            report.fishingStartAt != null -> timeFormatter.format(report.fishingStartAt)
-            report.fishingEndAt != null -> timeFormatter.format(report.fishingEndAt)
-            else -> null
-        }
-        // Date
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FishingListItem(
-                overlineText = stringResource(R.string.date),
-                title = report.fishingStartAt?.let { dateFormatter.format(it) } ?: stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f),
-                leadingIcon = Icons.Default.Event,
-                contentPaddingStart = 0.dp,
-                contentPaddingEnd = 0.dp,
-                verticalContentPadding = 0.dp,
-                titleStyle = gridItemValueStyle
-            )
-            FishingListItem(
-                overlineText = stringResource(R.string.time),
-                title = timeRangeValue ?: stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f),
-                leadingIcon = Icons.Default.Schedule,
-                contentPaddingStart = 0.dp,
-                contentPaddingEnd = 0.dp,
-                verticalContentPadding = 0.dp,
-                titleStyle = gridItemValueStyle
-            )
-        }
-        // Duration
-        Row(modifier = Modifier.fillMaxWidth()) {
-            FishingListItem(
-                overlineText = stringResource(R.string.duration),
-                title = report.durationFormatted() ?: stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f),
-                leadingPainter = painterResource(id = R.drawable.search_activity),
-                contentPaddingStart = 0.dp,
-                contentPaddingEnd = 0.dp,
-                verticalContentPadding = 0.dp,
-                titleStyle = gridItemValueStyle
-            )
-            Spacer(modifier = Modifier.weight(1f))
-        }
+    Column {
+        SectionGroup(showDivider = false) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                val timeRangeValue = when {
+                    report.fishingStartAt != null && report.fishingEndAt != null ->
+                        "${timeFormatter.format(report.fishingStartAt)} - ${
+                            timeFormatter.format(
+                                report.fishingEndAt
+                            )
+                        }"
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FishingListItem(
-                overlineText = stringResource(R.string.bait),
-                title = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
-                modifier = Modifier.weight(1f),
-                leadingIcon = Icons.Default.Phishing,
-                contentPaddingStart = 0.dp,
-                contentPaddingEnd = 0.dp,
-                verticalContentPadding = 0.dp,
-                titleStyle = gridItemValueStyle
-            )
-            FishingListItem(
-                overlineText = stringResource(R.string.fishing_method),
-                title = stringResource(report.fishingMethod.labelRes),
-                modifier = Modifier.weight(1f),
-                leadingPainter = fishingMethodIconRes?.let { painterResource(id = it) },
-                contentPaddingStart = 0.dp,
-                contentPaddingEnd = 0.dp,
-                verticalContentPadding = 0.dp,
-                titleStyle = gridItemValueStyle
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            @Composable
-            fun Catch() {
-                Row(
+                    report.fishingStartAt != null -> timeFormatter.format(report.fishingStartAt)
+                    report.fishingEndAt != null -> timeFormatter.format(report.fishingEndAt)
+                    else -> null
+                }
+                FishingListItem(
+                    overlineText = stringResource(R.string.date),
+                    title = report.fishingStartAt?.let { dateFormatter.format(it) }
+                        ?: stringResource(R.string.not_specified),
                     modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.Top
+                    leadingIcon = Icons.Default.Event,
+                    titleStyle = gridItemValueStyle
+                )
+                FishingListItem(
+                    overlineText = stringResource(R.string.time),
+                    title = timeRangeValue ?: stringResource(R.string.not_specified),
+                    modifier = Modifier.weight(1f),
+                    leadingIcon = Icons.Default.Schedule,
+                    titleStyle = gridItemValueStyle
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.fishicon24),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(top = 10.dp)
-                            .size(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
+                FishingListItem(
+                    overlineText = stringResource(R.string.duration),
+                    title = report.durationFormatted() ?: stringResource(R.string.not_specified),
+                    modifier = Modifier.weight(1f),
+                    leadingPainter = painterResource(id = R.drawable.search_activity),
+                    titleStyle = gridItemValueStyle
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                FishingListItem(
+                    overlineText = stringResource(R.string.bait),
+                    title = report.bait.map { stringResource(it.labelRes) }.joinToString(", "),
+                    modifier = Modifier.weight(1f),
+                    leadingIcon = Icons.Default.Phishing,
+                    titleStyle = gridItemValueStyle
+                )
+                FishingListItem(
+                    overlineText = stringResource(R.string.fishing_method),
+                    title = stringResource(report.fishingMethod.labelRes),
+                    modifier = Modifier.weight(1f),
+                    leadingPainter = fishingMethodIconRes?.let { painterResource(id = it) },
+                    titleStyle = gridItemValueStyle
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                ) {
+                FishingListItem(
+                    overlineContent = {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                            ) {
                             Text(
-                                text = stringResource(R.string.catch_label),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                stringResource(R.string.catch_label),
+                                style = MaterialTheme.typography.bodyMedium
                             )
                             if (report.type == FishingType.HAUL) {
                                 TrophyBadge()
                             }
                         }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        if (report.fish.isEmpty()) {
-                            Text(
-                                text = "—",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        } else {
-                            report.fish.forEach { fish ->
-                                Text(
-                                    text = stringResource(
-                                        R.string.fish_count,
-                                        fish.name,
-                                        fish.count
-                                    ),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-                }
+                    },
+                    titleContent = {
+                        CatchRowConfiguration(report)
+                    },
+                    title = stringResource(report.fishingMethod.labelRes),
+                    modifier = Modifier.weight(1f),
+                    leadingPainter = painterResource(id = R.drawable.fishicon24),
+                    titleStyle = gridItemValueStyle
+                )
+                FishingListItem(
+                    overlineText = stringResource(R.string.total_weight),
+                    title = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} ${stringResource(R.string.weight_unit)}" else stringResource(R.string.not_specified),
+                    modifier = Modifier.weight(1f),
+                    leadingIcon = Icons.Default.Scale,
+                    titleStyle = gridItemValueStyle
+                )
             }
-
-            Catch()
-            FishingListItem(
-                overlineText = stringResource(R.string.total_weight),
-                title = if (report.weight > 0.0) "${"%.1f".format(report.weight).replace('.', ',')} ${stringResource(R.string.weight_unit)}" else stringResource(R.string.not_specified),
-                modifier = Modifier.weight(1f),
-                leadingIcon = Icons.Default.Scale,
-                contentPaddingStart = 0.dp,
-                contentPaddingEnd = 0.dp,
-                verticalContentPadding = 0.dp,
-                titleStyle = gridItemValueStyle
+        }
+    }
+}
+@Composable
+fun CatchRowConfiguration(report: FishingReport) {
+    Column {
+        report.fish.forEach { fish ->
+            Text(
+                text = stringResource(
+                    R.string.fish_count,
+                    fish.name,
+                    fish.count
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -211,7 +176,7 @@ private fun ReportInfoGridPreview() {
             fishingEndAt = Instant.now(),
             weight = 3.2,
             fish = listOf(
-                Fish(id = UUID.randomUUID(), name = "Карась", count = 2),
+                Fish(id = UUID.randomUUID(), name = "Подлещик", count = 2),
                 Fish(id = UUID.randomUUID(), name = "Окунь", count = 2)
             ),
             fishingMethod = FishingMethod.BOBBER,
