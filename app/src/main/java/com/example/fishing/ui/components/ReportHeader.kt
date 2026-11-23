@@ -93,7 +93,15 @@ private fun ReportAuthorRow(
     onUserClick: (() -> Unit)?
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onUserClick != null) {
+                    Modifier.clickable(onClick = onUserClick)
+                } else {
+                    Modifier
+                }
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -102,15 +110,7 @@ private fun ReportAuthorRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .then(
-                    if (onUserClick != null) {
-                        Modifier
-                            .clickable(onClick = onUserClick)
-                    } else {
-                        Modifier
-                    }
-                ),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
             if (report.user.image.isNotBlank()) {
                 AsyncImage(
