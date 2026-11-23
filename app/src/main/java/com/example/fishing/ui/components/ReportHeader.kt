@@ -100,10 +100,17 @@ private fun ReportAuthorRow(
         // Avatar (48.dp)
         Box(
             modifier = Modifier
-                .size(40
-                    .dp)
+                .size(40.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                .then(
+                    if (onUserClick != null) {
+                        Modifier
+                            .clickable(onClick = onUserClick)
+                    } else {
+                        Modifier
+                    }
+                ),
         ) {
             if (report.user.image.isNotBlank()) {
                 AsyncImage(
@@ -127,16 +134,7 @@ private fun ReportAuthorRow(
         // Title and Username
         Column(
             modifier = Modifier
-                .weight(1f)
-                .then(
-                    if (onUserClick != null) {
-                        Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClick = onUserClick)
-                    } else {
-                        Modifier
-                    }
-                ),
+                .weight(1f),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
