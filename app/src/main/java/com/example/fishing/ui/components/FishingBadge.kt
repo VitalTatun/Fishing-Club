@@ -85,6 +85,16 @@ fun PublishedBadge(modifier: Modifier = Modifier) {
     )
 }
 
+@Composable
+fun PaidBadge(modifier: Modifier = Modifier) {
+    FishingBadge(
+        text = stringResource(R.string.paid_water),
+        containerColor = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        modifier = modifier
+    )
+}
+
 @Preview(showBackground = true)
 @Composable
 fun BadgesPreview() {
@@ -97,6 +107,7 @@ fun BadgesPreview() {
             DraftBadge()
             FishingBadge(text = "Ловля с берега")
             FishingBadge(text = "Платный")
+            PaidBadge()
             PublishedBadge()
         }
     }

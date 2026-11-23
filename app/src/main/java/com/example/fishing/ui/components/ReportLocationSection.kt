@@ -44,11 +44,9 @@ fun ReportLocationSection(
     modifier: Modifier = Modifier,
     onMapClick: () -> Unit = {}
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+    SectionGroup(
+        showDivider = false
     ) {
-        // Map
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -70,7 +68,7 @@ fun ReportLocationSection(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
+
                     // Marker Preview
                     val markerColor = MaterialTheme.colorScheme.primary
 
@@ -154,6 +152,20 @@ fun ReportLocationSection(
         val scope = rememberCoroutineScope()
 
         FishingListItem(
+            overlineContent = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.water_body),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (report.water.isPaid == report.water.isPaid) {
+                        PaidBadge()
+                    }
+                }
+            },
             overlineText = "Водоем",
             title = report.water.waterName.ifBlank { stringResource(R.string.not_specified) },
             leadingIcon = Icons.Default.LocationOn,

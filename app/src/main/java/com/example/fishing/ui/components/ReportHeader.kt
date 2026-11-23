@@ -100,7 +100,8 @@ private fun ReportAuthorRow(
         // Avatar (48.dp)
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(40
+                    .dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
@@ -148,7 +149,7 @@ private fun ReportAuthorRow(
             )
             Text(
                 text = report.user.name.ifBlank { stringResource(R.string.fisherman) },
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
