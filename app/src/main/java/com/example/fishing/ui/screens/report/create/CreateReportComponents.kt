@@ -13,24 +13,32 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,6 +122,7 @@ internal fun ReportDropdownField(
     supportingText: String? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val checkedIndex = options.indexOf(value).let { if (it >= 0) it else 0 }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -135,20 +144,35 @@ internal fun ReportDropdownField(
             textStyle = MaterialTheme.typography.bodyLarge,
             shape = RoundedCornerShape(4.dp),
         )
-        DropdownMenu(
+        ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.exposedDropdownSize()
+            onDismissRequest = { expanded = false},
+            containerColor = MenuDefaults.groupStandardContainerColor,
+            modifier = Modifier.exposedDropdownSize(),
+            shape = MenuDefaults.standaloneGroupShape
         ) {
-            options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) },
+            val optionCount = options.size
+            options.forEachIndexed { index, option ->
+                SelectableDropdownMenuItem(
+                    shapes = MenuDefaults.itemShape(index, optionCount),
+                    text = { Text(option, style = MaterialTheme.typography.bodyLarge) },
+                    selected = index == checkedIndex,
                     onClick = {
                         onValueChange(option)
                         expanded = false
-                    }
+                    },
+                    selectedLeadingIcon = {
+                        Icon(
+                            Icons.Filled.Check,
+                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
+                            contentDescription = null
+                        )
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                 )
+
             }
+
         }
     }
 }

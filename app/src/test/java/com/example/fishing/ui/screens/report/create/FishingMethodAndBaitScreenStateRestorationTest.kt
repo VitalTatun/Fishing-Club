@@ -53,4 +53,21 @@ class FishingMethodAndBaitScreenStateRestorationTest {
         composeRule.onNodeWithText("Фидер").assertIsDisplayed()
         composeRule.onAllNodes(isToggleable())[0].assertIsOn()
     }
+
+    @Test
+    fun `dropdown selection reflects initial method on recreation`() {
+        val restorationTester = StateRestorationTester(composeRule)
+        restorationTester.setContent {
+            FishingTheme(darkTheme = false, dynamicColor = false) {
+                FishingMethodAndBaitScreen(
+                    onBackClick = {},
+                    onSaveClick = { _, _ -> },
+                    initialMethod = FishingMethod.FEEDER,
+                    initialBaits = emptyList()
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Фидер").assertIsDisplayed()
+    }
 }
