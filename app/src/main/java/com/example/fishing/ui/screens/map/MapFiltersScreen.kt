@@ -250,7 +250,13 @@ private fun FishFilterField(
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { open ->
-            val text = selectedCatch ?: emptyValue
+            // "Не выбран" is only a placeholder: clear it as soon as the field
+            // is opened so the user can type the search query immediately.
+            val text = when {
+                !open -> selectedCatch ?: emptyValue
+                selectedCatch == null -> ""
+                else -> selectedCatch
+            }
             // Select the current value so typing replaces it instead of
             // appending to an already chosen fish name.
             fieldValue = TextFieldValue(

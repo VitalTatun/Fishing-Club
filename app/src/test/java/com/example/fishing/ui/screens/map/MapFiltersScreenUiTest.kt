@@ -113,6 +113,7 @@ class MapFiltersScreenUiTest {
         setContent()
 
         composeRule.onNodeWithTag("map_filter_fish_field").performClick()
+        composeRule.onNodeWithText("Не выбран").assertDoesNotExist()
         composeRule.onNodeWithTag("map_filter_fish_field").performTextInput("щу")
 
         composeRule.onNodeWithText("Щука", useUnmergedTree = true).assertIsDisplayed()
