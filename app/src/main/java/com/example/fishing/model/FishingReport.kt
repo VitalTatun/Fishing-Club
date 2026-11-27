@@ -75,6 +75,22 @@ data class FishingReport(
     }
 }
 
+/** Map projection of a fully loaded report, used by the full-map screen. */
+fun FishingReport.toMarkerDomain(): MarkerDomain = MarkerDomain(
+    id = id,
+    name = name,
+    waterName = water.waterName,
+    waterLat = water.latitude,
+    waterLng = water.longitude,
+    type = type,
+    fishingMethod = fishingMethod,
+    fishingStartAt = fishingStartAt,
+    isPublic = isPublic,
+    isPaidWater = water.isPaid,
+    fishNames = fish.map { it.name },
+    fishSpeciesIds = fish.mapNotNull { it.speciesId }.toSet()
+)
+
 enum class ReportSortOrder {
     BY_PUBLISH_DATE,
     BY_FISHING_TIME

@@ -119,6 +119,8 @@ class MainViewModel @Inject constructor(
     val mapFilters: StateFlow<ReportFilters> = map.mapFilters
     val mapIsZoomedOut: StateFlow<Boolean> = map.mapIsZoomedOut
     val mapTruncated: StateFlow<Boolean> = map.mapTruncated
+    val mapHasMarkersInViewport: StateFlow<Boolean> = map.mapHasMarkersInViewport
+    val mapShowingOwnOnly: StateFlow<Boolean> = map.mapShowingOwnOnly
     val mapRequestedLocation: StateFlow<GeoPoint?> = map.mapRequestedLocation
     val highlightedPolygon: StateFlow<List<GeoPoint>?> = map.highlightedPolygon
 

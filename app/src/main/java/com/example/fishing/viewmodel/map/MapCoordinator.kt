@@ -2,6 +2,7 @@ package com.example.fishing.viewmodel.map
 
 import com.example.fishing.data.ErrorMapper
 import com.example.fishing.data.FishingRepository
+import com.example.fishing.model.MAP_ZOOM_THRESHOLD
 import com.example.fishing.model.MapBounds
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.viewmodel.filter.ReportFilters
@@ -32,7 +33,7 @@ class MapCoordinator(
     private val session: UserSession,
     private val scope: CoroutineScope,
     private val debounceMillis: Long = DEBOUNCE_MILLIS,
-    private val zoomThreshold: Double = ZOOM_THRESHOLD,
+    private val zoomThreshold: Double = MAP_ZOOM_THRESHOLD,
     private val pageLimit: Int = PAGE_LIMIT,
     private val cacheLimit: Int = CACHE_LIMIT
 ) {
@@ -56,6 +57,14 @@ class MapCoordinator(
 
     private val _mapTruncated = MutableStateFlow(false)
     val mapTruncated: StateFlow<Boolean> = _mapTruncated.asStateFlow()
+
+    /** Unfiltered cache has at least one marker in the current viewport. */
+    private val _mapHasMarkersInViewport = MutableStateFlow(false)
+    val mapHasMarkersInViewport: StateFlow<Boolean> = _mapHasMarkersInViewport.asStateFlow()
+
+    /** Public cache is empty while own offline markers are shown. */
+    private val _mapShowingOwnOnly = MutableStateFlow(false)
+    val mapShowingOwnOnly: StateFlow<Boolean> = _mapShowingOwnOnly.asStateFlow()
 
     private val _mapRequestedLocation = MutableStateFlow<GeoPoint?>(null)
     val mapRequestedLocation: StateFlow<GeoPoint?> = _mapRequestedLocation.asStateFlow()
@@ -264,6 +273,13 @@ class MapCoordinator(
 
     private fun publishMarkers() {
         val filters = _mapFilters.value
+        val bounds = currentBounds
+        val unfiltered = accumulated.values + ownMarkers
+        _mapHasMarkersInViewport.value = unfiltered.any { marker ->
+            bounds?.contains(marker.waterLat, marker.waterLng) ?: true
+        }
+        _mapShowingOwnOnly.value = accumulated.isEmpty() && ownMarkers.isNotEmpty()
+
         val merged = LinkedHashMap<UUID, MarkerDomain>(accumulated.size + ownMarkers.size)
         accumulated.values.forEach { marker ->
             if (filters.matches(marker, emptySet())) merged[marker.id] = marker
@@ -306,7 +322,6 @@ class MapCoordinator(
 
     private companion object {
         const val DEBOUNCE_MILLIS = 350L
-        const val ZOOM_THRESHOLD = 10.0
         const val VIEWPORT_MARGIN = 0.25
         const val PAGE_LIMIT = 300
         const val CACHE_LIMIT = 2000

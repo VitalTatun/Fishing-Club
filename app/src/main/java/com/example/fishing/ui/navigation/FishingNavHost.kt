@@ -537,18 +537,21 @@ fun FishingNavHost(
                     UUID.fromString(fullMapRoute.reportId)
                 }.getOrNull()
 
-                val singleMarker = reportId?.let { id ->
-                    mapMarkers.firstOrNull { it.id == id }
+                val fullMapDetailState by viewModel.reportDetailUiState
+                    .collectAsStateWithLifecycle()
+                SessionReadyEffect(reportId, authState) {
+                    reportId?.let(viewModel::loadReportDetails)
                 }
+                // Full-map does not depend on the viewport cache: the marker is
+                // built from the report itself, even when it is outside the
+                // currently loaded map area.
+                val singleMarker = (fullMapDetailState as? ReportDetailUiState.Success)
+                    ?.report
+                    ?.takeIf { it.id == reportId }
+                    ?.toMarkerDomain()
 
-                val mapFilters by viewModel.mapFilters.collectAsStateWithLifecycle()
-                SessionReadyEffect(mapFilters.isFavoritesSelected, authState) {
-                    if (mapFilters.isFavoritesSelected) {
-                        viewModel.loadFilterFavoriteReports(force = true)
-                    }
-                }
                 MapScreen(
-                    markers = if (singleMarker != null) listOf(singleMarker) else mapMarkers,
+                    markers = singleMarker?.let(::listOf).orEmpty(),
                     viewModel = viewModel,
                     onBackClick = {
                         navigator.popBackStack()
@@ -560,7 +563,7 @@ fun FishingNavHost(
                     initialReportId = reportId,
                     selectedMarkerDotStyle = true,
                     repository = fishingRepository,
-                    favoriteReports = filterFavoriteReports
+                    viewportMode = false
                 )
             }
 

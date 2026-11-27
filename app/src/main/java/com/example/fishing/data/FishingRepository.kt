@@ -2,6 +2,7 @@ package com.example.fishing.data
 
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.MapBounds
+import com.example.fishing.model.toMarkerDomain
 import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
@@ -260,19 +261,4 @@ class MockFishingRepository : FishingRepository {
         // Mock — no-op
     }
 
-    private fun FishingReport.toMarkerDomain(): MarkerDomain {
-        return MarkerDomain(
-            id = id,
-            name = name,
-            waterName = water.waterName,
-            waterLat = water.latitude,
-            waterLng = water.longitude,
-            type = type,
-            fishingMethod = fishingMethod,
-            fishingStartAt = fishingStartAt,
-            isPublic = isPublic,
-            isPaidWater = water.isPaid,
-            fishNames = fish.map { it.name }
-        )
-    }
 }

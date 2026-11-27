@@ -244,6 +244,10 @@
     <string name="map_no_reports_for_filter">Нет отчётов, соответствующих фильтрам</string>
     <string name="map_loading_failed">Не удалось загрузить отчёты</string>
     <string name="map_stale_data">Не удалось обновить данные. Показаны кэшированные отчёты.</string>
+    <string name="map_zoomed_out">Приблизьте карту, чтобы увидеть отчёты</string>
+    <string name="map_no_reports_in_viewport">В этой области отчётов нет</string>
+    <string name="map_truncated_hint">Показаны не все отчёты, приблизьте карту</string>
+    <string name="map_offline_own_only">Нет сети. Показаны только ваши отчёты</string>
     <string name="add_photo">Add photo</string>
     <string name="camera">Camera</string>
     <string name="gallery">Gallery</string>

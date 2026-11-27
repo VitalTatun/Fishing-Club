@@ -27,6 +27,10 @@ data class MapBounds(
         )
     }
 
+    /** True when the point lies inside the box. */
+    fun contains(latitude: Double, longitude: Double): Boolean =
+        latitude in south..north && longitude in west..east
+
     /** True when [other] lies completely inside this box. */
     fun contains(other: MapBounds): Boolean =
         other.south >= south &&
