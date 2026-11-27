@@ -686,14 +686,20 @@ class CreateReportViewModelTest {
     }
 
     @Test
-    fun `form config shows date time errors when dates missing`() = runTest {
+    fun `date time section is rendered as summary and validation reports missing dates`() = runTest {
         val vm = createViewModel()
-        vm.formStartDate = ""
-        vm.formEndDate = ""
-        val config = vm.formConfig
+        vm.formStartDate = null
+        vm.formEndDate = null
 
-        val dateTimeSection = config.first { it.id == "date_time" }
-        assertTrue(dateTimeSection.items.filterIsInstance<ReportField.ListItemField>().any { it.isError })
+        val dateTimeSection = vm.formConfig.first { it.id == "date_time" }
+        assertEquals(
+            listOf(ReportField.CustomField("date_time_summary")),
+            dateTimeSection.items
+        )
+        assertEquals(
+            listOf(FishingDateTimeError.START_MISSING),
+            vm.dateTimeErrors()
+        )
     }
 
     @Test

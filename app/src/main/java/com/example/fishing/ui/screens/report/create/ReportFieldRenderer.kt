@@ -1,8 +1,6 @@
 package com.example.fishing.ui.screens.report.create
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -18,7 +16,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -41,8 +38,6 @@ internal fun ReportFieldRenderer(
     onNavigateToCatchEdit: () -> Unit,
     onNavigateToCommentEdit: () -> Unit,
     onNavigateToFishingDateTime: () -> Unit,
-    onDatePickerClick: (String) -> Unit,
-    onTimePickerClick: (String) -> Unit,
     onPhotoPickerClick: () -> Unit,
     isDetailsExpanded: Boolean,
     onDetailsExpandClick: () -> Unit,
@@ -50,56 +45,44 @@ internal fun ReportFieldRenderer(
 ) {
     when (field) {
         is ReportField.ListItemField -> {
-            if (field.fieldId != "date_time" && field.fieldId != "date_time_end") {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    FishingListItem(
-                        overlineText = field.overline,
-                        title = field.title,
-                        isRequired = field.isRequired,
-                        supportingText = field.supportingText,
-                        leadingIcon = field.leadingIcon,
-                        trailingText = field.trailingText,
-                        isError = field.isError,
-                        onRowClick = when {
-                            field.fieldId == "water_body" -> { { onNavigateToWaterEdit() } }
-                            field.fieldId == "add_water_name" || field.fieldId == "water_name" -> { { onNavigateToWaterNameEdit() } }
-                            field.fieldId == "method" || field.fieldId == "fishing_method" || field.fieldId == "baits" -> { { onNavigateToMethodAndBaitEdit() } }
-                            field.fieldId == "catch" || field.fieldId == "weight" -> { { onNavigateToCatchEdit() } }
-                            field.fieldId == "comment" -> { { onNavigateToCommentEdit() } }
-                            else -> null
-                        },
-                        onTitleClick = when (field.fieldId) {
-                            "date_time" -> { { onDatePickerClick("start") } }
-                            "date_time_end" -> { { onDatePickerClick("end") } }
-                            else -> null
-                        },
-                        onTrailingTextClick = when (field.fieldId) {
-                            "date_time" -> { { onTimePickerClick("start") } }
-                            "date_time_end" -> { { onTimePickerClick("end") } }
-                            else -> null
-                        },
-                        modifier = Modifier.then(
-                            if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "fishing_method" || field.fieldId == "weight" || (field.fieldId == "date_time_end" && !field.isError)) {
-                                Modifier.padding(start = 40.dp)
-                            } else {
-                                Modifier
-                            }
-                        )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                FishingListItem(
+                    overlineText = field.overline,
+                    title = field.title,
+                    isRequired = field.isRequired,
+                    supportingText = field.supportingText,
+                    leadingIcon = field.leadingIcon,
+                    trailingText = field.trailingText,
+                    isError = field.isError,
+                    onRowClick = when {
+                        field.fieldId == "water_body" -> { { onNavigateToWaterEdit() } }
+                        field.fieldId == "add_water_name" || field.fieldId == "water_name" -> { { onNavigateToWaterNameEdit() } }
+                        field.fieldId == "method" || field.fieldId == "fishing_method" || field.fieldId == "baits" -> { { onNavigateToMethodAndBaitEdit() } }
+                        field.fieldId == "catch" || field.fieldId == "weight" -> { { onNavigateToCatchEdit() } }
+                        field.fieldId == "comment" -> { { onNavigateToCommentEdit() } }
+                        else -> null
+                    },
+                    modifier = Modifier.then(
+                        if (field.fieldId == "water_name" || field.fieldId == "baits" || field.fieldId == "fishing_method" || field.fieldId == "weight") {
+                            Modifier.padding(start = 40.dp)
+                        } else {
+                            Modifier
+                        }
                     )
+                )
 
-                    if (field.fieldId == "catch" && viewModel.formSelectedFish.isNotEmpty()) {
-                        FlowRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 56.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.formSelectedFish.forEach { fish ->
-                                CatchFishChip(
-                                    text = "${fish.name} ${stringResource(R.string.fish_count_short, fish.count)}"
-                                )
-                            }
+                if (field.fieldId == "catch" && viewModel.formSelectedFish.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 56.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        viewModel.formSelectedFish.forEach { fish ->
+                            CatchFishChip(
+                                text = "${fish.name} ${stringResource(R.string.fish_count_short, fish.count)}"
+                            )
                         }
                     }
                 }

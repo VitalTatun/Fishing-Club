@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.fishing.R
-import com.example.fishing.model.ReportField
+import com.example.fishing.model.FishingDateTimeError
 import com.example.fishing.ui.components.FishingListItem
 import com.example.fishing.viewmodel.CreateReportViewModel
 import java.text.SimpleDateFormat
@@ -23,12 +23,26 @@ internal fun FishingDateTimeSummary(
     viewModel: CreateReportViewModel,
     onClick: () -> Unit,
 ) {
-    val dateTimeSection = viewModel.formConfig.firstOrNull { it.id == "date_time" }
-    val dateFields = dateTimeSection?.items
-        ?.filterIsInstance<ReportField.ListItemField>()
-        .orEmpty()
-    val startError = dateFields.firstOrNull { it.fieldId == "date_time" }?.supportingText
-    val endError = dateFields.firstOrNull { it.fieldId == "date_time_end" }?.supportingText
+    val dateTimeErrors = viewModel.dateTimeErrors()
+    val startError = dateTimeErrors.firstOrNull {
+        it == FishingDateTimeError.START_MISSING || it == FishingDateTimeError.START_IN_FUTURE
+    }
+    val endError = dateTimeErrors.firstOrNull {
+        it == FishingDateTimeError.END_MISSING ||
+            it == FishingDateTimeError.END_IN_FUTURE ||
+            it == FishingDateTimeError.END_NOT_AFTER_START
+    }
+    val startSupportingText = when (startError) {
+        FishingDateTimeError.START_MISSING -> stringResource(R.string.error_start_missing)
+        FishingDateTimeError.START_IN_FUTURE -> stringResource(R.string.error_start_in_future)
+        else -> null
+    }
+    val endSupportingText = when (endError) {
+        FishingDateTimeError.END_MISSING -> stringResource(R.string.error_end_missing)
+        FishingDateTimeError.END_IN_FUTURE -> stringResource(R.string.error_end_in_future)
+        FishingDateTimeError.END_NOT_AFTER_START -> stringResource(R.string.error_end_not_after_start)
+        else -> null
+    }
     val startDate = viewModel.formStartDate.orEmpty()
     val endDate = viewModel.formEndDate.orEmpty()
     val startTime = viewModel.formStartTime.orEmpty()
@@ -48,14 +62,14 @@ internal fun FishingDateTimeSummary(
         FishingListItem(
             title = "Дата",
             trailingText = formatDateRange(startDate, endDate, notSpecified),
-            supportingText = startError,
+            supportingText = startSupportingText,
             isError = startError != null,
             modifier = Modifier.padding(start = 40.dp),
         )
         FishingListItem(
             title = "Время",
             trailingText = formatTimeRange(startTime, endTime, notSpecified),
-            supportingText = endError,
+            supportingText = endSupportingText,
             isError = endError != null,
             modifier = Modifier.padding(start = 40.dp),
         )

@@ -294,59 +294,6 @@ class CreateReportViewModel @Inject constructor(
             )
         )
 
-        // Date/Time Section
-        val dtErrors = dateTimeErrors()
-        val startError = dtErrors.firstOrNull {
-            it == FishingDateTimeError.START_MISSING || it == FishingDateTimeError.START_IN_FUTURE
-        }
-        val endError = dtErrors.firstOrNull {
-            it == FishingDateTimeError.END_MISSING ||
-            it == FishingDateTimeError.END_IN_FUTURE ||
-            it == FishingDateTimeError.END_NOT_AFTER_START
-        }
-
-        val startSupportingText = startError?.let { error ->
-            context.getString(
-                when (error) {
-                    FishingDateTimeError.START_MISSING -> R.string.error_start_missing
-                    FishingDateTimeError.START_IN_FUTURE -> R.string.error_start_in_future
-                    else -> R.string.error_start_missing
-                }
-            )
-        }
-
-        val endSupportingText = endError?.let { error ->
-            context.getString(
-                when (error) {
-                    FishingDateTimeError.END_MISSING -> R.string.error_end_missing
-                    FishingDateTimeError.END_IN_FUTURE -> R.string.error_end_in_future
-                    FishingDateTimeError.END_NOT_AFTER_START -> R.string.error_end_not_after_start
-                    else -> R.string.error_end_missing
-                }
-            )
-        }
-
-        val dateTimeItems = mutableListOf<ReportField>(
-            ReportField.CustomField("date_time_summary"),
-            ReportField.ListItemField(
-                fieldId = "date_time",
-                title = formStartDate ?: context.getString(R.string.start),
-                supportingText = startSupportingText,
-                leadingIcon = if (startError != null) Icons.Default.Error else Icons.Default.Schedule,
-                trailingText = formStartTime ?: context.getString(R.string.select_time),
-                isError = startError != null
-            ),
-            ReportField.ListItemField(
-                fieldId = "date_time_end",
-                title = formEndDate ?: context.getString(R.string.end),
-                supportingText = endSupportingText,
-                leadingIcon = if (endError != null) Icons.Default.Error else null,
-                trailingText = formEndTime ?: context.getString(R.string.select_time),
-                isError = endError != null
-            ),
-        )
-        sections.add(ReportFormSection(id = "date_time", items = dateTimeItems))
-
         sections.add(
             ReportFormSection(
                 id = "publish",
@@ -360,6 +307,14 @@ class CreateReportViewModel @Inject constructor(
                         onCheckedChange = { formIsPublic = it }
                     )
                 )
+            )
+        )
+
+        // Date/Time Section
+        sections.add(
+            ReportFormSection(
+                id = "date_time",
+                items = listOf(ReportField.CustomField("date_time_summary"))
             )
         )
 

@@ -41,9 +41,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,10 +82,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +99,6 @@ fun CreateReportScreen(
     onNavigateToFishingDateTime: () -> Unit = {},
 ) {
     val haptic = LocalHapticFeedback.current
-    val dateFormatter = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru")) }
     val savingText = stringResource(R.string.saving)
 
     val isSaveEnabled = viewModel.isSaveEnabled
@@ -132,10 +125,7 @@ fun CreateReportScreen(
             isTakingTooLong = true
         }
     }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showTimePicker by remember { mutableStateOf(false) }
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
-    var pickerTarget by remember { mutableStateOf("start") }
     var isDetailsExpanded by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -150,21 +140,6 @@ fun CreateReportScreen(
             viewModel.consumeRestoredPhotosLost()
         }
     }
-
-    val currentTime = Calendar.getInstance()
-    val endTimeCalendar = (currentTime.clone() as Calendar).apply {
-        add(Calendar.HOUR_OF_DAY, 1)
-    }
-    val startTimePickerState = rememberTimePickerState(
-        initialHour = currentTime.get(Calendar.HOUR_OF_DAY),
-        initialMinute = currentTime.get(Calendar.MINUTE),
-        is24Hour = true,
-    )
-    val endTimePickerState = rememberTimePickerState(
-        initialHour = endTimeCalendar.get(Calendar.HOUR_OF_DAY),
-        initialMinute = endTimeCalendar.get(Calendar.MINUTE),
-        is24Hour = true,
-    )
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MaxPhotos)
@@ -278,48 +253,6 @@ fun CreateReportScreen(
         )
     }
 
-    if (showDatePicker) {
-        FishingDatePickerDialog(
-            onDismiss = { showDatePicker = false },
-            onConfirm = { millis ->
-                millis?.let {
-                    val d = Date(it)
-                    val formatted = dateFormatter.format(d)
-                    if (pickerTarget == "start") {
-                        viewModel.formStartDate = formatted
-                    } else {
-                        viewModel.formEndDate = formatted
-                    }
-                }
-                showDatePicker = false
-            }
-        )
-    }
-
-    if (showTimePicker) {
-        TimePickerDialog(
-            onDismiss = { showTimePicker = false },
-            onConfirm = {
-                val state = if (pickerTarget == "start") startTimePickerState else endTimePickerState
-                val formattedTime = String.format(
-                    Locale.getDefault(),
-                    "%02d:%02d",
-                    state.hour,
-                    state.minute
-                )
-                if (pickerTarget == "start") {
-                    viewModel.formStartTime = formattedTime
-                } else {
-                    viewModel.formEndTime = formattedTime
-                }
-                showTimePicker = false
-            }
-        ) {
-            if (pickerTarget == "start") TimePicker(state = startTimePickerState)
-            else TimePicker(state = endTimePickerState)
-        }
-    }
-
     if (showPhotoSourceDialog) {
         AlertDialog(
             onDismissRequest = { showPhotoSourceDialog = false },
@@ -414,7 +347,7 @@ fun CreateReportScreen(
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 items(formConfig) { section ->
-                    SectionGroup {
+                    SectionGroup(showDivider = section.id != "type") {
                         section.items.forEach { field ->
                             ReportFieldRenderer(
                                 field = field,
@@ -425,14 +358,6 @@ fun CreateReportScreen(
                                 onNavigateToCatchEdit = onNavigateToCatchEdit,
                                 onNavigateToCommentEdit = onNavigateToCommentEdit,
                                 onNavigateToFishingDateTime = onNavigateToFishingDateTime,
-                                onDatePickerClick = { target ->
-                                    pickerTarget = target
-                                    showDatePicker = true
-                                },
-                                onTimePickerClick = { target ->
-                                    pickerTarget = target
-                                    showTimePicker = true
-                                },
                                 onPhotoPickerClick = {
                                     if (viewModel.formPhotos.size < MaxPhotos) {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
