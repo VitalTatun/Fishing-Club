@@ -1,9 +1,9 @@
 package com.example.fishing.data.report
 
-import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import com.example.fishing.data.supabase.BaitDto
 import com.example.fishing.data.supabase.FishDto
+import com.example.fishing.data.supabase.FishSpeciesRefDto
 import com.example.fishing.data.supabase.FishingDto
 import com.example.fishing.data.supabase.PhotoDto
 import com.example.fishing.model.Bait
@@ -190,27 +190,36 @@ class ReportMapperTest {
         assertEquals(1, payload["photos"]!!.jsonArray.size)
     }
 
-    // --- markers ---------------------------------------------------------------
+    // --- map markers -----------------------------------------------------------
 
     @Test
-    fun `dto to marker entity fills defaults and keeps fish names`() {
-        val dto = report(isPublic = true).toFishingDto("2026-11-07T16:03:49Z")
+    fun `dto to remote map marker prefers canonical fish names`() {
+        val dto = report(isPublic = true)
+            .toFishingDto("2026-11-07T16:03:49Z")
+            .copy(
+                fish = listOf(
+                    FishDto(
+                        id = UUID.randomUUID(),
+                        fishingId = reportId,
+                        name = "щуки",
+                        speciesId = "esox_lucius",
+                        species = FishSpeciesRefDto(canonicalName = "Щука")
+                    )
+                )
+            )
 
-        val marker = dto.toMarkerEntity(fishNames = listOf("Щука"))
+        val marker = dto.toRemoteMapMarker()!!
 
         assertEquals(reportId, marker.id)
-        // The cache row is tagged with the report author, not the viewer.
-        assertEquals(userId, marker.userId)
         assertEquals("Озеро Нарочь", marker.waterName)
         assertEquals(listOf("Щука"), marker.fishNames)
-        assertTrue(marker.isPublic)
+        assertEquals(listOf("esox_lucius"), marker.fishSpeciesIds)
     }
 
     @Test
-    fun `marker entity to domain maps enums and instants`() {
-        val marker = MarkerEntity(
+    fun `remote map marker to domain maps enums and instants`() {
+        val remote = RemoteMapMarker(
             id = reportId,
-            userId = userId,
             name = "Спиннинг",
             waterName = "Озеро",
             waterLat = 54.0,
@@ -218,16 +227,31 @@ class ReportMapperTest {
             type = "FISHING_LOG",
             fishingMethod = "SPINNING",
             fishingStartAt = "2026-11-07T16:03:49Z",
-            isPublic = true,
             isPaidWater = false,
-            fishNames = listOf("Щука")
+            fishNames = listOf("Щука"),
+            fishSpeciesIds = listOf("esox_lucius")
         )
 
-        val domain = marker.toDomain()
+        val domain = remote.toDomain()
 
         assertEquals(FishingType.FISHING_LOG, domain.type)
         assertEquals(FishingMethod.SPINNING, domain.fishingMethod)
         assertEquals(Instant.parse("2026-11-07T16:03:49Z"), domain.fishingStartAt)
+        assertEquals(setOf("esox_lucius"), domain.fishSpeciesIds)
+    }
+
+    @Test
+    fun `report details row to marker resolves canonical fish names`() {
+        val fishJson = """
+            [{"id":"${UUID.randomUUID()}","fishing_id":"$reportId",
+              "name":"щуки","count":1,"species_id":"esox_lucius"}]
+        """.trimIndent()
+        val marker = detailsEntity(fishJson = fishJson)
+            .toMarkerDomainOrNull(mapOf("esox_lucius" to "Щука"))!!
+
+        assertEquals(listOf("Щука"), marker.fishNames)
+        assertEquals(setOf("esox_lucius"), marker.fishSpeciesIds)
+        assertEquals(54.0, marker.waterLat, 0.0)
     }
 
     private fun report(isPublic: Boolean): FishingReport = FishingReport(

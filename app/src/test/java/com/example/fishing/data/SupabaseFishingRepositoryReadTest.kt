@@ -3,7 +3,6 @@ package com.example.fishing.data
 import android.app.Application
 import androidx.room.Room
 import com.example.fishing.data.local.AppDatabase
-import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.report.DefaultMapMarkersStore
 import com.example.fishing.data.report.RemoteMapMarkerPage
 import com.example.fishing.data.report.RemoteReport
@@ -11,7 +10,6 @@ import com.example.fishing.data.report.RemoteReportPage
 import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.data.report.ReportRemoteQueries
 import com.example.fishing.data.report.RoomHomeFeedStore
-import com.example.fishing.data.report.RoomMarkerStore
 import com.example.fishing.data.report.RoomReportDetailsStore
 import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
@@ -88,13 +86,6 @@ class SupabaseFishingRepositoryReadTest {
                 reportRemoteQueries = queries,
                 likesStore = likesStore,
                 reportDetailsDao = db.reportDetailsDao(),
-                markerDao = db.markerDao(),
-                database = db,
-                authRepository = auth
-            ),
-            markerStore = RoomMarkerStore(
-                reportRemoteQueries = queries,
-                markerDao = db.markerDao(),
                 database = db,
                 authRepository = auth
             ),
@@ -116,7 +107,6 @@ class SupabaseFishingRepositoryReadTest {
                 authRepository = auth,
                 reportRemoteDataSource = mockk(relaxed = true),
                 reportDetailsDao = db.reportDetailsDao(),
-                markerDao = db.markerDao(),
                 favoriteReportDao = db.favoriteDao(),
                 likeDao = db.likeDao(),
                 database = db,
@@ -224,7 +214,6 @@ class SupabaseFishingRepositoryReadTest {
             val id = UUID.randomUUID()
             queries.reportsById[id] = remoteReport(id)
             assertEquals(ReportRefreshResult.Found, repository.refreshReportDetails(id))
-            db.markerDao().insertAll(listOf(marker(id)))
             assertEquals(id, db.reportDetailsDao().getByIdOneShot(id)?.id)
 
             // The report became private or was deleted: RLS no longer returns it.
@@ -232,7 +221,6 @@ class SupabaseFishingRepositoryReadTest {
 
             assertEquals(ReportRefreshResult.Missing, repository.refreshReportDetails(id))
             assertEquals(null, db.reportDetailsDao().getByIdOneShot(id))
-            assertTrue(db.markerDao().getVisibleForUser(user.id).first().isEmpty())
         }
 
     @Test
@@ -262,21 +250,6 @@ class SupabaseFishingRepositoryReadTest {
             assertTrue(states.getValue(liked).isLiked)
         }
 
-    @Test
-    fun `refreshMapMarkers replaces the cached markers`() =
-        runTest(mainDispatcherRule.testDispatcher) {
-            val marker = marker(UUID.randomUUID())
-            queries.markers = listOf(marker)
-
-            val result = repository.refreshMapMarkers()
-
-            assertTrue(
-                result.exceptionOrNull()?.stackTraceToString(),
-                result.isSuccess
-            )
-            assertEquals(listOf(marker.id), repository.getMapMarkers().first().map { it.id })
-        }
-
     private fun remoteReport(
         id: UUID,
         likesCount: Int = 0,
@@ -296,28 +269,12 @@ class SupabaseFishingRepositoryReadTest {
         author = ProfileDto(id = authorId, name = "Test User")
     )
 
-    private fun marker(id: UUID): MarkerEntity = MarkerEntity(
-        id = id,
-        userId = user.id,
-        name = "Спиннинг",
-        waterName = "Озеро",
-        waterLat = 54.0,
-        waterLng = 26.0,
-        type = "FISHING_LOG",
-        fishingMethod = "SPINNING",
-        fishingStartAt = "2026-11-07T16:03:49Z",
-        isPublic = true,
-        isPaidWater = false,
-        fishNames = listOf("Щука")
-    )
-
     private class FakeQueries : ReportRemoteQueries {
         var page: RemoteReportPage = RemoteReportPage(emptyList(), hasMore = false)
         val pageRequests = mutableListOf<Pair<Int, Int>>()
         val reportsById = mutableMapOf<UUID, RemoteReport>()
         var favorites: List<UUID> = emptyList()
         var likes: List<UUID> = emptyList()
-        var markers: List<MarkerEntity> = emptyList()
 
         override suspend fun fetchOwnReportPage(
             userId: UUID,
@@ -343,8 +300,6 @@ class SupabaseFishingRepositoryReadTest {
         override suspend fun fetchFavoriteReportIds(userId: UUID): List<UUID> = favorites
 
         override suspend fun fetchLikedReportIds(userId: UUID): List<UUID> = likes
-
-        override suspend fun fetchMapMarkers(userId: UUID): List<MarkerEntity> = markers
 
         override suspend fun fetchPublicMapMarkers(
             bounds: MapBounds,

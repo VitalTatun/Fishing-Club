@@ -76,11 +76,6 @@ class FakeFishingRepository : FishingRepository {
     var loadMoreHomeReportsGate: CompletableDeferred<Unit>? = null
     var loadMoreHomeReportsHasMore = false
 
-    var refreshMapMarkersCallCount = 0
-    var refreshMapMarkersException: Exception? = null
-    var refreshMapMarkersGate: CompletableDeferred<Unit>? = null
-    var refreshMapMarkersResult: List<MarkerDomain>? = null
-
     var addFavoriteCallCount = 0
     var addFavoriteException: Exception? = null
     var addFavoriteGate: CompletableDeferred<Unit>? = null
@@ -187,8 +182,6 @@ class FakeFishingRepository : FishingRepository {
         _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
     }
 
-    override fun getMapMarkers(): Flow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
-
     override fun getReportDetails(id: UUID): Flow<FishingReport?> = _reportDetails.asStateFlow()
 
     override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
@@ -206,13 +199,6 @@ class FakeFishingRepository : FishingRepository {
         loadMoreHomeReportsGate?.await()
         loadMoreHomeReportsException?.let { throw it }
         return loadMoreHomeReportsHasMore
-    }
-
-    override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
-        refreshMapMarkersCallCount++
-        refreshMapMarkersGate?.await()
-        refreshMapMarkersException?.let { return Result.failure(it) }
-        return Result.success(refreshMapMarkersResult ?: mapMarkersValue)
     }
 
     override suspend fun loadPublicMapMarkers(
@@ -303,9 +289,6 @@ class FakeFishingRepository : FishingRepository {
             if (it.id == id) it.copy(isPublic = isPublic) else it
         }
         _reportDetails.value = _reportDetails.value?.let {
-            if (it.id == id) it.copy(isPublic = isPublic) else it
-        }
-        _mapMarkers.value = _mapMarkers.value.map {
             if (it.id == id) it.copy(isPublic = isPublic) else it
         }
         return Result.success(Unit)

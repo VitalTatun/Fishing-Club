@@ -1,6 +1,5 @@
 package com.example.fishing.data.report
 
-import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 import com.example.fishing.data.supabase.BaitDto
 import com.example.fishing.data.supabase.FishDto
@@ -81,23 +80,6 @@ internal fun RemoteReport.toReportDetailsEntity(
 internal fun RemoteReport.toDomain(resolveImageUrl: (String) -> String): FishingReport =
     toReportDetailsEntity(resolveImageUrl).toDomain()
 
-internal fun FishingDto.toMarkerEntity(fishNames: List<String>): MarkerEntity {
-    return MarkerEntity(
-        id = id,
-        userId = userId,
-        name = name,
-        waterName = waterName ?: "",
-        waterLat = waterLat ?: 0.0,
-        waterLng = waterLng ?: 0.0,
-        type = type,
-        fishingMethod = fishingMethod ?: "",
-        fishingStartAt = fishingStartAt,
-        isPublic = isPublic,
-        isPaidWater = waterPaid,
-        fishNames = fishNames
-    )
-}
-
 /**
  * Transport projection of a public marker. A report without water coordinates
  * cannot be placed on the map and is skipped.
@@ -175,22 +157,6 @@ internal fun ReportDetailsEntity.toMarkerDomainOrNull(
             item.speciesId?.let(canonicalFishNames::get) ?: item.name
         }.distinct(),
         fishSpeciesIds = fish.mapNotNull { it.speciesId }.toSet()
-    )
-}
-
-internal fun MarkerEntity.toDomain(): MarkerDomain {
-    return MarkerDomain(
-        id = id,
-        name = name,
-        waterName = waterName,
-        waterLat = waterLat,
-        waterLng = waterLng,
-        type = parseEnumValue(type, FishingType.entries.toTypedArray()) ?: FishingType.FISHING_LOG,
-        fishingMethod = parseEnumValue(fishingMethod, FishingMethod.entries.toTypedArray()) ?: FishingMethod.NONE,
-        fishingStartAt = SupabaseDateFormats.parseInstant(fishingStartAt),
-        isPublic = isPublic,
-        isPaidWater = isPaidWater,
-        fishNames = fishNames
     )
 }
 

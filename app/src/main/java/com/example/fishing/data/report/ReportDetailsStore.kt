@@ -3,7 +3,6 @@ package com.example.fishing.data.report
 import androidx.room.withTransaction
 import com.example.fishing.data.AuthRepository
 import com.example.fishing.data.local.AppDatabase
-import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.model.FishingReport
 import java.util.UUID
@@ -41,8 +40,8 @@ interface ReportDetailsStore {
 
     /**
      * Refreshes one report into Room. When the server authoritatively reports it
-     * missing, the cached report row (and its map marker) is deleted so a
-     * private or deleted report cannot be resurrected by reopening the screen.
+     * missing, the cached report row is deleted so a private or deleted report
+     * cannot be resurrected by reopening the screen.
      */
     suspend fun refreshReportDetails(id: UUID): ReportRefreshResult
 }
@@ -52,7 +51,6 @@ class RoomReportDetailsStore @Inject constructor(
     private val reportRemoteQueries: ReportRemoteQueries,
     private val likesStore: LikesStore,
     private val reportDetailsDao: ReportDetailsDao,
-    private val markerDao: MarkerDao,
     private val database: AppDatabase,
     private val authRepository: AuthRepository
 ) : ReportDetailsStore {
@@ -71,7 +69,6 @@ class RoomReportDetailsStore @Inject constructor(
             // stale row and the map keeps showing a now-private marker.
             database.withTransaction {
                 reportDetailsDao.deleteById(id)
-                markerDao.deleteById(id)
             }
             return ReportRefreshResult.Missing
         }

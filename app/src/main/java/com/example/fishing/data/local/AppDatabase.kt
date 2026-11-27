@@ -9,31 +9,27 @@ import com.example.fishing.data.local.converter.Converters
 import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.FishSpeciesDao
 import com.example.fishing.data.local.dao.LikeDao
-import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.PendingReportUploadDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.entity.FavoriteReportEntity
 import com.example.fishing.data.local.entity.FishSpeciesEntity
 import com.example.fishing.data.local.entity.LikeEntity
-import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.local.entity.PendingReportUploadEntity
 import com.example.fishing.data.local.entity.ReportDetailsEntity
 
 @Database(
     entities = [
-        MarkerEntity::class,
         ReportDetailsEntity::class,
         FavoriteReportEntity::class,
         LikeEntity::class,
         PendingReportUploadEntity::class,
         FishSpeciesEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun markerDao(): MarkerDao
     abstract fun reportDetailsDao(): ReportDetailsDao
     abstract fun favoriteDao(): FavoriteReportDao
     abstract fun likeDao(): LikeDao
@@ -126,6 +122,17 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        /**
+         * MAP-01: the persistent marker cache is gone. Public markers are now a
+         * session-scoped in-memory cache fed by a viewport query; own markers
+         * are projected from `report_details`.
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `markers`")
             }
         }
 

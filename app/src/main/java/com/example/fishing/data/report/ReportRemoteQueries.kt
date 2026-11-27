@@ -1,6 +1,5 @@
 package com.example.fishing.data.report
 
-import com.example.fishing.data.local.entity.MarkerEntity
 import com.example.fishing.data.supabase.BaitDto
 import com.example.fishing.data.supabase.FavoriteDto
 import com.example.fishing.data.supabase.FishDto
@@ -100,9 +99,6 @@ interface ReportRemoteQueries {
     /** Ids of reports liked by [userId]. */
     suspend fun fetchLikedReportIds(userId: UUID): List<UUID>
 
-    /** Public reports plus [userId]'s own ones, ready for the map cache. */
-    suspend fun fetchMapMarkers(userId: UUID): List<MarkerEntity>
-
     /**
      * Public markers inside [bounds] that pass [filters], newest-first order is
      * intentionally absent so the database can use the coordinate index.
@@ -194,22 +190,6 @@ class SupabaseReportRemoteQueries @Inject constructor(
         }.decodeList<LikeDto>()
             .filter { it.userId == userId }
             .map { it.fishingId }
-
-    override suspend fun fetchMapMarkers(userId: UUID): List<MarkerEntity> {
-        val fishings = supabase.postgrest["fishing"].select(
-            columns = Columns.raw("*, fishing_fish(*)")
-        ) {
-            filter {
-                or {
-                    eq("is_public", true)
-                    eq("user_id", userId)
-                }
-            }
-            order("fishing_start_at", Order.DESCENDING)
-        }.decodeList<FishingDto>()
-
-        return fishings.map { dto -> dto.toMarkerEntity(dto.fish.map { it.name }) }
-    }
 
     override suspend fun fetchPublicMapMarkers(
         bounds: MapBounds,

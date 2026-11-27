@@ -48,7 +48,6 @@ interface FishingRepository {
 
     /** Pulls bookmarked ids from the backend into the local cache. */
     suspend fun refreshFavoriteIds(userId: UUID)
-    fun getMapMarkers(): Flow<List<MarkerDomain>>
     fun getReportDetails(id: UUID): Flow<FishingReport?>
 
     /**
@@ -62,7 +61,6 @@ interface FishingRepository {
     suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult
     /** Appends the next page of home reports. Returns whether more pages exist. */
     suspend fun loadMoreHomeReports(userId: UUID): Boolean
-    suspend fun refreshMapMarkers(): Result<List<MarkerDomain>>
 
     /**
      * Public markers inside [bounds] matching [filters]. [MapMarkerPage.truncated]
@@ -125,11 +123,6 @@ class MockFishingRepository : FishingRepository {
 
 
 
-    override fun getMapMarkers(): Flow<List<MarkerDomain>> = flow {
-        delay(1000)
-        emit(reports.map { it.toMarkerDomain() })
-    }
-
     override fun getReportDetails(id: UUID): Flow<FishingReport?> = flow {
         delay(1000)
         emit(reports.firstOrNull { it.id == id })
@@ -191,10 +184,6 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun refreshFavoriteIds(userId: UUID) {
         _favoriteIds.value = favoriteReports.map { it.id }.toSet()
-    }
-
-    override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
-        return Result.success(reports.map { it.toMarkerDomain() })
     }
 
     override suspend fun loadPublicMapMarkers(

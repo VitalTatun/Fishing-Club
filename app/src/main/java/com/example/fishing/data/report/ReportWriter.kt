@@ -7,7 +7,6 @@ import com.example.fishing.data.ReportRemoteDataSource
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.LikeDao
-import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.supabase.BaitDto
 import com.example.fishing.data.supabase.PhotoDto
@@ -63,7 +62,6 @@ class SupabaseReportWriter @Inject constructor(
     private val authRepository: AuthRepository,
     private val reportRemoteDataSource: ReportRemoteDataSource,
     private val reportDetailsDao: ReportDetailsDao,
-    private val markerDao: MarkerDao,
     private val favoriteReportDao: FavoriteReportDao,
     private val likeDao: LikeDao,
     private val database: AppDatabase,
@@ -161,7 +159,6 @@ class SupabaseReportWriter @Inject constructor(
                 runCatching { reportRemoteDataSource.deletePhotos(removedPhotoPaths) }
             }
 
-            val markerEntity = finalDto.toMarkerEntity(report.fish.map { it.name })
             val detailsEntity = finalDto.toReportDetailsEntity(
                 fish = fishDtos,
                 baits = baitDtos,
@@ -176,9 +173,6 @@ class SupabaseReportWriter @Inject constructor(
                 // avoid clobbering a like that landed while this save was running.
                 val preservedLikesCount = reportDetailsDao.getByIdOneShot(report.id)?.likesCount ?: 0
                 reportDetailsDao.insert(detailsEntity.copy(likesCount = preservedLikesCount))
-                if (finalDto.isPublic || finalDto.userId == authRepository.currentUser()?.id) {
-                    markerDao.insertAll(listOf(markerEntity))
-                }
             }
 
             // The RPC returning means the database transaction committed. The
@@ -278,7 +272,6 @@ class SupabaseReportWriter @Inject constructor(
                     // The update is filtered by RLS as well; mirror it only after
                     // the server confirmed a row so an offline toggle cannot lie.
                     reportDetailsDao.updateVisibility(id, isPublic, publishedAt)
-                    markerDao.updateVisibility(id, isPublic)
                 }
                 Result.success(Unit)
             } catch (e: CancellationException) {
@@ -295,7 +288,6 @@ class SupabaseReportWriter @Inject constructor(
             // Clean local Room cache in a single transaction.
             database.withTransaction {
                 reportDetailsDao.deleteById(id)
-                markerDao.deleteById(id)
                 favoriteReportDao.deleteByReportId(id)
                 likeDao.deleteByReportId(id)
             }

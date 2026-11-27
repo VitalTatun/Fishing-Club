@@ -5,7 +5,6 @@ import androidx.room.Room
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.report.ReportRemoteQueries
 import com.example.fishing.data.report.RoomHomeFeedStore
-import com.example.fishing.data.report.RoomMarkerStore
 import com.example.fishing.data.report.RoomReportDetailsStore
 import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
@@ -96,13 +95,6 @@ class SupabaseFishingRepositoryTest {
                 reportRemoteQueries = queries,
                 likesStore = likesStore,
                 reportDetailsDao = db.reportDetailsDao(),
-                markerDao = db.markerDao(),
-                database = db,
-                authRepository = auth
-            ),
-            markerStore = RoomMarkerStore(
-                reportRemoteQueries = queries,
-                markerDao = db.markerDao(),
                 database = db,
                 authRepository = auth
             ),
@@ -120,7 +112,6 @@ class SupabaseFishingRepositoryTest {
                 authRepository = auth,
                 reportRemoteDataSource = remote,
                 reportDetailsDao = db.reportDetailsDao(),
-                markerDao = db.markerDao(),
                 favoriteReportDao = db.favoriteDao(),
                 likeDao = db.likeDao(),
                 database = db,
@@ -172,12 +163,6 @@ class SupabaseFishingRepositoryTest {
         val extension = File(photo.url).extension.ifEmpty { "jpg" }
         return "${report.userId}/${report.id}/${photo.id}.$extension"
     }
-
-    private fun markerCount(): Int =
-        db.query("SELECT COUNT(*) FROM markers", null).use { cursor ->
-            cursor.moveToFirst()
-            cursor.getInt(0)
-        }
 
     private fun cachedReportCount(): Int =
         db.query("SELECT COUNT(*) FROM report_details", null).use { cursor ->
@@ -233,7 +218,6 @@ class SupabaseFishingRepositoryTest {
                 ),
                 cached!!.imageUrls
             )
-            assertEquals(1, markerCount())
         }
 
     @Test
@@ -248,7 +232,6 @@ class SupabaseFishingRepositoryTest {
 
             assertTrue(result.isFailure)
             assertNull(db.reportDetailsDao().getByIdOneShot(report.id))
-            assertEquals(0, markerCount())
             assertEquals(
                 listOf(listOf(expectedStoragePath(report, first))),
                 remote.deletedPathBatches
@@ -267,7 +250,6 @@ class SupabaseFishingRepositoryTest {
 
             assertTrue(result.isFailure)
             assertNull(db.reportDetailsDao().getByIdOneShot(report.id))
-            assertEquals(0, markerCount())
             assertEquals(
                 listOf(listOf(expectedStoragePath(report, photo))),
                 remote.deletedPathBatches
@@ -303,7 +285,6 @@ class SupabaseFishingRepositoryTest {
             assertEquals(1, remote.uploadCalls)
             assertEquals(2, remote.publishAttempts)
             assertEquals(1, cachedReportCount())
-            assertEquals(1, markerCount())
             assertEquals(storagePath, db.reportDetailsDao().getByIdOneShot(report.id)!!.imageUrls.single())
         }
 
@@ -389,7 +370,6 @@ class SupabaseFishingRepositoryTest {
                 db.reportDetailsDao().getByIdOneShot(report.id)!!.imageUrls
             )
             assertEquals(1, cachedReportCount())
-            assertEquals(1, markerCount())
         }
 
     @Test
@@ -479,7 +459,6 @@ class SupabaseFishingRepositoryTest {
             assertTrue(result.isSuccess)
             assertEquals(listOf(report.id), remote.deletedReportIds)
             assertNull(db.reportDetailsDao().getByIdOneShot(report.id))
-            assertEquals(0, markerCount())
         }
 
     @Test
@@ -492,8 +471,6 @@ class SupabaseFishingRepositoryTest {
 
             assertTrue(result.isSuccess)
             assertFalse(db.reportDetailsDao().getByIdOneShot(report.id)!!.isPublic)
-            val marker = db.markerDao().getVisibleForUser(user.id).first().single()
-            assertFalse(marker.isPublic)
         }
 
     @Test
@@ -507,7 +484,6 @@ class SupabaseFishingRepositoryTest {
 
             assertTrue(result.isFailure)
             assertTrue(db.reportDetailsDao().getByIdOneShot(report.id)!!.isPublic)
-            assertTrue(db.markerDao().getVisibleForUser(user.id).first().single().isPublic)
         }
 
     @Test
@@ -521,7 +497,6 @@ class SupabaseFishingRepositoryTest {
 
             assertTrue(result.isFailure)
             assertNotNull(db.reportDetailsDao().getByIdOneShot(report.id))
-            assertEquals(1, markerCount())
         }
 
     private class FakeReportRemoteDataSource : ReportRemoteDataSource {

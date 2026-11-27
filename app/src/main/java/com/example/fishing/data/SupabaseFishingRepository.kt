@@ -5,7 +5,6 @@ import com.example.fishing.data.report.HomeFeedStore
 import com.example.fishing.data.report.LikesStore
 import com.example.fishing.data.report.MapMarkerPage
 import com.example.fishing.data.report.MapMarkersStore
-import com.example.fishing.data.report.MarkerStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportDetailsStore
 import com.example.fishing.data.report.ReportRefreshResult
@@ -33,7 +32,6 @@ import kotlinx.coroutines.flow.Flow
 class SupabaseFishingRepository @Inject constructor(
     private val homeFeedStore: HomeFeedStore,
     private val reportDetailsStore: ReportDetailsStore,
-    private val markerStore: MarkerStore,
     private val mapMarkersStore: MapMarkersStore,
     private val favoritesStore: FavoritesStore,
     private val likesStore: LikesStore,
@@ -57,8 +55,6 @@ class SupabaseFishingRepository @Inject constructor(
     override suspend fun refreshFavoriteIds(userId: UUID) =
         favoritesStore.refreshFavoriteIds(userId)
 
-    override fun getMapMarkers(): Flow<List<MarkerDomain>> = markerStore.getMapMarkers()
-
     override fun getReportDetails(id: UUID): Flow<FishingReport?> =
         reportDetailsStore.getReportDetails(id)
 
@@ -70,9 +66,6 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun loadMoreHomeReports(userId: UUID): Boolean =
         homeFeedStore.loadMoreHomeReports(userId)
-
-    override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> =
-        markerStore.refreshMapMarkers()
 
     override suspend fun loadPublicMapMarkers(
         bounds: MapBounds,

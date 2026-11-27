@@ -69,18 +69,19 @@ class Migration_11_13_Test {
     }
 
     @Test
-    fun migratingFromV11ToV13_createsPendingUploads_preservesReports() {
+    fun migratingFromV11ToCurrent_createsPendingUploads_preservesReports() {
         val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
             .addMigrations(
                 AppDatabase.MIGRATION_11_12,
                 AppDatabase.MIGRATION_12_13,
-                AppDatabase.MIGRATION_13_14
+                AppDatabase.MIGRATION_13_14,
+                AppDatabase.MIGRATION_14_15
             )
             .allowMainThreadQueries()
             .build()
 
         db.openHelper.writableDatabase.use { sqlite ->
-            check(sqlite.version == 14) { "expected user_version 14, was ${sqlite.version}" }
+            check(sqlite.version == 15) { "expected user_version 15, was ${sqlite.version}" }
 
             sqlite.query("PRAGMA table_info(pending_report_uploads)").use { cursor ->
                 val columns = buildMap {
