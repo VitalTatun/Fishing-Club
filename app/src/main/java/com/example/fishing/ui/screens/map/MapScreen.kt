@@ -312,15 +312,7 @@ fun MapScreen(
                     )
                 }
             }
-            MapOverlayState.FilteredEmpty -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    Text(
-                        text = stringResource(R.string.map_no_reports_for_filter),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            MapOverlayState.FilteredEmpty -> Unit
             MapOverlayState.None -> Unit
         }
 
