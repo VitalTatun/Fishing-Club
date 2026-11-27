@@ -48,6 +48,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -260,10 +262,12 @@ private fun FishFilterField(
         )
         // The overlay makes the whole field open the picker without turning the
         // read-only field into an editable one.
+        val description = "${stringResource(R.string.map_filter_fish_label)}: $value"
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .testTag("map_filter_fish_field")
+                .semantics { contentDescription = description }
                 .clickable(
                     role = Role.Button,
                     onClickLabel = stringResource(R.string.map_filter_fish_label),

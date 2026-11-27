@@ -141,6 +141,22 @@ class MapOverlayStateTest {
     }
 
     @Test
+    fun `cached markers outside the viewport with a filter show ViewportEmpty`() {
+        val m = marker()
+        assertEquals(
+            MapOverlayState.ViewportEmpty,
+            mapOverlayState(
+                rawMarkers = listOf(m),
+                filteredMarkers = emptyList(),
+                isLoading = false,
+                errorMessage = null,
+                isFilterActive = true,
+                hasMarkersInViewport = false
+            )
+        )
+    }
+
+    @Test
     fun `markers present without filters is None`() {
         val m = marker()
         assertEquals(

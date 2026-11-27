@@ -640,7 +640,8 @@ internal fun mapOverlayState(
         MapOverlayState.FilteredEmpty
     rawMarkers.isEmpty() && hasMarkersInViewport -> MapOverlayState.ViewportEmpty
     rawMarkers.isEmpty() -> MapOverlayState.Empty
-    filteredMarkers.isEmpty() && isFilterActive -> MapOverlayState.FilteredEmpty
+    filteredMarkers.isEmpty() && hasMarkersInViewport && isFilterActive ->
+        MapOverlayState.FilteredEmpty
     filteredMarkers.isEmpty() -> MapOverlayState.ViewportEmpty
     else -> MapOverlayState.None
 }
