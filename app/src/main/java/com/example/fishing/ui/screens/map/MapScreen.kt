@@ -272,16 +272,7 @@ fun MapScreen(
                 hasMarkersInViewport = effectiveHasMarkersInViewport
             )
         ) {
-            MapOverlayState.Loading -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    CircularProgressIndicator()
-                    Text(
-                        text = stringResource(R.string.map_loading),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            MapOverlayState.Loading -> Unit
             MapOverlayState.Error -> {
                 MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
                     Icon(
