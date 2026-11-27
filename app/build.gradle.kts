@@ -55,6 +55,14 @@ android {
         unitTests {
             isIncludeAndroidResources = true
         }
+        screenshotTests.create("screenshotTest") {
+            engineVersion = "0.0.1-alpha16"
+            targetVariants.add("debug")
+            dependencies {
+                implementation(libs.androidx.compose.ui.tooling)
+                implementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16")
+            }
+        }
     }
 }
 

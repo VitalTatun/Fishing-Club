@@ -5,6 +5,8 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.util.*
 
 class FishingDateTimeValidatorTest {
@@ -24,7 +26,10 @@ class FishingDateTimeValidatorTest {
     fun `start missing - invalid`() {
         val end = Instant.parse("2026-07-29T20:00:00Z")
         val errors = FishingDateTimeValidator.validate(null, end, now)
-        assertEquals(listOf(FishingDateTimeError.START_MISSING), errors)
+        assertEquals(
+            listOf(FishingDateTimeError.START_MISSING, FishingDateTimeError.END_IN_FUTURE),
+            errors
+        )
         assertFalse(FishingDateTimeValidator.isValid(null, end))
     }
 
@@ -55,6 +60,24 @@ class FishingDateTimeValidatorTest {
         val errors = FishingDateTimeValidator.validate(start, end, futureNow)
         assertEquals(listOf(FishingDateTimeError.END_NOT_AFTER_START), errors)
         assertFalse(FishingDateTimeValidator.isValid(start, end, futureNow))
+    }
+
+    @Test
+    fun `earlier end date is reported as date error rather than time error`() {
+        val draft = FishingDateTimeDraft(
+            startDate = LocalDate.parse("2026-07-29"),
+            startTime = LocalTime.of(8, 0),
+            endDate = LocalDate.parse("2026-07-28"),
+            endTime = LocalTime.of(19, 0),
+        )
+
+        val errors = FishingDateTimeValidator.validate(
+            draft = draft,
+            now = Instant.parse("2026-07-31T12:00:00Z"),
+        )
+
+        assertTrue(errors.contains(FishingDateTimeError.END_DATE_BEFORE_START))
+        assertFalse(errors.contains(FishingDateTimeError.END_NOT_AFTER_START))
     }
 
     // 6. Start in future

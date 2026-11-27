@@ -3,6 +3,7 @@ package com.example.fishing.ui.screens.report.create
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.res.stringResource
@@ -24,23 +25,28 @@ internal fun FishingDateTimeSummary(
     onClick: () -> Unit,
 ) {
     val dateTimeErrors = viewModel.dateTimeErrors()
-    val startError = dateTimeErrors.firstOrNull {
-        it == FishingDateTimeError.START_MISSING || it == FishingDateTimeError.START_IN_FUTURE
-    }
-    val endError = dateTimeErrors.firstOrNull {
-        it == FishingDateTimeError.END_MISSING ||
-            it == FishingDateTimeError.END_IN_FUTURE ||
-            it == FishingDateTimeError.END_NOT_AFTER_START
-    }
-    val startSupportingText = when (startError) {
-        FishingDateTimeError.START_MISSING -> stringResource(R.string.error_start_missing)
-        FishingDateTimeError.START_IN_FUTURE -> stringResource(R.string.error_start_in_future)
+    val startDateSupportingText = when {
+        FishingDateTimeError.START_IN_FUTURE in dateTimeErrors ->
+            stringResource(R.string.error_start_in_future)
+
+        FishingDateTimeError.START_MISSING in dateTimeErrors ->
+            stringResource(R.string.error_start_missing)
+
+        FishingDateTimeError.END_DATE_BEFORE_START in dateTimeErrors ->
+            stringResource(R.string.error_end_date_before_start)
+
         else -> null
     }
-    val endSupportingText = when (endError) {
-        FishingDateTimeError.END_MISSING -> stringResource(R.string.error_end_missing)
-        FishingDateTimeError.END_IN_FUTURE -> stringResource(R.string.error_end_in_future)
-        FishingDateTimeError.END_NOT_AFTER_START -> stringResource(R.string.error_end_not_after_start)
+    val timeSupportingText = when {
+        FishingDateTimeError.END_IN_FUTURE in dateTimeErrors ->
+            stringResource(R.string.error_end_in_future)
+
+        FishingDateTimeError.END_NOT_AFTER_START in dateTimeErrors ->
+            stringResource(R.string.error_end_not_after_start)
+
+        FishingDateTimeError.END_MISSING in dateTimeErrors ->
+            stringResource(R.string.error_end_missing)
+
         else -> null
     }
     val startDate = viewModel.formStartDate.orEmpty()
@@ -50,33 +56,43 @@ internal fun FishingDateTimeSummary(
     val hasAnyValue = startDate.isNotBlank() || endDate.isNotBlank() ||
         startTime.isNotBlank() || endTime.isNotBlank()
     val notSpecified = stringResource(R.string.not_specified)
+    val dateRange = remember(startDate, endDate, notSpecified) {
+        formatDateRange(startDate, endDate, notSpecified)
+    }
+    val timeRange = remember(startTime, endTime, notSpecified) {
+        formatTimeRange(startTime, endTime, notSpecified)
+    }
+    val startAt = viewModel.fishingStartAt()
+    val endAt = viewModel.fishingEndAt()
+    val duration = remember(startAt, endAt, notSpecified) {
+        formatDuration(startAt, endAt) ?: notSpecified
+    }
 
     FishingListItem(
-        title = "Дата и время",
-        supportingText = "Начало и окончание рыбалки",
+        title = stringResource(R.string.date_time_title),
+        supportingText = stringResource(R.string.date_time_summary_supporting),
         leadingIcon = Icons.Outlined.CalendarMonth,
         onRowClick = onClick,
     )
 
     if (hasAnyValue) {
         FishingListItem(
-            title = "Дата",
-            trailingText = formatDateRange(startDate, endDate, notSpecified),
-            supportingText = startSupportingText,
-            isError = startError != null,
+            title = stringResource(R.string.date),
+            trailingText = dateRange,
+            supportingText = startDateSupportingText,
+            isError = startDateSupportingText != null,
             modifier = Modifier.padding(start = 40.dp),
         )
         FishingListItem(
-            title = "Время",
-            trailingText = formatTimeRange(startTime, endTime, notSpecified),
-            supportingText = endSupportingText,
-            isError = endError != null,
+            title = stringResource(R.string.time),
+            trailingText = timeRange,
+            supportingText = timeSupportingText,
+            isError = timeSupportingText != null,
             modifier = Modifier.padding(start = 40.dp),
         )
         FishingListItem(
-            title = "Продолжительность",
-            trailingText = formatDuration(viewModel.fishingStartAt(), viewModel.fishingEndAt())
-                ?: notSpecified,
+            title = stringResource(R.string.fishing_duration),
+            trailingText = duration,
             modifier = Modifier.padding(start = 40.dp),
         )
     }

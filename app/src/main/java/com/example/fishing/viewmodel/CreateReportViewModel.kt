@@ -67,7 +67,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Instant
-import java.util.Calendar
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
@@ -481,7 +483,15 @@ class CreateReportViewModel @Inject constructor(
     }
 
     fun dateTimeErrors(): List<FishingDateTimeError> {
-        return FishingDateTimeValidator.validate(fishingStartAt(), fishingEndAt(), Instant.now())
+        return FishingDateTimeValidator.validate(
+            draft = FishingDateTimeDraft(
+                startDate = parseFishingDate(formStartDate),
+                startTime = parseFishingTime(formStartTime),
+                endDate = parseFishingDate(formEndDate),
+                endTime = parseFishingTime(formEndTime),
+            ),
+            now = Instant.now(),
+        )
     }
 
     fun saveReport(onSuccess: () -> Unit) {
@@ -1011,25 +1021,26 @@ class CreateReportViewModel @Inject constructor(
     }
 
     private fun combineDateAndTime(dateString: String?, timeString: String?): Instant? {
-        if (dateString.isNullOrBlank() || timeString.isNullOrBlank()) return null
+        val date = parseFishingDate(dateString) ?: return null
+        val time = parseFishingTime(timeString) ?: return null
+        return date.atTime(time).atZone(ZoneId.systemDefault()).toInstant()
+    }
 
-        val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
-        return try {
-            val datePart = dateFormatter.parse(dateString) ?: return null
-            val calendar = Calendar.getInstance().apply {
-                time = datePart
-            }
-            val timeParts = timeString.split(":")
-            if (timeParts.size == 2) {
-                calendar[Calendar.HOUR_OF_DAY] = timeParts[0].toInt()
-                calendar[Calendar.MINUTE] = timeParts[1].toInt()
-            }
-            calendar[Calendar.SECOND] = 0
-            calendar[Calendar.MILLISECOND] = 0
-            calendar.time.toInstant()
-        } catch (_: Exception) {
-            null
-        }
+    private fun parseFishingDate(value: String?): LocalDate? {
+        if (value.isNullOrBlank()) return null
+        val parsed = runCatching {
+            SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru")).parse(value)
+        }.getOrNull() ?: return null
+        return parsed.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+    }
+
+    private fun parseFishingTime(value: String?): LocalTime? {
+        if (value.isNullOrBlank()) return null
+        val separator = value.indexOf(':')
+        if (separator <= 0 || separator == value.lastIndex) return null
+        val hour = value.substring(0, separator).toIntOrNull() ?: return null
+        val minute = value.substring(separator + 1).toIntOrNull() ?: return null
+        return runCatching { LocalTime.of(hour, minute) }.getOrNull()
     }
 
     // --- Catch search ---------------------------------------------------------

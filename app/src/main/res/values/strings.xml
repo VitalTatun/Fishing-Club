@@ -91,6 +91,13 @@
     <!-- Секции отчета -->
     <string name="date">Дата</string>
     <string name="time">Время</string>
+    <string name="date_time_title">Дата и время</string>
+    <string name="date_time_summary_supporting">Начало и окончание рыбалки</string>
+    <string name="fishing_duration">Продолжительность</string>
+    <string name="date_range_required">Дата начала и окончания рыбалки *</string>
+    <string name="time_range_required">Время начала и окончания рыбалки *</string>
+    <string name="dates_match">Даты совпадают</string>
+    <string name="date_time_done">Готово</string>
     <string name="start">Начало</string>
     <string name="end">Окончание</string>
     <string name="fishing_start">Начало</string>
@@ -210,6 +217,8 @@
     <string name="error_start_missing">Укажите дату и время начала рыбалки</string>
     <string name="error_end_missing">Укажите дату и время окончания рыбалки</string>
     <string name="error_end_not_after_start">Окончание не может быть раньше начала</string>
+    <string name="error_end_date_before_start">Дата окончания не может быть раньше даты начала</string>
+    <string name="error_fishing_time_order">Время начала рыбалки не может быть позже окончания</string>
     <string name="error_start_in_future">Начало рыбалки не может быть в будущем</string>
     <string name="error_end_in_future">Окончание рыбалки не может быть в будущем</string>
     <string name="saving">Сохранение</string>

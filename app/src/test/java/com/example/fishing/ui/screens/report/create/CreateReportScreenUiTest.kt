@@ -191,14 +191,16 @@ class CreateReportScreenUiTest {
         viewModel.formEndDate = ""
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("Укажите дату и время начала рыбалки")
-            .assertIsDisplayed()
+        composeRule.onNodeWithText("Дата и время").assertIsDisplayed()
+        composeRule.onNodeWithText("Укажите дату и время начала рыбалки").assertDoesNotExist()
         composeRule.onNodeWithText("Сохранить").assertIsNotEnabled()
         assertFalse(viewModel.isSaveEnabled)
 
-        // Restore the start boundary: the validator then reports the missing end.
+        // Restore the start boundary: the summary now reports the missing end.
         val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
+        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
         viewModel.formStartDate = dateFormatter.format(Date.from(validPastRange().first))
+        viewModel.formStartTime = timeFormatter.format(Date.from(validPastRange().first))
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText("Укажите дату и время окончания рыбалки")
