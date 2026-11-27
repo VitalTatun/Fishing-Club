@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +65,7 @@ import com.example.fishing.model.searchFishSpecies
 import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.components.FishingListItem
 import com.example.fishing.ui.components.SearchInputField
+import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.filter.ReportFilters
 
@@ -144,52 +144,60 @@ internal fun MapFiltersContent(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                FishFilterField(
-                    selectedCatch = draft.selectedCatch,
-                    onClick = { showFishPicker = true }
-                )
-
-                HorizontalDivider()
-
-                FilterSection(
-                    title = stringResource(R.string.map_filters_section_misc)
-                ) {
-                    FilterChip(
-                        selected = draft.isOwnOnly,
-                        onClick = { draft = draft.copy(isOwnOnly = !draft.isOwnOnly) },
-                        label = { Text(stringResource(R.string.map_filter_own)) }
-                    )
-                    FilterChip(
-                        selected = draft.isTrophySelected,
-                        onClick = {
-                            draft = draft.copy(isTrophySelected = !draft.isTrophySelected)
-                        },
-                        label = { Text(stringResource(R.string.trophy)) }
-                    )
-                    FilterChip(
-                        selected = draft.isPaidSelected,
-                        onClick = { draft = draft.copy(isPaidSelected = !draft.isPaidSelected) },
-                        label = { Text(stringResource(R.string.paid_water)) }
+                SectionGroup(showDivider = true) {
+                    FishFilterField(
+                        selectedCatch = draft.selectedCatch,
+                        onClick = { showFishPicker = true }
                     )
                 }
 
-                FilterSection(
-                    title = stringResource(R.string.fishing_method)
+                SectionGroup(
+                    title = stringResource(R.string.map_filters_section_misc),
+                    showDivider = false
                 ) {
-                    METHOD_ORDER.forEach { method ->
+                    FilterChipRow {
                         FilterChip(
-                            selected = draft.selectedMethod == method,
-                            onClick = {
-                                draft = draft.copy(
-                                    selectedMethod = if (draft.selectedMethod == method) {
-                                        null
-                                    } else {
-                                        method
-                                    }
-                                )
-                            },
-                            label = { Text(stringResource(method.labelRes)) }
+                            selected = draft.isOwnOnly,
+                            onClick = { draft = draft.copy(isOwnOnly = !draft.isOwnOnly) },
+                            label = { Text(stringResource(R.string.map_filter_own)) }
                         )
+                        FilterChip(
+                            selected = draft.isTrophySelected,
+                            onClick = {
+                                draft = draft.copy(isTrophySelected = !draft.isTrophySelected)
+                            },
+                            label = { Text(stringResource(R.string.trophy)) }
+                        )
+                        FilterChip(
+                            selected = draft.isPaidSelected,
+                            onClick = {
+                                draft = draft.copy(isPaidSelected = !draft.isPaidSelected)
+                            },
+                            label = { Text(stringResource(R.string.paid_water)) }
+                        )
+                    }
+                }
+
+                SectionGroup(
+                    title = stringResource(R.string.fishing_method),
+                    showDivider = false
+                ) {
+                    FilterChipRow {
+                        METHOD_ORDER.forEach { method ->
+                            FilterChip(
+                                selected = draft.selectedMethod == method,
+                                onClick = {
+                                    draft = draft.copy(
+                                        selectedMethod = if (draft.selectedMethod == method) {
+                                            null
+                                        } else {
+                                            method
+                                        }
+                                    )
+                                },
+                                label = { Text(stringResource(method.labelRes)) }
+                            )
+                        }
                     }
                 }
 
@@ -279,18 +287,7 @@ private fun FishFilterField(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FilterSection(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    )
+private fun FilterChipRow(content: @Composable () -> Unit) {
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -300,7 +297,6 @@ private fun FilterSection(
     ) {
         content()
     }
-    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
