@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.room.Room
 import com.example.fishing.data.local.AppDatabase
 import com.example.fishing.data.local.entity.MarkerEntity
+import com.example.fishing.data.report.DefaultMapMarkersStore
+import com.example.fishing.data.report.RemoteMapMarkerPage
 import com.example.fishing.data.report.RemoteReport
 import com.example.fishing.data.report.RemoteReportPage
 import com.example.fishing.data.report.ReportRefreshResult
@@ -17,8 +19,11 @@ import com.example.fishing.data.report.SupabaseReportWriter
 import com.example.fishing.data.report.SupabasePhotoUrlProvider
 import com.example.fishing.data.supabase.FishingDto
 import com.example.fishing.data.supabase.ProfileDto
+import com.example.fishing.model.MapBounds
+import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.User
 import com.example.fishing.testutil.FakeAuthRepository
+import com.example.fishing.testutil.FakeFishCatalogRepository
 import com.example.fishing.testutil.MainDispatcherRule
 import io.mockk.mockk
 import java.util.UUID
@@ -92,6 +97,11 @@ class SupabaseFishingRepositoryReadTest {
                 markerDao = db.markerDao(),
                 database = db,
                 authRepository = auth
+            ),
+            mapMarkersStore = DefaultMapMarkersStore(
+                reportRemoteQueries = queries,
+                reportDetailsDao = db.reportDetailsDao(),
+                fishCatalogRepository = FakeFishCatalogRepository()
             ),
             favoritesStore = SupabaseFavoritesStore(
                 supabase = mockk(relaxed = true),
@@ -335,5 +345,11 @@ class SupabaseFishingRepositoryReadTest {
         override suspend fun fetchLikedReportIds(userId: UUID): List<UUID> = likes
 
         override suspend fun fetchMapMarkers(userId: UUID): List<MarkerEntity> = markers
+
+        override suspend fun fetchPublicMapMarkers(
+            bounds: MapBounds,
+            filters: MapMarkerFilters,
+            limit: Int
+        ): RemoteMapMarkerPage = RemoteMapMarkerPage(emptyList(), truncated = false)
     }
 }

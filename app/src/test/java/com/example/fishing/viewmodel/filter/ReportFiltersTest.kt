@@ -1,13 +1,17 @@
 package com.example.fishing.viewmodel.filter
 
+import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.FishingType
 import com.example.fishing.testutil.testMarker
 import com.example.fishing.testutil.testReport
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.util.UUID
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
 
 class ReportFiltersTest {
 
@@ -63,6 +67,59 @@ class ReportFiltersTest {
         )
         assertFalse(filters.matches(marker.copy(fishNames = listOf("Perch")), emptySet()))
         assertFalse(filters.matches(marker.copy(fishingMethod = FishingMethod.FEEDER), emptySet()))
+    }
+
+    @Test
+    fun `species filter matches by catalog id or canonical name`() {
+        val speciesId = "esox_lucius"
+        val report = testReport(
+            fish = listOf(Fish(UUID.randomUUID(), "щуки", 1, speciesId))
+        )
+        val marker = testMarker().copy(
+            fishNames = listOf("Щука"),
+            fishSpeciesIds = setOf(speciesId)
+        )
+
+        val byId = ReportFilters(selectedSpeciesId = speciesId)
+        assertTrue(byId.matches(report, emptySet()))
+        assertTrue(byId.matches(marker, emptySet()))
+        assertFalse(byId.matches(report.copy(fish = emptyList()), emptySet()))
+        assertFalse(byId.matches(marker.copy(fishSpeciesIds = emptySet()), emptySet()))
+
+        val byName = ReportFilters(selectedCatch = "Щука")
+        assertTrue(byName.matches(marker, emptySet()))
+        // The report kept the raw alias, only its catalog id resolves it.
+        assertFalse(byName.matches(report, emptySet()))
+        assertTrue(ReportFilters(selectedCatch = "щуки").matches(report, emptySet()))
+    }
+
+    @Test
+    fun `date filter uses the local calendar day`() {
+        val zone = ZoneId.systemDefault()
+        val day = LocalDate.of(2026, 5, 1)
+        val instant = day.atTime(8, 0).atZone(zone).toInstant()
+        val filters = ReportFilters(
+            selectedDateMillis = day.atStartOfDay(zone).toInstant().toEpochMilli()
+        )
+        val report = testReport(fishingStartAt = instant)
+        val marker = testMarker().copy(fishingStartAt = instant)
+
+        assertTrue(filters.matches(report, emptySet()))
+        assertTrue(filters.matches(marker, emptySet()))
+        assertFalse(filters.matches(report.copy(fishingStartAt = null), emptySet()))
+        assertFalse(filters.matches(marker.copy(fishingStartAt = null), emptySet()))
+        assertFalse(
+            filters.matches(
+                report.copy(fishingStartAt = instant.plusSeconds(24 * 60 * 60)),
+                emptySet()
+            )
+        )
+    }
+
+    @Test
+    fun `species and date filters make filters active`() {
+        assertTrue(ReportFilters(selectedSpeciesId = "esox_lucius").isActive)
+        assertTrue(ReportFilters(selectedDateMillis = 1L).isActive)
     }
 
     @Test

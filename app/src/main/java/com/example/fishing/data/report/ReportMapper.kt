@@ -98,6 +98,86 @@ internal fun FishingDto.toMarkerEntity(fishNames: List<String>): MarkerEntity {
     )
 }
 
+/**
+ * Transport projection of a public marker. A report without water coordinates
+ * cannot be placed on the map and is skipped.
+ */
+internal fun FishingDto.toRemoteMapMarker(): RemoteMapMarker? {
+    val lat = waterLat ?: return null
+    val lng = waterLng ?: return null
+    return RemoteMapMarker(
+        id = id,
+        name = name,
+        waterName = waterName.orEmpty(),
+        waterLat = lat,
+        waterLng = lng,
+        type = type,
+        fishingMethod = fishingMethod,
+        fishingStartAt = fishingStartAt,
+        isPaidWater = waterPaid,
+        fishNames = fish.map { it.species?.canonicalName ?: it.name }.distinct(),
+        fishSpeciesIds = fish.mapNotNull { it.speciesId }
+    )
+}
+
+/**
+ * Maps a remote marker to the UI model. Coordinates are required by the server
+ * query, and the fish names are already canonical thanks to the catalog join.
+ */
+internal fun RemoteMapMarker.toDomain(): MarkerDomain = MarkerDomain(
+    id = id,
+    name = name,
+    waterName = waterName,
+    waterLat = waterLat,
+    waterLng = waterLng,
+    type = parseEnumValue(type, FishingType.entries.toTypedArray()) ?: FishingType.FISHING_LOG,
+    fishingMethod = parseEnumValue(
+        fishingMethod,
+        FishingMethod.entries.toTypedArray()
+    ) ?: FishingMethod.NONE,
+    fishingStartAt = SupabaseDateFormats.parseInstant(fishingStartAt),
+    isPublic = true,
+    isPaidWater = isPaidWater,
+    fishNames = fishNames,
+    fishSpeciesIds = fishSpeciesIds.toSet()
+)
+
+/**
+ * Builds a marker from the offline `report_details` row. Rows without water
+ * coordinates cannot be placed on the map and are skipped by the caller.
+ * Fish names are resolved through [canonicalFishNames] when the catalog knows
+ * the species; free-text names stay as entered.
+ */
+internal fun ReportDetailsEntity.toMarkerDomainOrNull(
+    canonicalFishNames: Map<String, String>
+): MarkerDomain? {
+    val lat = waterLat ?: return null
+    val lng = waterLng ?: return null
+    val fish = runCatching {
+        reportJson.decodeFromString<List<FishDto>>(fishJson)
+    }.getOrDefault(emptyList())
+
+    return MarkerDomain(
+        id = id,
+        name = name,
+        waterName = waterName.orEmpty(),
+        waterLat = lat,
+        waterLng = lng,
+        type = parseEnumValue(type, FishingType.entries.toTypedArray()) ?: FishingType.FISHING_LOG,
+        fishingMethod = parseEnumValue(
+            fishingMethod,
+            FishingMethod.entries.toTypedArray()
+        ) ?: FishingMethod.NONE,
+        fishingStartAt = SupabaseDateFormats.parseInstant(fishingStartAt),
+        isPublic = isPublic,
+        isPaidWater = waterPaid,
+        fishNames = fish.map { item ->
+            item.speciesId?.let(canonicalFishNames::get) ?: item.name
+        }.distinct(),
+        fishSpeciesIds = fish.mapNotNull { it.speciesId }.toSet()
+    )
+}
+
 internal fun MarkerEntity.toDomain(): MarkerDomain {
     return MarkerDomain(
         id = id,

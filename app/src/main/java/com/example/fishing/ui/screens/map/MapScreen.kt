@@ -20,6 +20,7 @@ import com.example.fishing.R
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
+import com.example.fishing.model.MapBounds
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.ui.components.FishingFilterChips
 import com.example.fishing.ui.components.MarkerDrawableUtils
@@ -58,6 +59,25 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
+
+    // Reports the real viewport to the coordinator. Below the zoom threshold
+    // the coordinator ignores it, so this is safe to call on every event.
+    val notifyViewportChange = remember(mapView, viewModel) {
+        {
+            if (mapView.width > 0 && mapView.height > 0) {
+                val box = mapView.boundingBox
+                viewModel?.onMapViewportChanged(
+                    MapBounds(
+                        south = box.latSouth,
+                        north = box.latNorth,
+                        west = box.lonWest,
+                        east = box.lonEast
+                    ),
+                    mapView.zoomLevelDouble
+                )
+            }
+        }
+    }
 
     val highlightedPolygon by viewModel?.highlightedPolygon?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(null) }
@@ -170,6 +190,7 @@ fun MapScreen(
             lastCenterLat = location.latitude
             lastCenterLon = location.longitude
             lastZoom = 13.0
+            mapView.post { notifyViewportChange() }
         }
     }
 
@@ -215,6 +236,7 @@ fun MapScreen(
             mapView.controller.setCenter(GeoPoint(lastCenterLat!!, lastCenterLon!!))
             mapView.controller.setZoom(lastZoom)
             myLocationOverlay.disableFollowLocation()
+            mapView.post { notifyViewportChange() }
         }
     }
 
@@ -227,6 +249,7 @@ fun MapScreen(
                 lastCenterLon = fallbackCenter.longitude
                 lastZoom = 11.0
             }
+            mapView.post { notifyViewportChange() }
         }
     }
 
@@ -236,11 +259,13 @@ fun MapScreen(
                 val center = mapView.mapCenter
                 lastCenterLat = center.latitude
                 lastCenterLon = center.longitude
+                notifyViewportChange()
                 return true
             }
 
             override fun onZoom(event: ZoomEvent?): Boolean {
                 lastZoom = mapView.zoomLevelDouble
+                notifyViewportChange()
                 return true
             }
         }

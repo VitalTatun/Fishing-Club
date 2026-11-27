@@ -3,6 +3,8 @@ package com.example.fishing.data
 import com.example.fishing.data.report.FavoritesStore
 import com.example.fishing.data.report.HomeFeedStore
 import com.example.fishing.data.report.LikesStore
+import com.example.fishing.data.report.MapMarkerPage
+import com.example.fishing.data.report.MapMarkersStore
 import com.example.fishing.data.report.MarkerStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportDetailsStore
@@ -11,6 +13,8 @@ import com.example.fishing.data.report.ReportWriter
 import com.example.fishing.data.report.UserProfileData
 import com.example.fishing.data.report.UserReportsStore
 import com.example.fishing.model.FishingReport
+import com.example.fishing.model.MapBounds
+import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
 import java.util.UUID
@@ -30,6 +34,7 @@ class SupabaseFishingRepository @Inject constructor(
     private val homeFeedStore: HomeFeedStore,
     private val reportDetailsStore: ReportDetailsStore,
     private val markerStore: MarkerStore,
+    private val mapMarkersStore: MapMarkersStore,
     private val favoritesStore: FavoritesStore,
     private val likesStore: LikesStore,
     private val reportWriter: ReportWriter,
@@ -68,6 +73,15 @@ class SupabaseFishingRepository @Inject constructor(
 
     override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> =
         markerStore.refreshMapMarkers()
+
+    override suspend fun loadPublicMapMarkers(
+        bounds: MapBounds,
+        filters: MapMarkerFilters,
+        limit: Int
+    ): Result<MapMarkerPage> = mapMarkersStore.loadPublicMarkers(bounds, filters, limit)
+
+    override fun observeOwnMapMarkers(userId: UUID): Flow<List<MarkerDomain>> =
+        mapMarkersStore.observeOwnMarkers(userId)
 
     override suspend fun addFavorite(report: FishingReport): Result<Unit> =
         favoritesStore.addFavorite(report.id)

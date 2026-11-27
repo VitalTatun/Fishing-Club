@@ -8,6 +8,7 @@ import com.example.fishing.data.UserPreferencesSource
 import com.example.fishing.data.upload.ReportUploadQueue
 import com.example.fishing.model.AuthState
 import com.example.fishing.model.FishingReport
+import com.example.fishing.model.MapBounds
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.PendingReportUpload
 import com.example.fishing.model.ReportDisplayMode
@@ -76,6 +77,7 @@ class MainViewModel @Inject constructor(
     )
     private val map = MapCoordinator(
         repository = repository,
+        session = session,
         scope = viewModelScope
     )
     private val search = SearchCoordinator()
@@ -115,6 +117,8 @@ class MainViewModel @Inject constructor(
     val mapIsRefreshing: StateFlow<Boolean> = map.mapIsRefreshing
     val mapRefreshError: StateFlow<String?> = map.mapRefreshError
     val mapFilters: StateFlow<ReportFilters> = map.mapFilters
+    val mapIsZoomedOut: StateFlow<Boolean> = map.mapIsZoomedOut
+    val mapTruncated: StateFlow<Boolean> = map.mapTruncated
     val mapRequestedLocation: StateFlow<GeoPoint?> = map.mapRequestedLocation
     val highlightedPolygon: StateFlow<List<GeoPoint>?> = map.highlightedPolygon
 
@@ -176,8 +180,7 @@ class MainViewModel @Inject constructor(
                     home.loadReports(force = false)
                     // Another account may have its own camera/filters state and
                     // own private markers; drop both before loading the map.
-                    map.clear()
-                    map.loadMapMarkers(force = false)
+                    map.onUserChanged(userId)
                     likes.refresh()
                     favorites.refresh()
                 }
@@ -231,13 +234,22 @@ class MainViewModel @Inject constructor(
 
     fun refresh() {
         home.loadReports(force = true)
-        map.loadMapMarkers(force = true)
+        map.onRefreshRequested()
         likes.refresh()
     }
 
     fun selectTab(index: Int) {
+        val previous = _selectedTab.value
         _selectedTab.value = index
-        if (index == 1) map.loadMapMarkers(force = false)
+        when {
+            index == MAP_TAB_INDEX -> map.onMapShown()
+            previous == MAP_TAB_INDEX -> map.onMapHidden()
+        }
+    }
+
+    /** The map camera moved; the coordinator decides whether a request is due. */
+    fun onMapViewportChanged(bounds: MapBounds, zoom: Double) {
+        map.onViewportChanged(bounds, zoom)
     }
 
     fun setSortOrder(order: ReportSortOrder) {
@@ -341,5 +353,10 @@ class MainViewModel @Inject constructor(
 
     fun clearReportVisibilityResult() {
         detail.clearVisibilityResult()
+    }
+
+    private companion object {
+        /** Index of the map tab in [selectedTab]. */
+        const val MAP_TAB_INDEX = 1
     }
 }

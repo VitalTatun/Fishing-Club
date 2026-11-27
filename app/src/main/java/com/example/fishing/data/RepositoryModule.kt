@@ -2,7 +2,9 @@ package com.example.fishing.data
 
 import com.example.fishing.data.report.FavoritesStore
 import com.example.fishing.data.report.HomeFeedStore
+import com.example.fishing.data.report.DefaultMapMarkersStore
 import com.example.fishing.data.report.LikesStore
+import com.example.fishing.data.report.MapMarkersStore
 import com.example.fishing.data.report.MarkerStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportDetailsStore
@@ -87,6 +89,12 @@ abstract class RepositoryModule {
     abstract fun bindMarkerStore(
         store: RoomMarkerStore
     ): MarkerStore
+
+    @Binds
+    @Singleton
+    abstract fun bindMapMarkersStore(
+        store: DefaultMapMarkersStore
+    ): MapMarkersStore
 
     @Binds
     @Singleton

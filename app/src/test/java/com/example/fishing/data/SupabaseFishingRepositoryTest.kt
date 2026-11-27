@@ -106,6 +106,7 @@ class SupabaseFishingRepositoryTest {
                 database = db,
                 authRepository = auth
             ),
+            mapMarkersStore = mockk(relaxed = true),
             favoritesStore = SupabaseFavoritesStore(
                 supabase = mockk(relaxed = true),
                 authRepository = auth,

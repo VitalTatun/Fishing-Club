@@ -54,7 +54,19 @@ data class FishDto(
     @Serializable(with = UuidSerializer::class) @SerialName("fishing_id") val fishingId: UUID,
     val name: String,
     val count: Int = 0,
-    @SerialName("species_id") val speciesId: String? = null
+    @SerialName("species_id") val speciesId: String? = null,
+    /**
+     * Embedded catalog row, present only when the query joins
+     * `fish_species`. Read-only: never part of a write payload.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("fish_species") val species: FishSpeciesRefDto? = null
+)
+
+/** Minimal catalog projection for marker queries. */
+@Serializable
+data class FishSpeciesRefDto(
+    @SerialName("canonical_name") val canonicalName: String
 )
 
 @Serializable

@@ -8,10 +8,16 @@ import com.example.fishing.data.supabase.FishingDto
 import com.example.fishing.data.supabase.LikeDto
 import com.example.fishing.data.supabase.PhotoDto
 import com.example.fishing.data.supabase.ProfileDto
+import com.example.fishing.model.FishingType
+import com.example.fishing.model.MapBounds
+import com.example.fishing.model.MapMarkerFilters
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
+import java.time.Instant
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -34,6 +40,33 @@ data class RemoteReport(
 data class RemoteReportPage(
     val reports: List<RemoteReport>,
     val hasMore: Boolean
+)
+
+/**
+ * One public marker as returned by the viewport query. Transport types stay
+ * strings; the mapper turns them into [com.example.fishing.model.MarkerDomain].
+ */
+data class RemoteMapMarker(
+    val id: UUID,
+    val name: String,
+    val waterName: String,
+    val waterLat: Double,
+    val waterLng: Double,
+    val type: String,
+    val fishingMethod: String?,
+    val fishingStartAt: String?,
+    val isPaidWater: Boolean,
+    val fishNames: List<String>,
+    val fishSpeciesIds: List<String>
+)
+
+data class RemoteMapMarkerPage(
+    val markers: List<RemoteMapMarker>,
+    /**
+     * True when the server had more rows than the requested limit. The caller
+     * must not treat the viewport as fully loaded in that case.
+     */
+    val truncated: Boolean
 )
 
 /**
@@ -69,6 +102,17 @@ interface ReportRemoteQueries {
 
     /** Public reports plus [userId]'s own ones, ready for the map cache. */
     suspend fun fetchMapMarkers(userId: UUID): List<MarkerEntity>
+
+    /**
+     * Public markers inside [bounds] that pass [filters], newest-first order is
+     * intentionally absent so the database can use the coordinate index.
+     * Requests `limit + 1` rows to report truncation.
+     */
+    suspend fun fetchPublicMapMarkers(
+        bounds: MapBounds,
+        filters: MapMarkerFilters,
+        limit: Int
+    ): RemoteMapMarkerPage
 }
 
 @Singleton
@@ -165,6 +209,63 @@ class SupabaseReportRemoteQueries @Inject constructor(
         }.decodeList<FishingDto>()
 
         return fishings.map { dto -> dto.toMarkerEntity(dto.fish.map { it.name }) }
+    }
+
+    override suspend fun fetchPublicMapMarkers(
+        bounds: MapBounds,
+        filters: MapMarkerFilters,
+        limit: Int
+    ): RemoteMapMarkerPage {
+        // An inner join is only needed to filter parents by fish species. Without
+        // the species filter a plain embed keeps fishless reports on the map.
+        val fishEmbed = if (filters.speciesId != null) {
+            "fishing_fish!inner(id,fishing_id,name,species_id,fish_species(canonical_name))"
+        } else {
+            "fishing_fish(id,fishing_id,name,species_id,fish_species(canonical_name))"
+        }
+        val columns = Columns.raw(
+            "id,user_id,name,water_name,water_lat,water_lng,type,fishing_method," +
+                "fishing_start_at,water_paid,is_public,$fishEmbed"
+        )
+
+        val fetched = supabase.postgrest["fishing"].select(columns = columns) {
+            filter {
+                eq("is_public", true)
+                gte("water_lat", bounds.south)
+                lte("water_lat", bounds.north)
+                gte("water_lng", bounds.west)
+                lte("water_lng", bounds.east)
+                if (filters.trophyOnly) eq("type", FishingType.HAUL.name)
+                if (filters.paidOnly) eq("water_paid", true)
+                filters.method?.let { eq("fishing_method", it.name) }
+                filters.speciesId?.let { eq("fishing_fish.species_id", it) }
+                filters.dateMillis?.let { dayMillis ->
+                    val (from, toExclusive) = localDayRange(dayMillis)
+                    gte("fishing_start_at", from)
+                    lt("fishing_start_at", toExclusive)
+                }
+            }
+            // One extra row tells the caller whether the viewport was truncated.
+            limit((limit + 1).toLong())
+        }.decodeList<FishingDto>()
+
+        val truncated = fetched.size > limit
+        val page = if (truncated) fetched.take(limit) else fetched
+        return RemoteMapMarkerPage(
+            markers = page.mapNotNull { it.toRemoteMapMarker() },
+            truncated = truncated
+        )
+    }
+
+    /** Converts a local calendar day into a half-open UTC range for timestamptz. */
+    private fun localDayRange(dayMillis: Long): Pair<String, String> {
+        val zone = ZoneId.systemDefault()
+        val start = Instant.ofEpochMilli(dayMillis)
+            .atZone(zone)
+            .toLocalDate()
+            .atStartOfDay(zone)
+            .toInstant()
+        return start.toString() to start.plus(1, ChronoUnit.DAYS).toString()
     }
 
     /**

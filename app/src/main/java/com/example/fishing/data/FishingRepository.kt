@@ -1,8 +1,11 @@
 package com.example.fishing.data
 
 import com.example.fishing.model.FishingReport
+import com.example.fishing.model.MapBounds
+import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
+import com.example.fishing.data.report.MapMarkerPage
 import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.data.report.UserProfileData
 import kotlinx.coroutines.delay
@@ -60,6 +63,20 @@ interface FishingRepository {
     /** Appends the next page of home reports. Returns whether more pages exist. */
     suspend fun loadMoreHomeReports(userId: UUID): Boolean
     suspend fun refreshMapMarkers(): Result<List<MarkerDomain>>
+
+    /**
+     * Public markers inside [bounds] matching [filters]. [MapMarkerPage.truncated]
+     * tells the caller that the viewport is not fully loaded.
+     */
+    suspend fun loadPublicMapMarkers(
+        bounds: MapBounds,
+        filters: MapMarkerFilters,
+        limit: Int = 300
+    ): Result<MapMarkerPage>
+
+    /** Own reports with coordinates, available offline through the local cache. */
+    fun observeOwnMapMarkers(userId: UUID): Flow<List<MarkerDomain>>
+
     suspend fun addFavorite(report: FishingReport): Result<Unit>
     suspend fun removeFavorite(reportId: UUID): Result<Unit>
     /**
@@ -178,6 +195,26 @@ class MockFishingRepository : FishingRepository {
 
     override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
         return Result.success(reports.map { it.toMarkerDomain() })
+    }
+
+    override suspend fun loadPublicMapMarkers(
+        bounds: MapBounds,
+        filters: MapMarkerFilters,
+        limit: Int
+    ): Result<MapMarkerPage> {
+        val markers = reports
+            .filter { report ->
+                val water = report.water
+                water.latitude in bounds.south..bounds.north &&
+                    water.longitude in bounds.west..bounds.east
+            }
+            .take(limit)
+            .map { it.toMarkerDomain() }
+        return Result.success(MapMarkerPage(markers, truncated = false))
+    }
+
+    override fun observeOwnMapMarkers(userId: UUID): Flow<List<MarkerDomain>> = flow {
+        emit(reports.filter { it.userId == userId }.map { it.toMarkerDomain() })
     }
 
     override suspend fun addFavorite(report: FishingReport): Result<Unit> {
