@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.ui.theme.FishingTheme
@@ -108,13 +109,24 @@ class MapFiltersScreenUiTest {
     }
 
     @Test
+    fun `typing in the fish field filters the menu`() {
+        setContent()
+
+        composeRule.onNodeWithTag("map_filter_fish_field").performClick()
+        composeRule.onNodeWithTag("map_filter_fish_field").performTextInput("щу")
+
+        composeRule.onNodeWithText("Щука", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Окунь", useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
     fun `fish picker stores both canonical name and species id`() {
         var applied: ReportFilters? = null
         setContent(onApply = { applied = it })
 
         composeRule.onNodeWithTag("map_filter_fish_field").performClick()
-        composeRule.onNodeWithText("Все виды").assertIsDisplayed()
-        composeRule.onNodeWithText("Щука").performClick()
+        composeRule.onNodeWithText("Все виды", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Щука", useUnmergedTree = true).performClick()
         composeRule.onNodeWithTag("map_filters_apply").performClick()
 
         assertEquals("Щука", applied?.selectedCatch)
