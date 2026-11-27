@@ -1,7 +1,8 @@
 package com.example.fishing.ui.screens.report.create
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,11 +35,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -493,38 +499,32 @@ private fun DateField(
     supportingText: String? = null,
     onClick: () -> Unit,
 ) {
-    Box {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            modifier = Modifier.fillMaxWidth(),
-            enabled = enabled,
-            readOnly = true,
-            label = { Text(label) },
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                )
-            },
-            isError = isError,
-            supportingText = supportingText?.let { message ->
-                { Text(text = message) }
-            },
-            singleLine = true,
-        )
-        if (enabled) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onClick,
-                    ),
+    val selectDateLabel = stringResource(R.string.select_date)
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        modifier = Modifier
+            .fillMaxWidth()
+            .pickerFieldClick(
+                enabled = enabled,
+                clickLabel = selectDateLabel,
+                onClick = onClick,
+            ),
+        enabled = enabled,
+        readOnly = true,
+        label = { Text(label) },
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
             )
-        }
-    }
+        },
+        isError = isError,
+        supportingText = supportingText?.let { message ->
+            { Text(text = message) }
+        },
+        singleLine = true,
+    )
 }
 
 @Composable
@@ -535,31 +535,55 @@ private fun TimeField(
     isError: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Box(modifier = modifier) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            modifier = Modifier.fillMaxWidth(),
-            readOnly = true,
-            label = { Text(label) },
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                )
-            },
-            isError = isError,
-            singleLine = true,
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClick,
-                ),
-        )
+    val selectTimeLabel = stringResource(R.string.select_time)
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        modifier = modifier
+            .fillMaxWidth()
+            .pickerFieldClick(
+                enabled = true,
+                clickLabel = selectTimeLabel,
+                onClick = onClick,
+            ),
+        readOnly = true,
+        label = { Text(label) },
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+            )
+        },
+        isError = isError,
+        singleLine = true,
+    )
+}
+
+@Composable
+private fun Modifier.pickerFieldClick(
+    enabled: Boolean,
+    clickLabel: String,
+    onClick: () -> Unit,
+): Modifier {
+    if (!enabled) return this
+
+    val currentOnClick by rememberUpdatedState(onClick)
+    return pointerInput(Unit) {
+        awaitEachGesture {
+            // OutlinedTextField consumes taps in Main; observe the gesture before that pass.
+            awaitFirstDown(
+                requireUnconsumed = false,
+                pass = PointerEventPass.Initial,
+            )
+            if (waitForUpOrCancellation(pass = PointerEventPass.Initial) != null) {
+                currentOnClick()
+            }
+        }
+    }.semantics {
+        onClick(label = clickLabel) {
+            currentOnClick()
+            true
+        }
     }
 }
 
