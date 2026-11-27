@@ -301,28 +301,14 @@ fun MapScreen(
                     }
                 }
             }
-            MapOverlayState.ZoomedOut -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    Text(
-                        text = stringResource(R.string.map_zoomed_out),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            // Zoomed-out and viewport-empty are intentionally silent: the map
+            // stays clean, markers are simply hidden until the camera changes.
+            MapOverlayState.ZoomedOut,
+            MapOverlayState.ViewportEmpty -> Unit
             MapOverlayState.Empty -> {
                 MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
                     Text(
                         text = stringResource(R.string.map_no_reports),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            MapOverlayState.ViewportEmpty -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    Text(
-                        text = stringResource(R.string.map_no_reports_in_viewport),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
