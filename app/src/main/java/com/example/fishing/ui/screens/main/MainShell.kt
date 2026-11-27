@@ -17,6 +17,9 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -78,6 +81,7 @@ fun MainShell(
     loadMoreError: String? = null,
     mapIsLoading: Boolean = false,
     mapErrorMessage: String? = null,
+    mapFiltersActiveCount: Int = 0,
     selectedTab: Int = 0,
     highlightedPolygon: List<GeoPoint>? = null,
     currentSortOrder: ReportSortOrder = ReportSortOrder.BY_FISHING_TIME,
@@ -230,6 +234,24 @@ fun MainShell(
                                 Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear))
                             }
                         }
+                        IconButton(onClick = onMapFiltersClick) {
+                            BadgedBox(
+                                badge = {
+                                    if (mapFiltersActiveCount > 0) {
+                                        Badge {
+                                            Text(text = mapFiltersActiveCount.toString())
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = stringResource(
+                                        R.string.map_filters_content_description
+                                    )
+                                )
+                            }
+                        }
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
@@ -295,8 +317,7 @@ fun MainShell(
                             },
                             isLoading = mapIsLoading,
                             errorMessage = mapErrorMessage,
-                            onRetry = { viewModel?.loadMapMarkers(force = true) },
-                            onFiltersClick = onMapFiltersClick
+                            onRetry = { viewModel?.loadMapMarkers(force = true) }
                         )
                     }
                     2 -> {
