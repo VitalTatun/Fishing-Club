@@ -51,7 +51,6 @@ fun MapScreen(
     selectedMarkerDotStyle: Boolean = false,
     repository: FishingRepository? = null,
     isLoading: Boolean = false,
-    isRefreshing: Boolean = false,
     errorMessage: String? = null,
     onRetry: () -> Unit = {},
     onFiltersClick: (() -> Unit)? = null,
@@ -324,16 +323,6 @@ fun MapScreen(
                 }
             }
             MapOverlayState.None -> Unit
-        }
-
-        if (isRefreshing && displayedMarkers.isNotEmpty()) {
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 72.dp)
-                    .fillMaxWidth(0.6f)
-            )
         }
 
         if (onFiltersClick != null) {

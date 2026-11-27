@@ -77,7 +77,6 @@ fun MainShell(
     hasMoreReports: Boolean = false,
     loadMoreError: String? = null,
     mapIsLoading: Boolean = false,
-    mapIsRefreshing: Boolean = false,
     mapErrorMessage: String? = null,
     selectedTab: Int = 0,
     highlightedPolygon: List<GeoPoint>? = null,
@@ -295,7 +294,6 @@ fun MainShell(
                                 )
                             },
                             isLoading = mapIsLoading,
-                            isRefreshing = mapIsRefreshing,
                             errorMessage = mapErrorMessage,
                             onRetry = { viewModel?.loadMapMarkers(force = true) },
                             onFiltersClick = onMapFiltersClick

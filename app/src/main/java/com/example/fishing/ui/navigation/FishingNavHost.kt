@@ -79,7 +79,6 @@ fun FishingNavHost(
     val loadMoreError by viewModel.loadMoreError.collectAsStateWithLifecycle()
     val hasMoreReports by viewModel.hasMoreReports.collectAsStateWithLifecycle()
     val mapIsLoading by viewModel.mapIsLoading.collectAsStateWithLifecycle()
-    val mapIsRefreshing by viewModel.mapIsRefreshing.collectAsStateWithLifecycle()
     val mapErrorMessage by viewModel.mapRefreshError.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val reportDisplayMode by viewModel.reportDisplayMode.collectAsStateWithLifecycle()
@@ -167,7 +166,6 @@ fun FishingNavHost(
                     onLoadMore = { viewModel.loadMoreReports() },
                     onRetryLoadMore = { viewModel.loadMoreReports() },
                     mapIsLoading = mapIsLoading,
-                    mapIsRefreshing = mapIsRefreshing,
                     mapErrorMessage = mapErrorMessage,
                     selectedTab = selectedTab,
                     mapMarkers = mapMarkers,
