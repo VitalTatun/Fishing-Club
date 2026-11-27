@@ -697,6 +697,40 @@ class CreateReportViewModelTest {
     }
 
     @Test
+    fun `new report starts with unset fishing date and time`() = runTest {
+        val vm = createViewModel()
+
+        assertNull(vm.formStartDate)
+        assertNull(vm.formStartTime)
+        assertNull(vm.formEndDate)
+        assertNull(vm.formEndTime)
+
+        vm.formStartDate = "1 янв 2020"
+        vm.formStartTime = "08:15"
+        vm.resetFormState()
+
+        assertNull(vm.formStartDate)
+        assertNull(vm.formStartTime)
+        assertNull(vm.formEndDate)
+        assertNull(vm.formEndTime)
+    }
+
+    @Test
+    fun `fishing date or time counts as form data for discard confirmation`() = runTest {
+        val vm = createViewModel()
+
+        assertFalse(vm.formHasData)
+        vm.formStartDate = "1 янв 2020"
+        assertTrue(vm.formHasData)
+
+        vm.resetFormState()
+        assertFalse(vm.formHasData)
+
+        vm.formEndTime = "18:45"
+        assertTrue(vm.formHasData)
+    }
+
+    @Test
     fun `restores all form fields after process death`() = runTest {
         val handle = SavedStateHandle()
         val first = createViewModel(handle)

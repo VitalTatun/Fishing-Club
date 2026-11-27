@@ -102,6 +102,7 @@ fun CreateReportScreen(
     onNavigateToCommentEdit: () -> Unit = {},
     onNavigateToWaterEdit: () -> Unit = {},
     onNavigateToWaterNameEdit: () -> Unit = {},
+    onNavigateToFishingDateTime: () -> Unit = {},
 ) {
     val haptic = LocalHapticFeedback.current
     val dateFormatter = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru")) }
@@ -423,6 +424,7 @@ fun CreateReportScreen(
                                 onNavigateToMethodAndBaitEdit = onNavigateToMethodAndBaitEdit,
                                 onNavigateToCatchEdit = onNavigateToCatchEdit,
                                 onNavigateToCommentEdit = onNavigateToCommentEdit,
+                                onNavigateToFishingDateTime = onNavigateToFishingDateTime,
                                 onDatePickerClick = { target ->
                                     pickerTarget = target
                                     showDatePicker = true

@@ -48,6 +48,9 @@ data class LocationSearchRoute(val fromWaterEdit: Boolean = false) : NavKey
 data object CreateReportRoute : NavKey
 
 @Serializable
+data object FishingDateTimeRoute : NavKey
+
+@Serializable
 data class FishingLocationRoute(
     val searchLatitude: Double? = null,
     val searchLongitude: Double? = null

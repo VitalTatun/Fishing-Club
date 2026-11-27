@@ -363,10 +363,13 @@ private fun ReportDateTimeRowPreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FishingDatePickerDialog(
+    initialSelectedDateMillis: Long? = null,
     onDismiss: () -> Unit,
     onConfirm: (Long?) -> Unit
 ) {
-    val datePickerState = rememberDatePickerState()
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialSelectedDateMillis
+    )
 
     DatePickerDialog(
         onDismissRequest = onDismiss,

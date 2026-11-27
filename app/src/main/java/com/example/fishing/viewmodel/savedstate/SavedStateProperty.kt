@@ -71,6 +71,15 @@ internal fun SavedStateHandle.stringProperty(
     defaultValue: () -> String = { "" },
 ): SavedStateProperty<String> = SavedStateProperty(this, key, defaultValue)
 
+internal fun SavedStateHandle.nullableStringProperty(
+    key: String,
+): SavedStateProperty<String?> = SavedStateProperty(
+    handle = this,
+    key = key,
+    defaultValue = { null },
+    restore = { it as? String },
+)
+
 internal fun SavedStateHandle.booleanProperty(
     key: String,
     defaultValue: () -> Boolean,

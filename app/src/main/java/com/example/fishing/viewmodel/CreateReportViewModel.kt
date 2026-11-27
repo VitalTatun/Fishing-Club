@@ -39,6 +39,7 @@ import com.example.fishing.viewmodel.savedstate.floatProperty
 import com.example.fishing.viewmodel.savedstate.geoPointProperty
 import com.example.fishing.viewmodel.savedstate.intProperty
 import com.example.fishing.viewmodel.savedstate.listProperty
+import com.example.fishing.viewmodel.savedstate.nullableStringProperty
 import com.example.fishing.viewmodel.savedstate.photosFromSaved
 import com.example.fishing.viewmodel.savedstate.photosToSaved
 import com.example.fishing.viewmodel.savedstate.stringProperty
@@ -136,10 +137,10 @@ class CreateReportViewModel @Inject constructor(
         save = { photosToSaved(it) },
         restore = { photosFromSaved(it) },
     )
-    var formStartDate by savedStateHandle.stringProperty(KEY_START_DATE)
-    var formStartTime by savedStateHandle.stringProperty(KEY_START_TIME)
-    var formEndDate by savedStateHandle.stringProperty(KEY_END_DATE)
-    var formEndTime by savedStateHandle.stringProperty(KEY_END_TIME)
+    var formStartDate by savedStateHandle.nullableStringProperty(KEY_START_DATE)
+    var formStartTime by savedStateHandle.nullableStringProperty(KEY_START_TIME)
+    var formEndDate by savedStateHandle.nullableStringProperty(KEY_END_DATE)
+    var formEndTime by savedStateHandle.nullableStringProperty(KEY_END_TIME)
     var formFishingFromShore by savedStateHandle.booleanProperty(KEY_FROM_SHORE) { true }
     var formIsPublic by savedStateHandle.booleanProperty(KEY_IS_PUBLIC) { true }
     var formIsPaidWater by savedStateHandle.booleanProperty(KEY_PAID_WATER) { false }
@@ -256,10 +257,6 @@ class CreateReportViewModel @Inject constructor(
         get() = saveState == CreateReportSaveState.Saving
 
     init {
-        // Restored dates must win over freshly generated defaults.
-        if (!savedStateHandle.contains(KEY_START_DATE)) {
-            setDefaultDateTimeValues()
-        }
         // Persist the id right away (and heal a corrupted one): a retry after
         // process death must update the same queued report instead of creating
         // a duplicate.
@@ -330,32 +327,41 @@ class CreateReportViewModel @Inject constructor(
         }
 
         val dateTimeItems = mutableListOf<ReportField>(
+            ReportField.CustomField("date_time_summary"),
             ReportField.ListItemField(
                 fieldId = "date_time",
-                title = formStartDate.ifEmpty { context.getString(R.string.start) },
+                title = formStartDate ?: context.getString(R.string.start),
                 supportingText = startSupportingText,
                 leadingIcon = if (startError != null) Icons.Default.Error else Icons.Default.Schedule,
-                trailingText = formStartTime.ifEmpty { context.getString(R.string.select_time) },
+                trailingText = formStartTime ?: context.getString(R.string.select_time),
                 isError = startError != null
             ),
             ReportField.ListItemField(
                 fieldId = "date_time_end",
-                title = formEndDate.ifEmpty { context.getString(R.string.end) },
+                title = formEndDate ?: context.getString(R.string.end),
                 supportingText = endSupportingText,
                 leadingIcon = if (endError != null) Icons.Default.Error else null,
-                trailingText = formEndTime.ifEmpty { context.getString(R.string.select_time) },
+                trailingText = formEndTime ?: context.getString(R.string.select_time),
                 isError = endError != null
             ),
-            ReportField.ToggleField(
-                fieldId = "is_public",
-                title = "Опубликовать",
-                supportingText = context.getString(R.string.publish_supporting),
-                leadingIcon = Icons.Default.PublishedWithChanges,
-                checked = formIsPublic,
-                onCheckedChange = { formIsPublic = it }
-            )
         )
         sections.add(ReportFormSection(id = "date_time", items = dateTimeItems))
+
+        sections.add(
+            ReportFormSection(
+                id = "publish",
+                items = listOf(
+                    ReportField.ToggleField(
+                        fieldId = "is_public",
+                        title = "Опубликовать",
+                        supportingText = context.getString(R.string.publish_supporting),
+                        leadingIcon = Icons.Default.PublishedWithChanges,
+                        checked = formIsPublic,
+                        onCheckedChange = { formIsPublic = it }
+                    )
+                )
+            )
+        )
 
         // Photos Section
         sections.add(
@@ -500,6 +506,10 @@ class CreateReportViewModel @Inject constructor(
     val formHasData: Boolean
         get() = formWaterName.isNotBlank() ||
                 formLocation != null ||
+                !formStartDate.isNullOrBlank() ||
+                !formStartTime.isNullOrBlank() ||
+                !formEndDate.isNullOrBlank() ||
+                !formEndTime.isNullOrBlank() ||
                 formSelectedMethod != FishingMethod.NONE ||
                 formSelectedFish.isNotEmpty() ||
                 formSelectedBaits.isNotEmpty() ||
@@ -722,7 +732,10 @@ class CreateReportViewModel @Inject constructor(
         formReportType = FishingType.FISHING_LOG
         formWaterName = ""
         formPhotos = emptyList()
-        setDefaultDateTimeValues()
+        formStartDate = null
+        formStartTime = null
+        formEndDate = null
+        formEndTime = null
         formFishingFromShore = true
         formIsPublic = true
         formIsPaidWater = false
@@ -1013,20 +1026,6 @@ class CreateReportViewModel @Inject constructor(
         }
     }
 
-    private fun setDefaultDateTimeValues() {
-        val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
-        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val endCal = Calendar.getInstance()
-        val startCal = (endCal.clone() as Calendar).apply {
-            add(Calendar.HOUR_OF_DAY, -1)
-        }
-
-        formStartDate = dateFormatter.format(startCal.time)
-        formStartTime = timeFormatter.format(startCal.time)
-        formEndDate = dateFormatter.format(endCal.time)
-        formEndTime = timeFormatter.format(endCal.time)
-    }
-
     private fun cleanupTempPhotos(
         photos: List<ReportPhoto> = formPhotos,
         extraFiles: List<String> = emptyList()
@@ -1056,8 +1055,8 @@ class CreateReportViewModel @Inject constructor(
         return combineDateAndTime(formEndDate, formEndTime)
     }
 
-    private fun combineDateAndTime(dateString: String, timeString: String): Instant? {
-        if (dateString.isBlank() || timeString.isBlank()) return null
+    private fun combineDateAndTime(dateString: String?, timeString: String?): Instant? {
+        if (dateString.isNullOrBlank() || timeString.isNullOrBlank()) return null
 
         val dateFormatter = SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("ru"))
         return try {

@@ -293,7 +293,27 @@ fun FishingNavHost(
                     },
                     onNavigateToWaterNameEdit = {
                         navigator.navigate(WaterNameEditRoute)
+                    },
+                    onNavigateToFishingDateTime = {
+                        navigator.navigate(FishingDateTimeRoute)
                     }
+                )
+            }
+
+            entry<FishingDateTimeRoute> {
+                FishingDateTimeScreen(
+                    startDateText = createReportViewModel.formStartDate.orEmpty(),
+                    startTimeText = createReportViewModel.formStartTime.orEmpty(),
+                    endDateText = createReportViewModel.formEndDate.orEmpty(),
+                    endTimeText = createReportViewModel.formEndTime.orEmpty(),
+                    onBackClick = { navigator.popBackStack() },
+                    onConfirm = { startDate, startTime, endDate, endTime ->
+                        createReportViewModel.formStartDate = startDate
+                        createReportViewModel.formStartTime = startTime
+                        createReportViewModel.formEndDate = endDate
+                        createReportViewModel.formEndTime = endTime
+                        navigator.popBackStack()
+                    },
                 )
             }
 
