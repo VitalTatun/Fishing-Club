@@ -1,38 +1,36 @@
 package com.example.fishing.ui.screens.map
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -40,31 +38,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.fishing.R
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishingMethod
-import com.example.fishing.model.popularFrom
-import com.example.fishing.model.searchFishSpecies
 import com.example.fishing.ui.components.ContentWidths
-import com.example.fishing.ui.components.FishingListItem
-import com.example.fishing.ui.components.SearchInputField
 import com.example.fishing.ui.components.SectionGroup
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.filter.ReportFilters
@@ -101,7 +87,6 @@ internal fun MapFiltersContent(
     modifier: Modifier = Modifier
 ) {
     var draft by remember(initialFilters) { mutableStateOf(initialFilters) }
-    var showFishPicker by rememberSaveable { mutableStateOf(false) }
     val hasChanges = draft != initialFilters
 
     Scaffold(
@@ -146,8 +131,15 @@ internal fun MapFiltersContent(
             ) {
                 SectionGroup(showDivider = true) {
                     FishFilterField(
+                        species = species,
                         selectedCatch = draft.selectedCatch,
-                        onClick = { showFishPicker = true }
+                        selectedSpeciesId = draft.selectedSpeciesId,
+                        onSelect = { fish ->
+                            draft = draft.copy(
+                                selectedCatch = fish?.canonicalName,
+                                selectedSpeciesId = fish?.id
+                            )
+                        }
                     )
                 }
 
@@ -222,66 +214,95 @@ internal fun MapFiltersContent(
         }
     }
 
-    if (showFishPicker) {
-        FishFilterDialog(
-            species = species,
-            selectedSpeciesId = draft.selectedSpeciesId,
-            selectedCatch = draft.selectedCatch,
-            onDismiss = { showFishPicker = false },
-            onClear = {
-                draft = draft.copy(selectedCatch = null, selectedSpeciesId = null)
-                showFishPicker = false
-            },
-            onSelect = { fish ->
-                draft = draft.copy(
-                    selectedCatch = fish.canonicalName,
-                    selectedSpeciesId = fish.id
-                )
-                showFishPicker = false
-            }
-        )
-    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FishFilterField(
+    species: List<FishSpecies>,
     selectedCatch: String?,
-    onClick: () -> Unit
+    selectedSpeciesId: String?,
+    onSelect: (FishSpecies?) -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val value = selectedCatch ?: stringResource(R.string.map_filter_fish_none)
-    Box(
+    val label = stringResource(R.string.map_filter_fish_label)
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp)
     ) {
         OutlinedTextField(
             value = value,
             onValueChange = {},
             readOnly = true,
             singleLine = true,
-            label = { Text(stringResource(R.string.map_filter_fish_label)) },
+            label = { Text(label) },
             trailingIcon = {
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null
-                )
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
-            modifier = Modifier.fillMaxWidth()
-        )
-        // The overlay makes the whole field open the picker without turning the
-        // read-only field into an editable one.
-        val description = "${stringResource(R.string.map_filter_fish_label)}: $value"
-        Box(
             modifier = Modifier
-                .matchParentSize()
-                .testTag("map_filter_fish_field")
-                .semantics { contentDescription = description }
-                .clickable(
-                    role = Role.Button,
-                    onClickLabel = stringResource(R.string.map_filter_fish_label),
-                    onClick = onClick
-                )
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                .fillMaxWidth()
+                .testTag("map_filter_fish_field"),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            shape = RoundedCornerShape(4.dp)
         )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = MenuDefaults.groupStandardContainerColor,
+            modifier = Modifier.exposedDropdownSize(),
+            shape = MenuDefaults.standaloneGroupShape
+        ) {
+            val optionCount = species.size + 1
+            SelectableDropdownMenuItem(
+                shapes = MenuDefaults.itemShape(0, optionCount),
+                text = { Text(stringResource(R.string.map_filter_fish_all)) },
+                selected = selectedCatch == null,
+                onClick = {
+                    onSelect(null)
+                    expanded = false
+                },
+                selectedLeadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(MenuDefaults.LeadingIconSize)
+                    )
+                },
+                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+            )
+            species.forEachIndexed { index, item ->
+                val selected = item.id == selectedSpeciesId ||
+                    (selectedSpeciesId == null && item.canonicalName == selectedCatch)
+                SelectableDropdownMenuItem(
+                    shapes = MenuDefaults.itemShape(index + 1, optionCount),
+                    text = {
+                        Text(
+                            text = item.canonicalName,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    },
+                    selected = selected,
+                    onClick = {
+                        onSelect(item)
+                        expanded = false
+                    },
+                    selectedLeadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(MenuDefaults.LeadingIconSize)
+                        )
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                )
+            }
+        }
     }
 }
 
@@ -293,124 +314,11 @@ private fun FilterChipRow(content: @Composable () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         content()
     }
 }
-
-@Composable
-private fun FishFilterDialog(
-    species: List<FishSpecies>,
-    selectedSpeciesId: String?,
-    selectedCatch: String?,
-    onDismiss: () -> Unit,
-    onClear: () -> Unit,
-    onSelect: (FishSpecies) -> Unit
-) {
-    var query by rememberSaveable { mutableStateOf("") }
-
-    val options = remember(query, species) {
-        if (query.isBlank()) {
-            val popular = popularFrom(species)
-            if (popular.isNotEmpty()) {
-                popular.mapNotNull { suggestion ->
-                    suggestion.speciesId?.let { id ->
-                        FishFilterOption(id = id, name = suggestion.name)
-                    }
-                }
-            } else {
-                species
-                    .sortedBy { it.canonicalName }
-                    .map { FishFilterOption(id = it.id, name = it.canonicalName) }
-            }
-        } else {
-            searchFishSpecies(query, species)
-                .map { FishFilterOption(id = it.id, name = it.canonicalName) }
-        }
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = ContentWidths.Form)
-                .fillMaxHeight(0.8f)
-                .padding(16.dp),
-            shape = MaterialTheme.shapes.large,
-            tonalElevation = 6.dp
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 4.dp, top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.map_filter_fish_label),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(R.string.back)
-                        )
-                    }
-                }
-
-                SearchInputField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = stringResource(R.string.map_filter_fish_label),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .testTag("map_filter_fish_query"),
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null
-                        )
-                    }
-                )
-
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    item(key = "all") {
-                        FishingListItem(
-                            title = stringResource(R.string.map_filter_fish_all),
-                            leadingIcon = Icons.Default.Clear,
-                            onRowClick = onClear
-                        )
-                    }
-                    items(options, key = { it.id }) { option ->
-                        val selected = option.id == selectedSpeciesId ||
-                            (selectedSpeciesId == null && option.name == selectedCatch)
-                        FishingListItem(
-                            title = option.name,
-                            leadingIcon = if (selected) Icons.Default.Check else Icons.Default.Search,
-                            fontWeight = if (selected) FontWeight.Medium else null,
-                            onRowClick = {
-                                species.firstOrNull { it.id == option.id }?.let(onSelect)
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private data class FishFilterOption(
-    val id: String,
-    val name: String
-)
 
 private val METHOD_ORDER = listOf(
     FishingMethod.BOBBER,

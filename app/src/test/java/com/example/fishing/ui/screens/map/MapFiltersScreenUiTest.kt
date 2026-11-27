@@ -1,6 +1,7 @@
 package com.example.fishing.ui.screens.map
 
 import android.app.Application
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -10,7 +11,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.ui.theme.FishingTheme
@@ -113,7 +113,7 @@ class MapFiltersScreenUiTest {
         setContent(onApply = { applied = it })
 
         composeRule.onNodeWithTag("map_filter_fish_field").performClick()
-        composeRule.onNodeWithTag("map_filter_fish_query").performTextInput("щу")
+        composeRule.onNodeWithText("Все виды").assertIsDisplayed()
         composeRule.onNodeWithText("Щука").performClick()
         composeRule.onNodeWithTag("map_filters_apply").performClick()
 
