@@ -54,6 +54,7 @@ fun MapScreen(
     isRefreshing: Boolean = false,
     errorMessage: String? = null,
     onRetry: () -> Unit = {},
+    onFiltersClick: (() -> Unit)? = null,
     /**
      * True on the main map tab: the camera drives viewport loading and the zoom
      * threshold applies. Full-map from a report disables both.
@@ -347,6 +348,37 @@ fun MapScreen(
                     .padding(top = 72.dp)
                     .fillMaxWidth(0.6f)
             )
+        }
+
+        if (onFiltersClick != null) {
+            FilledIconButton(
+                onClick = onFiltersClick,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, end = 16.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                BadgedBox(
+                    badge = {
+                        if (mapFilters.activeCount > 0) {
+                            Badge {
+                                Text(text = mapFilters.activeCount.toString())
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = stringResource(
+                            R.string.map_filters_content_description
+                        )
+                    )
+                }
+            }
         }
 
         if (onBackClick != null) {

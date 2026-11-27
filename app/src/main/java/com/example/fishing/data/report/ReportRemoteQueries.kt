@@ -14,9 +14,6 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
-import java.time.Instant
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -219,11 +216,6 @@ class SupabaseReportRemoteQueries @Inject constructor(
                 if (filters.paidOnly) eq("water_paid", true)
                 filters.method?.let { eq("fishing_method", it.name) }
                 filters.speciesId?.let { eq("fishing_fish.species_id", it) }
-                filters.dateMillis?.let { dayMillis ->
-                    val (from, toExclusive) = localDayRange(dayMillis)
-                    gte("fishing_start_at", from)
-                    lt("fishing_start_at", toExclusive)
-                }
             }
             // One extra row tells the caller whether the viewport was truncated.
             limit((limit + 1).toLong())
@@ -235,17 +227,6 @@ class SupabaseReportRemoteQueries @Inject constructor(
             markers = page.mapNotNull { it.toRemoteMapMarker() },
             truncated = truncated
         )
-    }
-
-    /** Converts a local calendar day into a half-open UTC range for timestamptz. */
-    private fun localDayRange(dayMillis: Long): Pair<String, String> {
-        val zone = ZoneId.systemDefault()
-        val start = Instant.ofEpochMilli(dayMillis)
-            .atZone(zone)
-            .toLocalDate()
-            .atStartOfDay(zone)
-            .toInstant()
-        return start.toString() to start.plus(1, ChronoUnit.DAYS).toString()
     }
 
     /**

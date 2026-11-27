@@ -6,9 +6,8 @@ import com.example.fishing.model.FishingType
 import com.example.fishing.testutil.testMarker
 import com.example.fishing.testutil.testReport
 import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -94,32 +93,23 @@ class ReportFiltersTest {
     }
 
     @Test
-    fun `date filter uses the local calendar day`() {
-        val zone = ZoneId.systemDefault()
-        val day = LocalDate.of(2026, 5, 1)
-        val instant = day.atTime(8, 0).atZone(zone).toInstant()
-        val filters = ReportFilters(
-            selectedDateMillis = day.atStartOfDay(zone).toInstant().toEpochMilli()
-        )
-        val report = testReport(fishingStartAt = instant)
-        val marker = testMarker().copy(fishingStartAt = instant)
-
-        assertTrue(filters.matches(report, emptySet()))
-        assertTrue(filters.matches(marker, emptySet()))
-        assertFalse(filters.matches(report.copy(fishingStartAt = null), emptySet()))
-        assertFalse(filters.matches(marker.copy(fishingStartAt = null), emptySet()))
-        assertFalse(
-            filters.matches(
-                report.copy(fishingStartAt = instant.plusSeconds(24 * 60 * 60)),
-                emptySet()
-            )
-        )
+    fun `species and own-only filters make filters active`() {
+        assertTrue(ReportFilters(selectedSpeciesId = "esox_lucius").isActive)
+        assertTrue(ReportFilters(isOwnOnly = true).isActive)
     }
 
     @Test
-    fun `species and date filters make filters active`() {
-        assertTrue(ReportFilters(selectedSpeciesId = "esox_lucius").isActive)
-        assertTrue(ReportFilters(selectedDateMillis = 1L).isActive)
+    fun `active count groups the fish condition and ignores favorites`() {
+        assertEquals(0, ReportFilters(isFavoritesSelected = true).activeCount)
+        assertEquals(
+            3,
+            ReportFilters(
+                isOwnOnly = true,
+                isTrophySelected = true,
+                selectedCatch = "Щука",
+                selectedSpeciesId = "esox_lucius"
+            ).activeCount
+        )
     }
 
     @Test

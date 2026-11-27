@@ -5,8 +5,6 @@ import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.MarkerDomain
-import java.time.Instant
-import java.time.ZoneId
 import java.util.Calendar
 import java.util.UUID
 
@@ -21,21 +19,31 @@ data class ReportFilters(
     val isFavoritesSelected: Boolean = false,
     val isTrophySelected: Boolean = false,
     val isPaidSelected: Boolean = false,
+    /** Map-only: show the viewer's own reports instead of public ones. */
+    val isOwnOnly: Boolean = false,
     val selectedCatch: String? = null,
     /** Catalog id matching [selectedCatch]; used by the server-side map query. */
     val selectedSpeciesId: String? = null,
-    val selectedMethod: FishingMethod? = null,
-    /** Single local calendar day encoded as epoch millis, or null for any date. */
-    val selectedDateMillis: Long? = null
+    val selectedMethod: FishingMethod? = null
 ) {
     val isActive: Boolean
         get() = isFavoritesSelected ||
             isTrophySelected ||
             isPaidSelected ||
+            isOwnOnly ||
             selectedCatch != null ||
             selectedSpeciesId != null ||
-            selectedMethod != null ||
-            selectedDateMillis != null
+            selectedMethod != null
+
+    /** Number of active map conditions, used by the map badge. */
+    val activeCount: Int
+        get() = listOf(
+            isOwnOnly,
+            isTrophySelected,
+            isPaidSelected,
+            selectedCatch != null || selectedSpeciesId != null,
+            selectedMethod != null
+        ).count { it }
 
     fun matches(report: FishingReport, favoriteIds: Set<UUID>): Boolean {
         if (isFavoritesSelected && report.id !in favoriteIds) return false
@@ -49,7 +57,6 @@ data class ReportFilters(
             return false
         }
         if (selectedMethod != null && report.fishingMethod != selectedMethod) return false
-        if (!matchesDate(report.fishingStartAt)) return false
         return true
     }
 
@@ -59,7 +66,6 @@ data class ReportFilters(
         if (isPaidSelected && !marker.isPaidWater) return false
         if (!matchesFish(marker.fishNames, marker.fishSpeciesIds)) return false
         if (selectedMethod != null && marker.fishingMethod != selectedMethod) return false
-        if (!matchesDate(marker.fishingStartAt)) return false
         return true
     }
 
@@ -73,15 +79,6 @@ data class ReportFilters(
         val byName = selectedCatch != null && names.contains(selectedCatch)
         return bySpecies || byName
     }
-
-    private fun matchesDate(instant: Instant?): Boolean {
-        val dayMillis = selectedDateMillis ?: return true
-        if (instant == null) return false
-        val zone = ZoneId.systemDefault()
-        val reportDay = instant.atZone(zone).toLocalDate()
-        val filterDay = Instant.ofEpochMilli(dayMillis).atZone(zone).toLocalDate()
-        return reportDay == filterDay
-    }
 }
 
 /** Server-side projection of the map filters. Favorites do not leave the client. */
@@ -89,8 +86,7 @@ fun ReportFilters.toMapMarkerFilters(): MapMarkerFilters = MapMarkerFilters(
     trophyOnly = isTrophySelected,
     paidOnly = isPaidSelected,
     method = selectedMethod,
-    speciesId = selectedSpeciesId,
-    dateMillis = selectedDateMillis
+    speciesId = selectedSpeciesId
 )
 
 /**

@@ -9,10 +9,8 @@ data class MapMarkerFilters(
     val paidOnly: Boolean = false,
     val method: FishingMethod? = null,
     /** Catalog `fish_species.id`; the filter is single-select. */
-    val speciesId: String? = null,
-    /** Local calendar day encoded as epoch millis, or null for any date. */
-    val dateMillis: Long? = null
+    val speciesId: String? = null
 ) {
     val isActive: Boolean
-        get() = trophyOnly || paidOnly || method != null || speciesId != null || dateMillis != null
+        get() = trophyOnly || paidOnly || method != null || speciesId != null
 }

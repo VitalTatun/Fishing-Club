@@ -35,6 +35,7 @@ import com.example.fishing.ui.screens.search.ReportSearchScreen
 import com.example.fishing.ui.screens.user.UserProfileScreen
 import com.example.fishing.ui.screens.login.LoginScreen
 import com.example.fishing.ui.screens.login.RegistrationScreen
+import com.example.fishing.ui.screens.map.MapFiltersScreen
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.ReportDetailUiState
@@ -186,6 +187,9 @@ fun FishingNavHost(
                             navigator.navigate(LocationSearchRoute())
                         }
                     },
+                    onMapFiltersClick = {
+                        navigator.navigate(MapFiltersRoute)
+                    },
                     userEmail = currentUser?.email,
                     userName = currentUser?.name,
                     userImage = currentUser?.image,
@@ -217,6 +221,18 @@ fun FishingNavHost(
                     onRetryPendingUpload = { viewModel.retryPendingUpload(it) },
                     onCancelPendingUpload = { viewModel.cancelPendingUpload(it) },
                     onUploadNoticeConsumed = { viewModel.consumeUploadNotice() }
+                )
+            }
+
+            entry<MapFiltersRoute> {
+                val mapFilters by viewModel.mapFilters.collectAsStateWithLifecycle()
+                MapFiltersScreen(
+                    initialFilters = mapFilters,
+                    onApply = { filters ->
+                        viewModel.applyMapFilters(filters)
+                        navigator.popBackStack()
+                    },
+                    onBack = { navigator.popBackStack() }
                 )
             }
 

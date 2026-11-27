@@ -89,6 +89,7 @@ fun MainShell(
     onCreateReportClick: () -> Unit = {},
     onReportClick: (FishingReport) -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onMapFiltersClick: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRetryLoadMore: () -> Unit = onLoadMore,
     onRefresh: () -> Unit = {},
@@ -296,7 +297,8 @@ fun MainShell(
                             isLoading = mapIsLoading,
                             isRefreshing = mapIsRefreshing,
                             errorMessage = mapErrorMessage,
-                            onRetry = { viewModel?.loadMapMarkers(force = true) }
+                            onRetry = { viewModel?.loadMapMarkers(force = true) },
+                            onFiltersClick = onMapFiltersClick
                         )
                     }
                     2 -> {

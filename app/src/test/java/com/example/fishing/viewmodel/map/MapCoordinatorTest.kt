@@ -165,8 +165,7 @@ class MapCoordinatorTest {
         val filters = ReportFilters(
             isTrophySelected = true,
             selectedSpeciesId = "esox_lucius",
-            selectedMethod = FishingMethod.SPINNING,
-            selectedDateMillis = 1_000L
+            selectedMethod = FishingMethod.SPINNING
         )
         coordinator.onFiltersApplied(filters)
         advanceTimeBy(500)
@@ -176,8 +175,7 @@ class MapCoordinatorTest {
             MapMarkerFilters(
                 trophyOnly = true,
                 method = FishingMethod.SPINNING,
-                speciesId = "esox_lucius",
-                dateMillis = 1_000L
+                speciesId = "esox_lucius"
             ),
             request.filters
         )
@@ -303,6 +301,35 @@ class MapCoordinatorTest {
         advanceTimeBy(500)
 
         assertTrue(coordinator.mapMarkers.value.isEmpty())
+    }
+
+    @Test
+    fun `own-only shows own markers and skips the public request`() = runTest {
+        val repository = FakeFishingRepository()
+        val publicMarker = marker(lat = 53.5, lng = 27.5)
+        val ownMarker = marker(lat = 60.0, lng = 30.0, isPublic = false)
+        repository.loadPublicMapMarkersResult = page(publicMarker)
+        repository.ownMapMarkersValue = listOf(ownMarker)
+        val coordinator = coordinator(repository)
+
+        coordinator.onUserChanged(userId)
+        advanceTimeBy(500)
+        coordinator.onMapShown()
+        coordinator.onViewportChanged(zoneA, 12.0)
+        advanceTimeBy(500)
+        assertEquals(1, repository.loadPublicMapMarkersCallCount)
+
+        coordinator.onFiltersApplied(ReportFilters(isOwnOnly = true))
+        advanceTimeBy(500)
+
+        assertEquals(listOf(ownMarker), coordinator.mapMarkers.value)
+        assertEquals(1, repository.loadPublicMapMarkersCallCount)
+        assertTrue(coordinator.mapShowingOwnOnly.value)
+
+        coordinator.onFiltersApplied(ReportFilters())
+        advanceTimeBy(500)
+
+        assertEquals(2, repository.loadPublicMapMarkersCallCount)
     }
 
     @Test

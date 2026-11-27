@@ -274,6 +274,11 @@ class MainViewModel @Inject constructor(
         map.updateMapFilters(transform)
     }
 
+    /** Applies a completed draft from the filters screen. */
+    fun applyMapFilters(filters: ReportFilters) {
+        map.onFiltersApplied(filters)
+    }
+
     fun updateSearchState(transform: (ReportSearchState) -> ReportSearchState) {
         search.update(transform)
     }

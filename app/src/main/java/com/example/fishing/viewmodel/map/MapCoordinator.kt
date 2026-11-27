@@ -148,6 +148,14 @@ class MapCoordinator(
             return
         }
 
+        if (_mapFilters.value.isOwnOnly) {
+            cancelPendingLoads()
+            _mapIsLoading.value = false
+            _mapIsRefreshing.value = false
+            publishMarkers()
+            return
+        }
+
         val loaded = loadedViewport
         if (loaded != null && loaded.contains(bounds)) return
         scheduleLoad(bounds, immediate = false)
@@ -156,9 +164,15 @@ class MapCoordinator(
     /** Filters applied from the filters screen: clear and reload the zone. */
     fun onFiltersApplied(filters: ReportFilters) {
         _mapFilters.value = filters
+        cancelPendingLoads()
         clearPublicCache()
+        _mapRefreshError.value = null
+        if (filters.isOwnOnly) {
+            _mapIsLoading.value = false
+            _mapIsRefreshing.value = false
+        }
         publishMarkers()
-        if (isMapVisible) {
+        if (isMapVisible && !filters.isOwnOnly) {
             currentBounds?.let { bounds ->
                 if (currentZoom >= zoomThreshold) {
                     scheduleLoad(bounds, immediate = true)
@@ -169,9 +183,15 @@ class MapCoordinator(
 
     /** Explicit pull-to-refresh/retry: drop the cache and reload the zone. */
     fun onRefreshRequested() {
+        cancelPendingLoads()
         clearPublicCache()
+        _mapRefreshError.value = null
+        if (_mapFilters.value.isOwnOnly) {
+            _mapIsLoading.value = false
+            _mapIsRefreshing.value = false
+        }
         publishMarkers()
-        if (isMapVisible) {
+        if (isMapVisible && !_mapFilters.value.isOwnOnly) {
             currentBounds?.let { bounds ->
                 if (currentZoom >= zoomThreshold) {
                     scheduleLoad(bounds, immediate = true)
@@ -226,10 +246,12 @@ class MapCoordinator(
     }
 
     private fun scheduleLoad(bounds: MapBounds, immediate: Boolean) {
+        if (_mapFilters.value.isOwnOnly) return
         debounceJob?.cancel()
         debounceJob = scope.launch {
             if (!immediate) delay(debounceMillis)
             if (!isMapVisible || currentZoom < zoomThreshold) return@launch
+            if (_mapFilters.value.isOwnOnly) return@launch
             loadViewport(bounds.expandedBy(VIEWPORT_MARGIN))
         }
     }
@@ -274,14 +296,16 @@ class MapCoordinator(
     private fun publishMarkers() {
         val filters = _mapFilters.value
         val bounds = currentBounds
-        val unfiltered = accumulated.values + ownMarkers
+        val publicSource = if (filters.isOwnOnly) emptyList() else accumulated.values
+        val unfiltered = publicSource + ownMarkers
         _mapHasMarkersInViewport.value = unfiltered.any { marker ->
             bounds?.contains(marker.waterLat, marker.waterLng) ?: true
         }
-        _mapShowingOwnOnly.value = accumulated.isEmpty() && ownMarkers.isNotEmpty()
+        _mapShowingOwnOnly.value =
+            filters.isOwnOnly || (accumulated.isEmpty() && ownMarkers.isNotEmpty())
 
-        val merged = LinkedHashMap<UUID, MarkerDomain>(accumulated.size + ownMarkers.size)
-        accumulated.values.forEach { marker ->
+        val merged = LinkedHashMap<UUID, MarkerDomain>(publicSource.size + ownMarkers.size)
+        publicSource.forEach { marker ->
             if (filters.matches(marker, emptySet())) merged[marker.id] = marker
         }
         ownMarkers.forEach { marker ->
