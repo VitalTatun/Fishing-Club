@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -226,7 +227,8 @@ internal fun MapFiltersContent(
                                         }
                                     )
                                 },
-                                label = stringResource(method.labelRes)
+                                label = stringResource(method.labelRes),
+                                reserveIconSpace = true
                             )
                         }
                     }
@@ -432,7 +434,8 @@ private fun SelectedCheckIcon() {
 private fun MapFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
-    label: String
+    label: String,
+    reserveIconSpace: Boolean = false
 ) {
     FilterChip(
         selected = selected,
@@ -440,16 +443,30 @@ private fun MapFilterChip(
         label = { Text(label) },
         shapes = FilterChipDefaults.shapes(),
         colors = FilterChipDefaults.filterChipColors(),
-        leadingIcon = if (selected) {
-            {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(FilterChipDefaults.IconSize)
-                )
+        leadingIcon = when {
+            // Methods need a stable width: adding the check only after
+            // selection makes the last chip jump between rows.
+            reserveIconSpace -> {
+                {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(FilterChipDefaults.IconSize)
+                            .alpha(if (selected) 1f else 0f)
+                    )
+                }
             }
-        } else {
-            null
+            selected -> {
+                {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(FilterChipDefaults.IconSize)
+                    )
+                }
+            }
+            else -> null
         }
     )
 }
