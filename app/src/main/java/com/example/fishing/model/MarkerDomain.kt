@@ -14,5 +14,11 @@ data class MarkerDomain(
     val fishingStartAt: Instant?,
     val isPublic: Boolean,
     val isPaidWater: Boolean = false,
-    val fishNames: List<String> = emptyList()
+    /**
+     * Canonical names for server-returned markers, raw names for own offline
+     * rows whose species could not be resolved.
+     */
+    val fishNames: List<String> = emptyList(),
+    /** Catalog ids resolved for the report's fish, used by the species filter. */
+    val fishSpeciesIds: Set<String> = emptySet()
 )

@@ -35,6 +35,7 @@ import com.example.fishing.ui.screens.search.ReportSearchScreen
 import com.example.fishing.ui.screens.user.UserProfileScreen
 import com.example.fishing.ui.screens.login.LoginScreen
 import com.example.fishing.ui.screens.login.RegistrationScreen
+import com.example.fishing.ui.screens.map.MapFiltersScreen
 import com.example.fishing.ui.screens.map.MapScreen
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.ReportDetailUiState
@@ -78,8 +79,8 @@ fun FishingNavHost(
     val loadMoreError by viewModel.loadMoreError.collectAsStateWithLifecycle()
     val hasMoreReports by viewModel.hasMoreReports.collectAsStateWithLifecycle()
     val mapIsLoading by viewModel.mapIsLoading.collectAsStateWithLifecycle()
-    val mapIsRefreshing by viewModel.mapIsRefreshing.collectAsStateWithLifecycle()
     val mapErrorMessage by viewModel.mapRefreshError.collectAsStateWithLifecycle()
+    val mapFilters by viewModel.mapFilters.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val reportDisplayMode by viewModel.reportDisplayMode.collectAsStateWithLifecycle()
     val pendingUploads by viewModel.pendingUploads.collectAsStateWithLifecycle()
@@ -166,8 +167,8 @@ fun FishingNavHost(
                     onLoadMore = { viewModel.loadMoreReports() },
                     onRetryLoadMore = { viewModel.loadMoreReports() },
                     mapIsLoading = mapIsLoading,
-                    mapIsRefreshing = mapIsRefreshing,
                     mapErrorMessage = mapErrorMessage,
+                    mapFiltersActiveCount = mapFilters.activeCount,
                     selectedTab = selectedTab,
                     mapMarkers = mapMarkers,
                     viewModel = viewModel,
@@ -185,6 +186,9 @@ fun FishingNavHost(
                         } else {
                             navigator.navigate(LocationSearchRoute())
                         }
+                    },
+                    onMapFiltersClick = {
+                        navigator.navigate(MapFiltersRoute)
                     },
                     userEmail = currentUser?.email,
                     userName = currentUser?.name,
@@ -217,6 +221,17 @@ fun FishingNavHost(
                     onRetryPendingUpload = { viewModel.retryPendingUpload(it) },
                     onCancelPendingUpload = { viewModel.cancelPendingUpload(it) },
                     onUploadNoticeConsumed = { viewModel.consumeUploadNotice() }
+                )
+            }
+
+            entry<MapFiltersRoute> {
+                MapFiltersScreen(
+                    initialFilters = mapFilters,
+                    onApply = { filters ->
+                        viewModel.applyMapFilters(filters)
+                        navigator.popBackStack()
+                    },
+                    onBack = { navigator.popBackStack() }
                 )
             }
 
@@ -537,18 +552,21 @@ fun FishingNavHost(
                     UUID.fromString(fullMapRoute.reportId)
                 }.getOrNull()
 
-                val singleMarker = reportId?.let { id ->
-                    mapMarkers.firstOrNull { it.id == id }
+                val fullMapDetailState by viewModel.reportDetailUiState
+                    .collectAsStateWithLifecycle()
+                SessionReadyEffect(reportId, authState) {
+                    reportId?.let(viewModel::loadReportDetails)
                 }
+                // Full-map does not depend on the viewport cache: the marker is
+                // built from the report itself, even when it is outside the
+                // currently loaded map area.
+                val singleMarker = (fullMapDetailState as? ReportDetailUiState.Success)
+                    ?.report
+                    ?.takeIf { it.id == reportId }
+                    ?.toMarkerDomain()
 
-                val mapFilters by viewModel.mapFilters.collectAsStateWithLifecycle()
-                SessionReadyEffect(mapFilters.isFavoritesSelected, authState) {
-                    if (mapFilters.isFavoritesSelected) {
-                        viewModel.loadFilterFavoriteReports(force = true)
-                    }
-                }
                 MapScreen(
-                    markers = if (singleMarker != null) listOf(singleMarker) else mapMarkers,
+                    markers = singleMarker?.let(::listOf).orEmpty(),
                     viewModel = viewModel,
                     onBackClick = {
                         navigator.popBackStack()
@@ -560,7 +578,7 @@ fun FishingNavHost(
                     initialReportId = reportId,
                     selectedMarkerDotStyle = true,
                     repository = fishingRepository,
-                    favoriteReports = filterFavoriteReports
+                    viewportMode = false
                 )
             }
 

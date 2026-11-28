@@ -7,8 +7,6 @@ import com.example.fishing.utils.PhotoUtils
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.LikeDao
-import com.example.fishing.data.local.dao.MarkerDao
-import com.example.fishing.data.cleanup.MarkerCacheCleaner
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.api.authenticatedSupabaseApi
@@ -48,9 +46,7 @@ class SupabaseAuthRepository @Inject constructor(
     private val reportDetailsDao: ReportDetailsDao,
     private val favoriteReportDao: FavoriteReportDao,
     private val likeDao: LikeDao,
-    private val markerDao: MarkerDao,
     private val reportUploadQueue: ReportUploadQueue,
-    private val markerCacheCleaner: MarkerCacheCleaner,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : AuthRepository {
 
@@ -84,13 +80,6 @@ class SupabaseAuthRepository @Inject constructor(
             }
         }
         .stateIn(scope, SharingStarted.WhileSubscribed(5_000), AuthState.Loading)
-
-    init {
-        // AUD-02: marker rows are not user-scoped yet, so they may not outlive
-        // the session that produced them. Keeping authState collected also
-        // makes sure the drop happens even when no screen is observing it.
-        markerCacheCleaner.clearWhenUnauthenticated(authState)
-    }
 
     override suspend fun loadSession() {
         supabase.auth.awaitInitialization()
@@ -201,7 +190,6 @@ class SupabaseAuthRepository @Inject constructor(
             reportDetailsDao.deleteAll()
             favoriteReportDao.deleteAll()
             likeDao.deleteAll()
-            markerDao.deleteAll()
         } catch (e: Exception) {
             Log.e("SupabaseAuth", "Failed to clear user cache: ${e.message}")
         }

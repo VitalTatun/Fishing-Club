@@ -2,14 +2,14 @@ package com.example.fishing.data
 
 import com.example.fishing.data.report.FavoritesStore
 import com.example.fishing.data.report.HomeFeedStore
+import com.example.fishing.data.report.DefaultMapMarkersStore
 import com.example.fishing.data.report.LikesStore
-import com.example.fishing.data.report.MarkerStore
+import com.example.fishing.data.report.MapMarkersStore
 import com.example.fishing.data.report.PhotoUrlProvider
 import com.example.fishing.data.report.ReportDetailsStore
 import com.example.fishing.data.report.ReportRemoteQueries
 import com.example.fishing.data.report.ReportWriter
 import com.example.fishing.data.report.RoomHomeFeedStore
-import com.example.fishing.data.report.RoomMarkerStore
 import com.example.fishing.data.report.RoomReportDetailsStore
 import com.example.fishing.data.report.SupabaseFavoritesStore
 import com.example.fishing.data.report.SupabaseLikesStore
@@ -84,9 +84,9 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindMarkerStore(
-        store: RoomMarkerStore
-    ): MarkerStore
+    abstract fun bindMapMarkersStore(
+        store: DefaultMapMarkersStore
+    ): MapMarkersStore
 
     @Binds
     @Singleton

@@ -1,13 +1,17 @@
 package com.example.fishing.viewmodel.filter
 
+import com.example.fishing.model.Fish
 import com.example.fishing.model.FishingMethod
 import com.example.fishing.model.FishingType
+import com.example.fishing.model.SelectedFish
 import com.example.fishing.testutil.testMarker
 import com.example.fishing.testutil.testReport
+import java.time.Instant
+import java.util.UUID
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
 
 class ReportFiltersTest {
 
@@ -44,8 +48,8 @@ class ReportFiltersTest {
         val filters = ReportFilters(
             isTrophySelected = true,
             isPaidSelected = true,
-            selectedCatch = "Pike",
-            selectedMethod = FishingMethod.SPINNING
+            selectedFish = listOf(SelectedFish("Pike")),
+            selectedMethods = setOf(FishingMethod.SPINNING)
         )
 
         assertTrue(filters.matches(trophy, emptySet()))
@@ -63,6 +67,63 @@ class ReportFiltersTest {
         )
         assertFalse(filters.matches(marker.copy(fishNames = listOf("Perch")), emptySet()))
         assertFalse(filters.matches(marker.copy(fishingMethod = FishingMethod.FEEDER), emptySet()))
+    }
+
+    @Test
+    fun `species filter matches by catalog id or canonical name`() {
+        val speciesId = "esox_lucius"
+        val report = testReport(
+            fish = listOf(Fish(UUID.randomUUID(), "щуки", 1, speciesId))
+        )
+        val marker = testMarker().copy(
+            fishNames = listOf("Щука"),
+            fishSpeciesIds = setOf(speciesId)
+        )
+
+        val byId = ReportFilters(
+            selectedFish = listOf(SelectedFish("Щука", speciesId))
+        )
+        assertTrue(byId.matches(report, emptySet()))
+        assertTrue(byId.matches(marker, emptySet()))
+        assertFalse(byId.matches(report.copy(fish = emptyList()), emptySet()))
+        // The id still matches when the displayed name differs.
+        assertTrue(byId.matches(marker.copy(fishNames = listOf("Окунь")), emptySet()))
+        assertFalse(
+            byId.matches(
+                marker.copy(fishNames = listOf("Окунь"), fishSpeciesIds = emptySet()),
+                emptySet()
+            )
+        )
+
+        val byName = ReportFilters(selectedFish = listOf(SelectedFish("Щука")))
+        assertTrue(byName.matches(marker, emptySet()))
+        // The report kept the raw alias, only its catalog id resolves it.
+        assertFalse(byName.matches(report, emptySet()))
+        assertTrue(
+            ReportFilters(selectedFish = listOf(SelectedFish("щуки")))
+                .matches(report, emptySet())
+        )
+    }
+
+    @Test
+    fun `species and own-only filters make filters active`() {
+        assertTrue(
+            ReportFilters(selectedFish = listOf(SelectedFish("Щука", "esox_lucius"))).isActive
+        )
+        assertTrue(ReportFilters(isOwnOnly = true).isActive)
+    }
+
+    @Test
+    fun `active count groups the fish condition and ignores favorites`() {
+        assertEquals(0, ReportFilters(isFavoritesSelected = true).activeCount)
+        assertEquals(
+            3,
+            ReportFilters(
+                isOwnOnly = true,
+                isTrophySelected = true,
+                selectedFish = listOf(SelectedFish("Щука", "esox_lucius"))
+            ).activeCount
+        )
     }
 
     @Test
@@ -109,7 +170,7 @@ class ReportFiltersTest {
             filters = ReportFilters(
                 isTrophySelected = true,
                 isPaidSelected = true,
-                selectedMethod = FishingMethod.SPINNING
+                selectedMethods = setOf(FishingMethod.SPINNING)
             )
         )
 

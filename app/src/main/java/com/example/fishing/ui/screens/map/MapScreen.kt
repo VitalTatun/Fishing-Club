@@ -18,10 +18,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.fishing.R
 import com.example.fishing.data.FishingRepository
-import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
+import com.example.fishing.model.MAP_ZOOM_THRESHOLD
+import com.example.fishing.model.MapBounds
 import com.example.fishing.model.MarkerDomain
-import com.example.fishing.ui.components.FishingFilterChips
 import com.example.fishing.ui.components.MarkerDrawableUtils
 import com.example.fishing.ui.components.MarkerShape
 import com.example.fishing.ui.theme.FishingTheme
@@ -50,14 +50,36 @@ fun MapScreen(
     initialReportId: UUID? = null,
     selectedMarkerDotStyle: Boolean = false,
     repository: FishingRepository? = null,
-    favoriteReports: List<FishingReport> = emptyList(),
     isLoading: Boolean = false,
-    isRefreshing: Boolean = false,
     errorMessage: String? = null,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    /**
+     * True on the main map tab: the camera drives viewport loading and the zoom
+     * threshold applies. Full-map from a report disables both.
+     */
+    viewportMode: Boolean = true
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context) }
+    var currentViewport by remember(mapView) { mutableStateOf<MapBounds?>(null) }
+
+    // Reports the real viewport to the coordinator. Below the zoom threshold
+    // the coordinator ignores it, and full-map mode does not load viewports.
+    val notifyViewportChange = remember(mapView, viewModel, viewportMode) {
+        {
+            if (viewportMode && mapView.width > 0 && mapView.height > 0) {
+                val box = mapView.boundingBox
+                val viewport = MapBounds(
+                    south = box.latSouth,
+                    north = box.latNorth,
+                    west = box.lonWest,
+                    east = box.lonEast
+                )
+                currentViewport = viewport
+                viewModel?.onMapViewportChanged(viewport, mapView.zoomLevelDouble)
+            }
+        }
+    }
 
     val highlightedPolygon by viewModel?.highlightedPolygon?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(null) }
@@ -74,86 +96,43 @@ fun MapScreen(
     val requestedLocation by viewModel?.mapRequestedLocation?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(null) }
 
-    val viewModelFilters by viewModel?.mapFilters?.collectAsStateWithLifecycle()
+    val mapFilters by viewModel?.mapFilters?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(ReportFilters()) }
-    var localFilters by remember { mutableStateOf(ReportFilters()) }
-    val filters = if (viewModel != null) viewModelFilters else localFilters
-    val onFiltersChange: ((ReportFilters) -> ReportFilters) -> Unit = { transform ->
-        if (viewModel != null) {
-            viewModel.updateMapFilters(transform)
-        } else {
-            localFilters = transform(localFilters)
-        }
+    val isFilterActive = mapFilters.isActive
+
+    val coordinatorZoomedOut by viewModel?.mapIsZoomedOut?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(false) }
+    val truncated by viewModel?.mapTruncated?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(false) }
+    val hasMarkersInViewport by viewModel?.mapHasMarkersInViewport
+        ?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(markers.isNotEmpty()) }
+    val showingOwnOnly by viewModel?.mapShowingOwnOnly?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(false) }
+
+    val isZoomedOut = viewportMode &&
+        if (viewModel != null) coordinatorZoomedOut else lastZoom < MAP_ZOOM_THRESHOLD
+    val displayedMarkers = if (isZoomedOut) emptyList() else markers
+    val effectiveHasMarkersInViewport =
+        if (viewportMode) hasMarkersInViewport else displayedMarkers.isNotEmpty()
+    // The session cache keeps markers from previously visited areas; only the
+    // current viewport decides between "nothing here" and "markers exist".
+    val visibleMarkers = remember(displayedMarkers, currentViewport) {
+        currentViewport?.let { viewport ->
+            displayedMarkers.filter { marker ->
+                viewport.contains(marker.waterLat, marker.waterLng)
+            }
+        } ?: displayedMarkers
     }
 
-    val isFavoritesSelected = filters.isFavoritesSelected
-    val isTrophySelected = filters.isTrophySelected
-    val isPaidSelected = filters.isPaidSelected
-    val selectedCatch = filters.selectedCatch
-    val selectedMethod = filters.selectedMethod
-
-    LaunchedEffect(Unit) {
-        if (viewModel != null) {
-            viewModel.loadFilterFavoriteReports()
-        }
-    }
-
-    LaunchedEffect(isFavoritesSelected) {
-        if (isFavoritesSelected && viewModel != null && favoriteReports.isEmpty()) {
-            viewModel.loadFilterFavoriteReports(force = true)
-        }
-    }
-
-    val favoriteMarkers = remember(favoriteReports) {
-        favoriteReports.map { report ->
-            com.example.fishing.model.MarkerDomain(
-                id = report.id,
-                name = report.name,
-                waterName = report.water.waterName,
-                waterLat = report.water.latitude,
-                waterLng = report.water.longitude,
-                type = report.type,
-                fishingMethod = report.fishingMethod,
-                fishingStartAt = report.fishingStartAt,
-                isPublic = report.isPublic,
-                isPaidWater = report.water.isPaid,
-                fishNames = report.fish.map { it.name }
-            )
-        }
-    }
-
-    val favoriteIdSet = remember(favoriteReports) { favoriteReports.map { it.id }.toSet() }
-
-    val displayMarkers = remember(markers, favoriteMarkers, isFavoritesSelected) {
-        if (!isFavoritesSelected) {
-            markers
-        } else {
-            (markers + favoriteMarkers).distinctBy { it.id }
-        }
-    }
-
-    val fallbackCenter = remember(displayMarkers) {
-        val validMarkers = displayMarkers.filter { it.waterLat != 0.0 || it.waterLng != 0.0 }
+    val fallbackCenter = remember(displayedMarkers) {
+        val validMarkers = displayedMarkers.filter { it.waterLat != 0.0 || it.waterLng != 0.0 }
         if (validMarkers.isNotEmpty()) {
             GeoPoint(validMarkers.map { it.waterLat }.average(), validMarkers.map { it.waterLng }.average())
         } else {
             GeoPoint(53.9, 27.5667)
         }
     }
-
-    val uniqueFish = remember(displayMarkers) {
-        displayMarkers.flatMap { it.fishNames }.distinct().sorted()
-    }
-
-    val filteredMarkers = remember(
-        displayMarkers,
-        filters,
-        favoriteIdSet
-    ) {
-        displayMarkers.filter { marker -> filters.matches(marker, favoriteIdSet) }
-    }
-
-    val isFilterActive = filters.isActive
 
     DisposableEffect(mapView) {
         mapView.onResume()
@@ -170,6 +149,7 @@ fun MapScreen(
             lastCenterLat = location.latitude
             lastCenterLon = location.longitude
             lastZoom = 13.0
+            mapView.post { notifyViewportChange() }
         }
     }
 
@@ -215,6 +195,7 @@ fun MapScreen(
             mapView.controller.setCenter(GeoPoint(lastCenterLat!!, lastCenterLon!!))
             mapView.controller.setZoom(lastZoom)
             myLocationOverlay.disableFollowLocation()
+            mapView.post { notifyViewportChange() }
         }
     }
 
@@ -227,6 +208,7 @@ fun MapScreen(
                 lastCenterLon = fallbackCenter.longitude
                 lastZoom = 11.0
             }
+            mapView.post { notifyViewportChange() }
         }
     }
 
@@ -236,11 +218,13 @@ fun MapScreen(
                 val center = mapView.mapCenter
                 lastCenterLat = center.latitude
                 lastCenterLon = center.longitude
+                notifyViewportChange()
                 return true
             }
 
             override fun onZoom(event: ZoomEvent?): Boolean {
                 lastZoom = mapView.zoomLevelDouble
+                notifyViewportChange()
                 return true
             }
         }
@@ -261,7 +245,7 @@ fun MapScreen(
             mapView = mapView,
             myLocationOverlay = myLocationOverlay,
             modifier = Modifier.fillMaxSize(),
-            markers = filteredMarkers,
+            markers = displayedMarkers,
             highlightedPolygon = highlightedPolygon,
             onMarkerClick = { marker ->
                 viewModel?.setHighlightedPolygon(null)
@@ -279,23 +263,16 @@ fun MapScreen(
 
         when (
             mapOverlayState(
-                rawMarkers = markers,
-                filteredMarkers = filteredMarkers,
+                rawMarkers = displayedMarkers,
+                filteredMarkers = visibleMarkers,
                 isLoading = isLoading,
                 errorMessage = errorMessage,
-                isFilterActive = isFilterActive
+                isFilterActive = isFilterActive,
+                isZoomedOut = isZoomedOut,
+                hasMarkersInViewport = effectiveHasMarkersInViewport
             )
         ) {
-            MapOverlayState.Loading -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    CircularProgressIndicator()
-                    Text(
-                        text = stringResource(R.string.map_loading),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            MapOverlayState.Loading -> Unit
             MapOverlayState.Error -> {
                 MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
                     Icon(
@@ -313,35 +290,13 @@ fun MapScreen(
                     }
                 }
             }
-            MapOverlayState.Empty -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    Text(
-                        text = stringResource(R.string.map_no_reports),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            MapOverlayState.FilteredEmpty -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    Text(
-                        text = stringResource(R.string.map_no_reports_for_filter),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            // Zoomed-out and viewport-empty are intentionally silent: the map
+            // stays clean, markers are simply hidden until the camera changes.
+            MapOverlayState.ZoomedOut,
+            MapOverlayState.ViewportEmpty -> Unit
+            MapOverlayState.Empty -> Unit
+            MapOverlayState.FilteredEmpty -> Unit
             MapOverlayState.None -> Unit
-        }
-
-        if (isRefreshing && markers.isNotEmpty()) {
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 72.dp)
-                    .fillMaxWidth(0.6f)
-            )
         }
 
         if (onBackClick != null) {
@@ -361,76 +316,52 @@ fun MapScreen(
                     contentDescription = stringResource(R.string.back)
                 )
             }
-        } else {
+        }
+
+        if (viewportMode && truncated && displayedMarkers.isNotEmpty()) {
             Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp),
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth()
+                tonalElevation = 3.dp,
+                shadowElevation = 4.dp
             ) {
-                FishingFilterChips(
-                    isFavoritesSelected = isFavoritesSelected,
-                    onFavoritesClick = {
-                        val newValue = !filters.isFavoritesSelected
-                        onFiltersChange { current ->
-                            current.copy(
-                                isFavoritesSelected = !current.isFavoritesSelected
-                            )
-                        }
-                        if (newValue) {
-                            viewModel?.loadFilterFavoriteReports()
-                        }
-                    },
-                    isTrophySelected = isTrophySelected,
-                    onTrophyClick = {
-                        onFiltersChange { current ->
-                            current.copy(isTrophySelected = !current.isTrophySelected)
-                        }
-                    },
-                    isPaidSelected = isPaidSelected,
-                    onPaidClick = {
-                        onFiltersChange { current ->
-                            current.copy(isPaidSelected = !current.isPaidSelected)
-                        }
-                    },
-                    selectedCatch = selectedCatch,
-                    onCatchSelected = { catch ->
-                        onFiltersChange { current ->
-                            current.copy(selectedCatch = catch)
-                        }
-                    },
-                    onClearCatch = {
-                        onFiltersChange { current ->
-                            current.copy(selectedCatch = null)
-                        }
-                    },
-                    selectedMethod = selectedMethod,
-                    onMethodSelected = { method ->
-                        onFiltersChange { current ->
-                            current.copy(selectedMethod = method)
-                        }
-                    },
-                    onClearMethod = {
-                        onFiltersChange { current ->
-                            current.copy(selectedMethod = null)
-                        }
-                    },
-                    uniqueFish = uniqueFish
+                Text(
+                    text = stringResource(R.string.map_truncated_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                 )
             }
         }
 
-        if (errorMessage != null && markers.isNotEmpty()) {
+        if (errorMessage != null && displayedMarkers.isNotEmpty()) {
             Snackbar(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = 72.dp, start = 16.dp, end = 16.dp),
+                    .padding(
+                        top = if (viewportMode && truncated) 80.dp else 16.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    ),
                 action = {
                     TextButton(onClick = onRetry) {
                         Text(stringResource(R.string.retry))
                     }
                 }
             ) {
-                Text(stringResource(R.string.map_stale_data))
+                Text(
+                    stringResource(
+                        if (viewportMode && showingOwnOnly) {
+                            R.string.map_offline_own_only
+                        } else {
+                            R.string.map_stale_data
+                        }
+                    )
+                )
             }
         }
 
@@ -603,7 +534,9 @@ fun OsmMapView(
 internal enum class MapOverlayState {
     Loading,
     Error,
+    ZoomedOut,
     Empty,
+    ViewportEmpty,
     FilteredEmpty,
     None
 }
@@ -613,12 +546,21 @@ internal fun mapOverlayState(
     filteredMarkers: List<MarkerDomain>,
     isLoading: Boolean,
     errorMessage: String?,
-    isFilterActive: Boolean
+    isFilterActive: Boolean,
+    isZoomedOut: Boolean = false,
+    /** Unfiltered cache had at least one marker inside the current viewport. */
+    hasMarkersInViewport: Boolean = rawMarkers.isNotEmpty()
 ): MapOverlayState = when {
+    isZoomedOut -> MapOverlayState.ZoomedOut
     rawMarkers.isEmpty() && isLoading -> MapOverlayState.Loading
     rawMarkers.isEmpty() && errorMessage != null -> MapOverlayState.Error
+    rawMarkers.isEmpty() && hasMarkersInViewport && isFilterActive ->
+        MapOverlayState.FilteredEmpty
+    rawMarkers.isEmpty() && hasMarkersInViewport -> MapOverlayState.ViewportEmpty
     rawMarkers.isEmpty() -> MapOverlayState.Empty
-    isFilterActive && filteredMarkers.isEmpty() -> MapOverlayState.FilteredEmpty
+    filteredMarkers.isEmpty() && hasMarkersInViewport && isFilterActive ->
+        MapOverlayState.FilteredEmpty
+    filteredMarkers.isEmpty() -> MapOverlayState.ViewportEmpty
     else -> MapOverlayState.None
 }
 

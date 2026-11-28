@@ -32,6 +32,12 @@ data object RegistrationRoute : NavKey
 @Serializable
 data object MainRoute : NavKey
 
+// --- Map ---
+
+/** Draft filters for the map tab; applied only by the check action. */
+@Serializable
+data object MapFiltersRoute : NavKey
+
 // --- Search ---
 
 /** Report list search opened from the home tab. */

@@ -45,6 +45,19 @@ interface ReportDetailsDao {
     """)
     fun getFavorites(userId: UUID): Flow<List<ReportDetailsEntity>>
 
+    /**
+     * Own reports that can be placed on the map. Rows without water
+     * coordinates are deliberately excluded instead of being placed at 0,0.
+     */
+    @Query("""
+        SELECT * FROM report_details
+        WHERE userId = :userId
+          AND waterLat IS NOT NULL
+          AND waterLng IS NOT NULL
+        ORDER BY fishingStartAt DESC
+    """)
+    fun getOwnMapMarkers(userId: UUID): Flow<List<ReportDetailsEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(reports: List<ReportDetailsEntity>)
 

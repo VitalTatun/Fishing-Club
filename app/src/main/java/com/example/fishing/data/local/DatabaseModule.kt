@@ -5,7 +5,6 @@ import androidx.room.Room
 import com.example.fishing.data.local.dao.FavoriteReportDao
 import com.example.fishing.data.local.dao.FishSpeciesDao
 import com.example.fishing.data.local.dao.LikeDao
-import com.example.fishing.data.local.dao.MarkerDao
 import com.example.fishing.data.local.dao.PendingReportUploadDao
 import com.example.fishing.data.local.dao.ReportDetailsDao
 import dagger.Module
@@ -31,13 +30,9 @@ object DatabaseModule {
             AppDatabase.MIGRATION_10_11,
             AppDatabase.MIGRATION_11_12,
             AppDatabase.MIGRATION_12_13,
-            AppDatabase.MIGRATION_13_14
+            AppDatabase.MIGRATION_13_14,
+            AppDatabase.MIGRATION_14_15
         ).build()
-    }
-
-    @Provides
-    fun provideMarkerDao(database: AppDatabase): MarkerDao {
-        return database.markerDao()
     }
 
     @Provides

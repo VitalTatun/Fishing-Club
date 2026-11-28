@@ -69,12 +69,14 @@ class Migration_13_14_Test {
     @Test
     fun migratingFromV13ToV14_addsFishSpeciesCache_andKeepsReports() {
         val db = Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
-            .addMigrations(AppDatabase.MIGRATION_13_14)
+            // The database has moved past 14; this test still verifies the
+            // 13 -> 14 step and rides through the following migration.
+            .addMigrations(AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15)
             .allowMainThreadQueries()
             .build()
 
         db.openHelper.writableDatabase.use { sqlite ->
-            check(sqlite.version == 14) { "expected user_version 14, was ${sqlite.version}" }
+            check(sqlite.version == 15) { "expected user_version 15, was ${sqlite.version}" }
 
             sqlite.query("PRAGMA table_info(fish_species)").use { cursor ->
                 val columns = buildMap {

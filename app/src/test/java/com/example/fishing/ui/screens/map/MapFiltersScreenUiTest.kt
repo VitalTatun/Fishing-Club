@@ -1,0 +1,194 @@
+package com.example.fishing.ui.screens.map
+
+import android.app.Application
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import com.example.fishing.model.FishSpecies
+import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.SelectedFish
+import com.example.fishing.ui.theme.FishingTheme
+import com.example.fishing.viewmodel.filter.ReportFilters
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(
+    sdk = [36],
+    application = Application::class,
+    qualifiers = "w411dp-h891dp"
+)
+class MapFiltersScreenUiTest {
+
+    @get:Rule
+    val composeRule = createComposeRule()
+
+    private val species = listOf(
+        FishSpecies(
+            id = "esox_lucius",
+            canonicalName = "Щука",
+            aliases = listOf("щуки"),
+            isPopular = true,
+            sortOrder = 1
+        ),
+        FishSpecies(
+            id = "perca_fluviatilis",
+            canonicalName = "Окунь",
+            isPopular = true,
+            sortOrder = 2
+        ),
+        FishSpecies(
+            id = "rutilus_rutilus",
+            canonicalName = "Плотва",
+            isPopular = true,
+            sortOrder = 3
+        ),
+        FishSpecies(
+            id = "abramis_brama",
+            canonicalName = "Лещ",
+            isPopular = true,
+            sortOrder = 4
+        )
+    )
+
+    @Test
+    fun `apply stays disabled until the draft changes`() {
+        setContent()
+
+        composeRule.onNodeWithTag("map_filters_apply").assertIsNotEnabled()
+
+        composeRule.onNodeWithText("Мои отчёты").performClick()
+
+        composeRule.onNodeWithTag("map_filters_apply").assertIsEnabled()
+    }
+
+    @Test
+    fun `apply sends own-only and multiple fishing methods`() {
+        var applied: ReportFilters? = null
+        setContent(onApply = { applied = it })
+
+        composeRule.onNodeWithText("Мои отчёты").performClick()
+        composeRule.onNodeWithText("Спиннинг").performClick()
+        composeRule.onNodeWithText("Фидер").performClick()
+        composeRule.onNodeWithTag("map_filters_apply").performClick()
+
+        assertEquals(
+            ReportFilters(
+                isOwnOnly = true,
+                selectedMethods = setOf(FishingMethod.SPINNING, FishingMethod.FEEDER)
+            ),
+            applied
+        )
+    }
+
+    @Test
+    fun `back without applying discards the draft`() {
+        var applied: ReportFilters? = null
+        var backPressed = false
+        setContent(onApply = { applied = it }, onBack = { backPressed = true })
+
+        composeRule.onNodeWithText("Трофей").performClick()
+        composeRule.onNodeWithContentDescription("Назад").performClick()
+
+        assertTrue(backPressed)
+        assertEquals(null, applied)
+    }
+
+    @Test
+    fun `reset is disabled until a filter is selected and clears the draft`() {
+        setContent()
+
+        composeRule.onNodeWithTag("map_filters_reset").assertIsNotEnabled()
+
+        composeRule.onNodeWithText("Платный водоем").performClick()
+        composeRule.onNodeWithText("Платный водоем").assertIsSelected()
+        composeRule.onNodeWithTag("map_filters_apply").assertIsEnabled()
+        composeRule.onNodeWithTag("map_filters_reset").assertIsEnabled()
+
+        composeRule.onNodeWithTag("map_filters_reset").performClick()
+
+        composeRule.onNodeWithText("Платный водоем").assertIsNotSelected()
+        composeRule.onNodeWithTag("map_filters_apply").assertIsNotEnabled()
+        composeRule.onNodeWithTag("map_filters_reset").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `typing in the fish field filters the menu`() {
+        setContent()
+
+        composeRule.onNodeWithTag("map_filter_fish_field").performClick()
+        composeRule.onNodeWithText("Поиск").assertIsDisplayed()
+        composeRule.onNode(hasSetTextAction()).performTextInput("щу")
+
+        composeRule.onNodeWithText("Щука", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Окунь", useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `at most three fish chips can be selected`() {
+        var applied: ReportFilters? = null
+        setContent(onApply = { applied = it })
+
+        composeRule.onNodeWithTag("map_filter_fish_field").performClick()
+        composeRule.onNodeWithText("Щука", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithText("Окунь", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithText("Плотва", useUnmergedTree = true).performClick()
+
+        composeRule.onNodeWithText("Лещ").assertIsNotEnabled()
+        composeRule.onNodeWithTag("map_filters_apply").performClick()
+
+        assertEquals(3, applied?.selectedFish?.size)
+    }
+
+    @Test
+    fun `fish picker collects multiple species with their ids`() {
+        var applied: ReportFilters? = null
+        setContent(onApply = { applied = it })
+
+        composeRule.onNodeWithTag("map_filter_fish_field").performClick()
+        composeRule.onNodeWithText("Все виды", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Щука", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithText("Окунь", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithTag("map_filters_apply").performClick()
+
+        assertEquals(
+            listOf(
+                SelectedFish("Щука", "esox_lucius"),
+                SelectedFish("Окунь", "perca_fluviatilis")
+            ),
+            applied?.selectedFish
+        )
+    }
+
+    private fun setContent(
+        initialFilters: ReportFilters = ReportFilters(),
+        onApply: (ReportFilters) -> Unit = {},
+        onBack: () -> Unit = {}
+    ) {
+        composeRule.setContent {
+            FishingTheme(darkTheme = false, dynamicColor = false) {
+                MapFiltersContent(
+                    initialFilters = initialFilters,
+                    species = species,
+                    onApply = onApply,
+                    onBack = onBack
+                )
+            }
+        }
+    }
+}

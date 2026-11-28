@@ -94,6 +94,69 @@ class MapOverlayStateTest {
     }
 
     @Test
+    fun `zoom below the threshold shows ZoomedOut even with cached markers`() {
+        val m = marker()
+        assertEquals(
+            MapOverlayState.ZoomedOut,
+            mapOverlayState(
+                rawMarkers = listOf(m),
+                filteredMarkers = emptyList(),
+                isLoading = false,
+                errorMessage = null,
+                isFilterActive = false,
+                isZoomedOut = true
+            )
+        )
+    }
+
+    @Test
+    fun `cache has markers but none in the viewport shows ViewportEmpty`() {
+        val m = marker()
+        assertEquals(
+            MapOverlayState.ViewportEmpty,
+            mapOverlayState(
+                rawMarkers = listOf(m),
+                filteredMarkers = emptyList(),
+                isLoading = false,
+                errorMessage = null,
+                isFilterActive = false,
+                hasMarkersInViewport = false
+            )
+        )
+    }
+
+    @Test
+    fun `filter removed every in-viewport marker shows FilteredEmpty`() {
+        assertEquals(
+            MapOverlayState.FilteredEmpty,
+            mapOverlayState(
+                rawMarkers = emptyList(),
+                filteredMarkers = emptyList(),
+                isLoading = false,
+                errorMessage = null,
+                isFilterActive = true,
+                hasMarkersInViewport = true
+            )
+        )
+    }
+
+    @Test
+    fun `cached markers outside the viewport with a filter show ViewportEmpty`() {
+        val m = marker()
+        assertEquals(
+            MapOverlayState.ViewportEmpty,
+            mapOverlayState(
+                rawMarkers = listOf(m),
+                filteredMarkers = emptyList(),
+                isLoading = false,
+                errorMessage = null,
+                isFilterActive = true,
+                hasMarkersInViewport = false
+            )
+        )
+    }
+
+    @Test
     fun `markers present without filters is None`() {
         val m = marker()
         assertEquals(

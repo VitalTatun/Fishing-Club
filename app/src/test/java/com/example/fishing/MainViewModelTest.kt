@@ -17,7 +17,9 @@ import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.testutil.FakeUserPreferencesRepository
 import com.example.fishing.testutil.FakeReportUploadQueue
+import com.example.fishing.data.report.MapMarkerPage
 import com.example.fishing.data.upload.ReportUploadResult
+import com.example.fishing.model.MapBounds
 import com.example.fishing.testutil.MainDispatcherRule
 import com.example.fishing.viewmodel.MainViewModel
 import com.example.fishing.viewmodel.ReportDetailUiState
@@ -624,95 +626,93 @@ class MainViewModelTest {
         assertTrue(vm.reports.value.none { it.userId == userA.id })
     }
 
-    // --- Map states (P0.7) ---
+    // --- Map: viewport loading (MAP-01b) ---
 
     @Test
-    fun `map case A - no cache stays loading while refresh is in progress`() = runTest {
+    fun `map does not load before the tab is shown and a viewport is reported`() = runTest {
         fakeAuthRepository.sessionUser = testUser
-        val gate = CompletableDeferred<Unit>()
-        fakeFishingRepository.refreshMapMarkersGate = gate
+        fakeFishingRepository.loadPublicMapMarkersResult = MapMarkerPage(listOf(marker()), false)
 
         val vm = createViewModel()
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertTrue(vm.mapIsLoading.value)
+        assertEquals(0, fakeFishingRepository.loadPublicMapMarkersCallCount)
         assertTrue(vm.mapMarkers.value.isEmpty())
-        assertNull(vm.mapRefreshError.value)
-
-        gate.complete(Unit)
-        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
-
-        assertFalse(vm.mapIsLoading.value)
     }
 
     @Test
-    fun `map case B - successful refresh with markers is content`() = runTest {
+    fun `showing the map and reporting a viewport loads public markers`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         val m = marker()
-        fakeFishingRepository.mapMarkersValue = listOf(m)
+        fakeFishingRepository.loadPublicMapMarkersResult = MapMarkerPage(listOf(m), false)
 
         val vm = createViewModel()
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertFalse(vm.mapIsLoading.value)
+        vm.selectTab(1)
+        vm.onMapViewportChanged(zone(), 12.0)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, fakeFishingRepository.loadPublicMapMarkersCallCount)
         assertEquals(listOf(m), vm.mapMarkers.value)
+        assertFalse(vm.mapIsLoading.value)
         assertNull(vm.mapRefreshError.value)
-        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
     }
 
     @Test
-    fun `map case C - successful refresh with zero markers is empty`() = runTest {
+    fun `a zoom below the threshold does not load markers`() = runTest {
         fakeAuthRepository.sessionUser = testUser
 
         val vm = createViewModel()
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        vm.selectTab(1)
+        vm.onMapViewportChanged(zone(), 9.0)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertFalse(vm.mapIsLoading.value)
-        assertTrue(vm.mapMarkers.value.isEmpty())
-        assertNull(vm.mapRefreshError.value)
+        assertEquals(0, fakeFishingRepository.loadPublicMapMarkersCallCount)
+        assertTrue(vm.mapIsZoomedOut.value)
     }
 
     @Test
-    fun `map case D - cached markers stay when refresh fails`() = runTest {
+    fun `a failed viewport refresh keeps the loaded markers`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         val m = marker()
-        fakeFishingRepository.mapMarkersValue = listOf(m)
-        fakeFishingRepository.refreshMapMarkersException = RuntimeException("Network error")
+        fakeFishingRepository.loadPublicMapMarkersResult = MapMarkerPage(listOf(m), false)
 
         val vm = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        vm.selectTab(1)
+        vm.onMapViewportChanged(zone(), 12.0)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf(m), vm.mapMarkers.value)
+
+        fakeFishingRepository.loadPublicMapMarkersException = RuntimeException("Network error")
+        vm.onMapViewportChanged(
+            MapBounds(south = 60.0, north = 61.0, west = 35.0, east = 36.0),
+            12.0
+        )
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(listOf(m), vm.mapMarkers.value)
-        assertFalse(vm.mapIsLoading.value)
         assertNotNull(vm.mapRefreshError.value)
+        assertFalse(vm.mapIsLoading.value)
     }
 
     @Test
-    fun `map case E - no cache and refresh failure is error`() = runTest {
+    fun `map retry clears the error after a successful reload`() = runTest {
         fakeAuthRepository.sessionUser = testUser
-        fakeFishingRepository.mapMarkersValue = emptyList()
-        fakeFishingRepository.refreshMapMarkersException = RuntimeException("Network error")
+        fakeFishingRepository.loadPublicMapMarkersException = RuntimeException("Network error")
 
         val vm = createViewModel()
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
-
-        assertTrue(vm.mapMarkers.value.isEmpty())
-        assertFalse(vm.mapIsLoading.value)
-        assertNotNull(vm.mapRefreshError.value)
-    }
-
-    @Test
-    fun `map refresh - retry clears error after a successful reload`() = runTest {
-        fakeAuthRepository.sessionUser = testUser
-        fakeFishingRepository.mapMarkersValue = emptyList()
-        fakeFishingRepository.refreshMapMarkersException = RuntimeException("Network error")
-
-        val vm = createViewModel()
+        vm.selectTab(1)
+        vm.onMapViewportChanged(zone(), 12.0)
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
         assertNotNull(vm.mapRefreshError.value)
 
-        fakeFishingRepository.refreshMapMarkersException = null
-        fakeFishingRepository.mapMarkersValue = listOf(marker())
+        fakeFishingRepository.loadPublicMapMarkersException = null
+        fakeFishingRepository.loadPublicMapMarkersResult =
+            MapMarkerPage(listOf(marker()), false)
 
         vm.loadMapMarkers(force = true)
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
@@ -723,15 +723,17 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `map refresh - logout resets map state`() = runTest {
+    fun `logout resets map state`() = runTest {
         fakeAuthRepository.sessionUser = testUser
-        fakeFishingRepository.mapMarkersValue = listOf(marker())
-        fakeFishingRepository.refreshMapMarkersException = RuntimeException("Network error")
+        fakeFishingRepository.loadPublicMapMarkersResult =
+            MapMarkerPage(listOf(marker()), false)
 
         val vm = createViewModel()
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        vm.selectTab(1)
+        vm.onMapViewportChanged(zone(), 12.0)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
         assertTrue(vm.mapMarkers.value.isNotEmpty())
-        assertNotNull(vm.mapRefreshError.value)
 
         fakeAuthRepository.sessionUser = null
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
@@ -739,52 +741,31 @@ class MainViewModelTest {
         assertTrue(vm.mapMarkers.value.isEmpty())
         assertNull(vm.mapRefreshError.value)
         assertFalse(vm.mapIsRefreshing.value)
-        assertTrue(vm.mapIsLoading.value)
+        assertFalse(vm.mapIsLoading.value)
     }
 
-    // --- Map tab selection (P1.1: no duplicate refresh) ---
-
     @Test
-    fun `selecting map tab does not duplicate refresh when markers are already loaded`() = runTest {
+    fun `selecting the map tab again does not duplicate the request`() = runTest {
         fakeAuthRepository.sessionUser = testUser
         val m = marker()
-        fakeFishingRepository.mapMarkersValue = listOf(m)
+        fakeFishingRepository.loadPublicMapMarkersResult = MapMarkerPage(listOf(m), false)
 
         val vm = createViewModel()
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
+        vm.selectTab(1)
+        vm.onMapViewportChanged(zone(), 12.0)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, fakeFishingRepository.loadPublicMapMarkersCallCount)
 
         vm.selectTab(1)
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
+        assertEquals(1, fakeFishingRepository.loadPublicMapMarkersCallCount)
         assertEquals(listOf(m), vm.mapMarkers.value)
     }
 
-    @Test
-    fun `selecting map tab while initial refresh is in flight does not start a second refresh`() = runTest {
-        fakeAuthRepository.sessionUser = testUser
-        val gate = CompletableDeferred<Unit>()
-        fakeFishingRepository.refreshMapMarkersGate = gate
-
-        val vm = createViewModel()
-        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
-
-        assertTrue(vm.mapIsLoading.value)
-        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
-
-        vm.selectTab(1)
-        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
-
-        gate.complete(Unit)
-        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(1, fakeFishingRepository.refreshMapMarkersCallCount)
-        assertFalse(vm.mapIsLoading.value)
-    }
+    private fun zone(): MapBounds =
+        MapBounds(south = 53.0, north = 54.0, west = 27.0, east = 28.0)
 
     // --- HomeUiState tests ---
 

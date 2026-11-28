@@ -239,11 +239,23 @@
     <string name="report_draft_saved_notice">Сохранено в черновики</string>
 
     <!-- Карта: состояния загрузки -->
-    <string name="map_loading">Загрузка карты…</string>
-    <string name="map_no_reports">На карте пока нет отчётов</string>
-    <string name="map_no_reports_for_filter">Нет отчётов, соответствующих фильтрам</string>
     <string name="map_loading_failed">Не удалось загрузить отчёты</string>
     <string name="map_stale_data">Не удалось обновить данные. Показаны кэшированные отчёты.</string>
+    <string name="map_truncated_hint">Показаны не все отчёты, приблизьте карту</string>
+    <string name="map_offline_own_only">Нет сети. Показаны только ваши отчёты</string>
+    <string name="map_filters_title">Фильтр поиска</string>
+    <string name="map_filters_content_description">Фильтры</string>
+    <string name="map_filters_section_misc">Разное</string>
+    <string name="map_filter_own">Мои отчёты</string>
+    <string name="map_filter_fish_label">Поиск по улову</string>
+    <string name="map_filter_fish_none">Не выбран</string>
+    <string name="map_filter_fish_all">Все виды</string>
+    <string name="map_filter_fish_not_found">Ничего не найдено</string>
+    <string name="map_filter_fish_add">Добавить рыбу</string>
+    <string name="map_filter_fish_remove">Удалить %1$s</string>
+    <string name="map_filter_fish_limit">Можно выбрать не больше 3</string>
+    <string name="map_filters_reset">Сбросить</string>
+    <string name="map_filters_apply">Применить</string>
     <string name="add_photo">Add photo</string>
     <string name="camera">Camera</string>
     <string name="gallery">Gallery</string>

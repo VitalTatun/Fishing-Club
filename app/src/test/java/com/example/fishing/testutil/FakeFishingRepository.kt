@@ -2,9 +2,12 @@ package com.example.fishing.testutil
 
 import com.example.fishing.data.FishingRepository
 import com.example.fishing.data.HomeRefreshResult
+import com.example.fishing.data.report.MapMarkerPage
 import com.example.fishing.data.report.ReportRefreshResult
 import com.example.fishing.data.report.UserProfileData
 import com.example.fishing.model.FishingReport
+import com.example.fishing.model.MapBounds
+import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.MarkerDomain
 import com.example.fishing.model.ReportLikeState
 import kotlinx.coroutines.CompletableDeferred
@@ -14,12 +17,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
+data class PublicMapMarkersCall(
+    val bounds: MapBounds,
+    val filters: MapMarkerFilters,
+    val limit: Int
+)
+
 class FakeFishingRepository : FishingRepository {
 
     private val _homeReports = MutableStateFlow<List<FishingReport>>(emptyList())
     private val _favoriteReports = MutableStateFlow<List<FishingReport>>(emptyList())
     private val _favoriteIds = MutableStateFlow<Set<UUID>>(emptySet())
     private val _mapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
+    private val _ownMapMarkers = MutableStateFlow<List<MarkerDomain>>(emptyList())
     private val _reportDetails = MutableStateFlow<FishingReport?>(null)
     private val _likeStates = MutableStateFlow<Map<UUID, ReportLikeState>>(emptyMap())
 
@@ -37,6 +47,15 @@ class FakeFishingRepository : FishingRepository {
     var mapMarkersValue: List<MarkerDomain>
         get() = _mapMarkers.value
         set(value) { _mapMarkers.value = value }
+
+    var ownMapMarkersValue: List<MarkerDomain>
+        get() = _ownMapMarkers.value
+        set(value) { _ownMapMarkers.value = value }
+
+    var loadPublicMapMarkersCallCount = 0
+    var loadPublicMapMarkersException: Exception? = null
+    var loadPublicMapMarkersResult: MapMarkerPage? = null
+    val loadPublicMapMarkersRequests = mutableListOf<PublicMapMarkersCall>()
 
     var reportDetailsValue: FishingReport?
         get() = _reportDetails.value
@@ -56,11 +75,6 @@ class FakeFishingRepository : FishingRepository {
     var loadMoreHomeReportsException: Exception? = null
     var loadMoreHomeReportsGate: CompletableDeferred<Unit>? = null
     var loadMoreHomeReportsHasMore = false
-
-    var refreshMapMarkersCallCount = 0
-    var refreshMapMarkersException: Exception? = null
-    var refreshMapMarkersGate: CompletableDeferred<Unit>? = null
-    var refreshMapMarkersResult: List<MarkerDomain>? = null
 
     var addFavoriteCallCount = 0
     var addFavoriteException: Exception? = null
@@ -168,8 +182,6 @@ class FakeFishingRepository : FishingRepository {
         _favoriteIds.value = _favoriteReports.value.map { it.id }.toSet()
     }
 
-    override fun getMapMarkers(): Flow<List<MarkerDomain>> = _mapMarkers.asStateFlow()
-
     override fun getReportDetails(id: UUID): Flow<FishingReport?> = _reportDetails.asStateFlow()
 
     override suspend fun refreshHomeReports(userId: UUID): HomeRefreshResult {
@@ -189,12 +201,24 @@ class FakeFishingRepository : FishingRepository {
         return loadMoreHomeReportsHasMore
     }
 
-    override suspend fun refreshMapMarkers(): Result<List<MarkerDomain>> {
-        refreshMapMarkersCallCount++
-        refreshMapMarkersGate?.await()
-        refreshMapMarkersException?.let { return Result.failure(it) }
-        return Result.success(refreshMapMarkersResult ?: mapMarkersValue)
+    override suspend fun loadPublicMapMarkers(
+        bounds: MapBounds,
+        filters: MapMarkerFilters,
+        limit: Int
+    ): Result<MapMarkerPage> {
+        loadPublicMapMarkersCallCount++
+        loadPublicMapMarkersRequests += PublicMapMarkersCall(bounds, filters, limit)
+        loadPublicMapMarkersException?.let { return Result.failure(it) }
+        return Result.success(
+            loadPublicMapMarkersResult ?: MapMarkerPage(
+                markers = mapMarkersValue,
+                truncated = false
+            )
+        )
     }
+
+    override fun observeOwnMapMarkers(userId: UUID): Flow<List<MarkerDomain>> =
+        _ownMapMarkers.asStateFlow()
 
     override suspend fun addFavorite(report: FishingReport): Result<Unit> {
         addFavoriteCallCount++
@@ -265,9 +289,6 @@ class FakeFishingRepository : FishingRepository {
             if (it.id == id) it.copy(isPublic = isPublic) else it
         }
         _reportDetails.value = _reportDetails.value?.let {
-            if (it.id == id) it.copy(isPublic = isPublic) else it
-        }
-        _mapMarkers.value = _mapMarkers.value.map {
             if (it.id == id) it.copy(isPublic = isPublic) else it
         }
         return Result.success(Unit)
