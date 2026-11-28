@@ -2,6 +2,7 @@ package com.example.fishing.ui.screens.map
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -50,6 +51,18 @@ class MapFiltersScreenUiTest {
             canonicalName = "Окунь",
             isPopular = true,
             sortOrder = 2
+        ),
+        FishSpecies(
+            id = "rutilus_rutilus",
+            canonicalName = "Плотва",
+            isPopular = true,
+            sortOrder = 3
+        ),
+        FishSpecies(
+            id = "abramis_brama",
+            canonicalName = "Лещ",
+            isPopular = true,
+            sortOrder = 4
         )
     )
 
@@ -114,11 +127,27 @@ class MapFiltersScreenUiTest {
         setContent()
 
         composeRule.onNodeWithTag("map_filter_fish_field").performClick()
-        composeRule.onNodeWithText("Не выбран").assertDoesNotExist()
-        composeRule.onNodeWithTag("map_filter_fish_field").performTextInput("щу")
+        composeRule.onNodeWithText("Поиск").assertIsDisplayed()
+        composeRule.onNode(hasSetTextAction()).performTextInput("щу")
 
         composeRule.onNodeWithText("Щука", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("Окунь", useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `at most three fish chips can be selected`() {
+        var applied: ReportFilters? = null
+        setContent(onApply = { applied = it })
+
+        composeRule.onNodeWithTag("map_filter_fish_field").performClick()
+        composeRule.onNodeWithText("Щука", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithText("Окунь", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithText("Плотва", useUnmergedTree = true).performClick()
+
+        composeRule.onNodeWithText("Лещ").assertIsNotEnabled()
+        composeRule.onNodeWithTag("map_filters_apply").performClick()
+
+        assertEquals(3, applied?.selectedFish?.size)
     }
 
     @Test
