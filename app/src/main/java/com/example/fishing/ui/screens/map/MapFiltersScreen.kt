@@ -307,49 +307,56 @@ private fun FishFilterField(
                             color = MaterialTheme.colorScheme.outlineVariant,
                             shape = fieldShape
                         )
-                        .horizontalScroll(scrollState)
                         .testTag("map_filter_fish_field")
                         .clickable { focusRequester.requestFocus() }
                         .padding(horizontal = 16.dp, vertical = 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // "Поиск" is always visible in both states, as in the mock.
+                    // "Поиск" is pinned and must not scroll with the chips.
                     Text(
                         text = searchLabel,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    selectedFish.forEach { fish ->
-                        InputChip(
-                            selected = true,
-                            onClick = {
-                                onToggle(fish)
-                                // The field's menu anchor also sees this tap;
-                                // keep the removal from opening the menu.
-                                expanded = false
-                            },
-                            label = { Text(fish.name) },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(
-                                        R.string.map_filter_fish_remove,
-                                        fish.name
-                                    ),
-                                    modifier = Modifier.size(InputChipDefaults.IconSize)
-                                )
-                            },
-                            modifier = Modifier.testTag(
-                                "fish_chip_" + (fish.speciesId ?: fish.name)
-                            )
-                        )
-                    }
-                    Box(
-                        modifier = Modifier.widthIn(min = 72.dp),
-                        contentAlignment = Alignment.CenterStart
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .horizontalScroll(scrollState),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        innerTextField()
+                        selectedFish.forEach { fish ->
+                            InputChip(
+                                selected = true,
+                                onClick = {
+                                    onToggle(fish)
+                                    // The field's menu anchor also sees this tap;
+                                    // keep the removal from opening the menu.
+                                    expanded = false
+                                },
+                                label = { Text(fish.name) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = stringResource(
+                                            R.string.map_filter_fish_remove,
+                                            fish.name
+                                        ),
+                                        modifier = Modifier.size(InputChipDefaults.IconSize)
+                                    )
+                                },
+                                modifier = Modifier.testTag(
+                                    "fish_chip_" + (fish.speciesId ?: fish.name)
+                                )
+                            )
+                        }
+                        Box(
+                            modifier = Modifier.widthIn(min = 72.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            innerTextField()
+                        }
                     }
                 }
             }
