@@ -1,5 +1,6 @@
 package com.example.fishing.ui.screens.map
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -51,7 +52,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -227,8 +227,7 @@ internal fun MapFiltersContent(
                                         }
                                     )
                                 },
-                                label = stringResource(method.labelRes),
-                                reserveIconSpace = true
+                                label = stringResource(method.labelRes)
                             )
                         }
                     }
@@ -434,8 +433,7 @@ private fun SelectedCheckIcon() {
 private fun MapFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
-    label: String,
-    reserveIconSpace: Boolean = false
+    label: String
 ) {
     FilterChip(
         selected = selected,
@@ -443,31 +441,20 @@ private fun MapFilterChip(
         label = { Text(label) },
         shapes = FilterChipDefaults.shapes(),
         colors = FilterChipDefaults.filterChipColors(),
-        leadingIcon = when {
-            // Methods need a stable width: adding the check only after
-            // selection makes the last chip jump between rows.
-            reserveIconSpace -> {
-                {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(FilterChipDefaults.IconSize)
-                            .alpha(if (selected) 1f else 0f)
-                    )
-                }
+        leadingIcon = if (selected) {
+            {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                )
             }
-            selected -> {
-                {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(FilterChipDefaults.IconSize)
-                    )
-                }
-            }
-            else -> null
-        }
+        } else {
+            null
+        },
+        // The checkmark adds width; animate it instead of snapping the
+        // FlowRow reflow.
+        modifier = Modifier.animateContentSize()
     )
 }
 
