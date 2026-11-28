@@ -5,6 +5,7 @@ import com.example.fishing.model.FishingReport
 import com.example.fishing.model.FishingType
 import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.MarkerDomain
+import com.example.fishing.model.SelectedFish
 import java.util.Calendar
 import java.util.UUID
 
@@ -21,9 +22,8 @@ data class ReportFilters(
     val isPaidSelected: Boolean = false,
     /** Map-only: show the viewer's own reports instead of public ones. */
     val isOwnOnly: Boolean = false,
-    val selectedCatch: String? = null,
-    /** Catalog id matching [selectedCatch]; used by the server-side map query. */
-    val selectedSpeciesId: String? = null,
+    /** Selected fish; an empty list means "any fish". */
+    val selectedFish: List<SelectedFish> = emptyList(),
     val selectedMethod: FishingMethod? = null
 ) {
     val isActive: Boolean
@@ -31,8 +31,7 @@ data class ReportFilters(
             isTrophySelected ||
             isPaidSelected ||
             isOwnOnly ||
-            selectedCatch != null ||
-            selectedSpeciesId != null ||
+            selectedFish.isNotEmpty() ||
             selectedMethod != null
 
     /** Number of active map conditions, used by the map badge. */
@@ -41,7 +40,7 @@ data class ReportFilters(
             isOwnOnly,
             isTrophySelected,
             isPaidSelected,
-            selectedCatch != null || selectedSpeciesId != null,
+            selectedFish.isNotEmpty(),
             selectedMethod != null
         ).count { it }
 
@@ -70,14 +69,15 @@ data class ReportFilters(
     }
 
     /**
-     * The species is matched by catalog id first and by canonical name as a
-     * fallback, so reports saved with free-text fish still participate.
+     * A report matches when at least one selected fish matches. Catalog ids
+     * are checked first; the display name keeps free-text fish working.
      */
     private fun matchesFish(names: List<String>, speciesIds: Collection<String>): Boolean {
-        if (selectedSpeciesId == null && selectedCatch == null) return true
-        val bySpecies = selectedSpeciesId != null && speciesIds.contains(selectedSpeciesId)
-        val byName = selectedCatch != null && names.contains(selectedCatch)
-        return bySpecies || byName
+        if (selectedFish.isEmpty()) return true
+        return selectedFish.any { fish ->
+            (fish.speciesId != null && speciesIds.contains(fish.speciesId)) ||
+                names.contains(fish.name)
+        }
     }
 }
 
@@ -86,7 +86,7 @@ fun ReportFilters.toMapMarkerFilters(): MapMarkerFilters = MapMarkerFilters(
     trophyOnly = isTrophySelected,
     paidOnly = isPaidSelected,
     method = selectedMethod,
-    speciesId = selectedSpeciesId
+    speciesIds = selectedFish.mapNotNull { it.speciesId }.toSet()
 )
 
 /**

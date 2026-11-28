@@ -252,6 +252,8 @@
     <string name="map_filter_fish_none">Не выбран</string>
     <string name="map_filter_fish_all">Все виды</string>
     <string name="map_filter_fish_not_found">Ничего не найдено</string>
+    <string name="map_filter_fish_add">Добавить рыбу</string>
+    <string name="map_filter_fish_remove">Удалить %1$s</string>
     <string name="map_filters_reset">Сбросить</string>
     <string name="map_filters_apply">Применить</string>
     <string name="add_photo">Add photo</string>

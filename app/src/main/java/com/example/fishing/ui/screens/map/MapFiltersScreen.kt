@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -25,6 +26,8 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
@@ -53,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.fishing.R
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.SelectedFish
 import com.example.fishing.model.searchFishSpecies
 import com.example.fishing.ui.components.ContentWidths
 import com.example.fishing.ui.components.SectionGroup
@@ -134,16 +138,31 @@ internal fun MapFiltersContent(
                     .verticalScroll(rememberScrollState())
             ) {
                 SectionGroup(showDivider = true) {
+                    if (draft.selectedFish.isNotEmpty()) {
+                        SelectedFishChips(
+                            fish = draft.selectedFish,
+                            onRemove = { fish ->
+                                draft = draft.copy(
+                                    selectedFish = draft.selectedFish.filterNot { it.sameAs(fish) }
+                                )
+                            }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
                     FishFilterField(
                         species = species,
-                        selectedCatch = draft.selectedCatch,
-                        selectedSpeciesId = draft.selectedSpeciesId,
-                        onSelect = { fish ->
+                        selectedFish = draft.selectedFish,
+                        onToggle = { fish ->
+                            val exists = draft.selectedFish.any { it.sameAs(fish) }
                             draft = draft.copy(
-                                selectedCatch = fish?.canonicalName,
-                                selectedSpeciesId = fish?.id
+                                selectedFish = if (exists) {
+                                    draft.selectedFish.filterNot { it.sameAs(fish) }
+                                } else {
+                                    draft.selectedFish + fish
+                                }
                             )
-                        }
+                        },
+                        onClear = { draft = draft.copy(selectedFish = emptyList()) }
                     )
                 }
 
@@ -220,25 +239,59 @@ internal fun MapFiltersContent(
 
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SelectedFishChips(
+    fish: List<SelectedFish>,
+    onRemove: (SelectedFish) -> Unit
+) {
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        fish.forEach { item ->
+            InputChip(
+                selected = false,
+                onClick = { onRemove(item) },
+                label = { Text(item.name) },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(
+                            R.string.map_filter_fish_remove,
+                            item.name
+                        ),
+                        modifier = Modifier.size(InputChipDefaults.IconSize)
+                    )
+                }
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FishFilterField(
     species: List<FishSpecies>,
-    selectedCatch: String?,
-    selectedSpeciesId: String?,
-    onSelect: (FishSpecies?) -> Unit
+    selectedFish: List<SelectedFish>,
+    onToggle: (SelectedFish) -> Unit,
+    onClear: () -> Unit
 ) {
     val label = stringResource(R.string.map_filter_fish_label)
     val emptyValue = stringResource(R.string.map_filter_fish_none)
+    val addValue = stringResource(R.string.map_filter_fish_add)
+    val displayValue = if (selectedFish.isEmpty()) emptyValue else addValue
+
     var expanded by remember { mutableStateOf(false) }
-    var fieldValue by remember { mutableStateOf(TextFieldValue(selectedCatch ?: emptyValue)) }
+    var fieldValue by remember { mutableStateOf(TextFieldValue(displayValue)) }
     var searchQuery by remember { mutableStateOf("") }
 
-    // Keep the field in sync with the applied value when the menu is closed;
-    // while typing the editable text is independent from the selection.
-    LaunchedEffect(selectedCatch, selectedSpeciesId) {
+    LaunchedEffect(selectedFish, expanded) {
         if (!expanded) {
-            fieldValue = TextFieldValue(selectedCatch ?: emptyValue)
+            fieldValue = TextFieldValue(displayValue)
             searchQuery = ""
         }
     }
@@ -250,19 +303,9 @@ private fun FishFilterField(
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { open ->
-            // "Не выбран" is only a placeholder: clear it as soon as the field
-            // is opened so the user can type the search query immediately.
-            val text = when {
-                !open -> selectedCatch ?: emptyValue
-                selectedCatch == null -> ""
-                else -> selectedCatch
-            }
-            // Select the current value so typing replaces it instead of
-            // appending to an already chosen fish name.
-            fieldValue = TextFieldValue(
-                text = text,
-                selection = TextRange(0, text.length)
-            )
+            // The field is a search box while the menu is open: start empty
+            // even when it showed "Не выбран" or "Добавить рыбу".
+            fieldValue = TextFieldValue(if (open) "" else displayValue)
             searchQuery = ""
             expanded = open
         },
@@ -273,15 +316,14 @@ private fun FishFilterField(
         OutlinedTextField(
             value = fieldValue,
             onValueChange = { newValue ->
-                if (newValue.text != emptyValue || selectedCatch != null) {
+                if (newValue.text == displayValue) {
+                    // Ignore the stale placeholder emitted while opening.
+                    fieldValue = TextFieldValue("")
+                    searchQuery = ""
+                } else {
                     fieldValue = newValue
                     searchQuery = newValue.text
                     expanded = true
-                    // Editing after a selection starts a new search; the old
-                    // species id must not keep filtering the map.
-                    if (selectedCatch != null || selectedSpeciesId != null) {
-                        onSelect(null)
-                    }
                 }
             },
             singleLine = true,
@@ -300,7 +342,7 @@ private fun FishFilterField(
             expanded = expanded,
             onDismissRequest = {
                 expanded = false
-                fieldValue = TextFieldValue(selectedCatch ?: emptyValue)
+                fieldValue = TextFieldValue(displayValue)
                 searchQuery = ""
             },
             containerColor = MenuDefaults.groupStandardContainerColor,
@@ -311,25 +353,17 @@ private fun FishFilterField(
             SelectableDropdownMenuItem(
                 shapes = MenuDefaults.itemShape(0, optionCount),
                 text = { Text(stringResource(R.string.map_filter_fish_all)) },
-                selected = searchQuery.isBlank() && selectedCatch == null,
+                selected = selectedFish.isEmpty() && searchQuery.isBlank(),
                 onClick = {
-                    fieldValue = TextFieldValue(emptyValue)
+                    onClear()
+                    fieldValue = TextFieldValue("")
                     searchQuery = ""
-                    onSelect(null)
-                    expanded = false
                 },
-                selectedLeadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(MenuDefaults.LeadingIconSize)
-                    )
-                },
+                selectedLeadingIcon = { SelectedCheckIcon() },
                 contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
             )
             results.forEachIndexed { index, item ->
-                val selected = item.id == selectedSpeciesId ||
-                    (selectedSpeciesId == null && item.canonicalName == selectedCatch)
+                val candidate = SelectedFish(item.canonicalName, item.id)
                 SelectableDropdownMenuItem(
                     shapes = MenuDefaults.itemShape(index + 1, optionCount),
                     text = {
@@ -338,20 +372,13 @@ private fun FishFilterField(
                             style = MaterialTheme.typography.bodyLarge
                         )
                     },
-                    selected = selected,
+                    selected = selectedFish.any { it.sameAs(candidate) },
                     onClick = {
-                        fieldValue = TextFieldValue(item.canonicalName)
+                        onToggle(candidate)
+                        fieldValue = TextFieldValue("")
                         searchQuery = ""
-                        onSelect(item)
-                        expanded = false
                     },
-                    selectedLeadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(MenuDefaults.LeadingIconSize)
-                        )
-                    },
+                    selectedLeadingIcon = { SelectedCheckIcon() },
                     contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                 )
             }
@@ -365,6 +392,15 @@ private fun FishFilterField(
             }
         }
     }
+}
+
+@Composable
+private fun SelectedCheckIcon() {
+    Icon(
+        imageVector = Icons.Default.Check,
+        contentDescription = null,
+        modifier = Modifier.size(MenuDefaults.LeadingIconSize)
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -387,6 +423,28 @@ private val METHOD_ORDER = listOf(
     FishingMethod.SPINNING,
     FishingMethod.FLY_FISHING
 )
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 860)
+@Composable
+private fun MapFiltersContentWithFishPreview() {
+    FishingTheme(dynamicColor = false) {
+        MapFiltersContent(
+            initialFilters = ReportFilters(
+                selectedFish = listOf(
+                    SelectedFish("Щука", "esox_lucius"),
+                    SelectedFish("Окунь", "perca_fluviatilis")
+                )
+            ),
+            species = listOf(
+                FishSpecies("esox_lucius", "Щука", isPopular = true, sortOrder = 1),
+                FishSpecies("perca_fluviatilis", "Окунь", isPopular = true, sortOrder = 2),
+                FishSpecies("rutilus_rutilus", "Плотва", isPopular = true, sortOrder = 3)
+            ),
+            onApply = {},
+            onBack = {}
+        )
+    }
+}
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 860)
 @Composable

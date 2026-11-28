@@ -1,6 +1,7 @@
 package com.example.fishing.viewmodel.search
 
 import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.SelectedFish
 import com.example.fishing.viewmodel.filter.ReportFilters
 import com.example.fishing.viewmodel.filter.ReportSearchState
 import org.junit.Assert.assertEquals
@@ -32,12 +33,18 @@ class SearchCoordinatorTest {
                 filters = filters
             )
         )
-        coordinator.update { it.copy(filters = it.filters.copy(selectedCatch = "Pike")) }
+        coordinator.update {
+            it.copy(
+                filters = it.filters.copy(
+                    selectedFish = listOf(SelectedFish("Pike"))
+                )
+            )
+        }
 
         val state = coordinator.state.value
         assertEquals("pike", state.query)
         assertEquals(123L, state.selectedDateMillis)
-        assertEquals("Pike", state.filters.selectedCatch)
+        assertEquals("Pike", state.filters.selectedFish.single().name)
         assertEquals(FishingMethod.SPINNING, state.filters.selectedMethod)
         assertTrue(state.filters.isFavoritesSelected)
     }

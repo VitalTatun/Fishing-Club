@@ -195,7 +195,7 @@ class SupabaseReportRemoteQueries @Inject constructor(
     ): RemoteMapMarkerPage {
         // An inner join is only needed to filter parents by fish species. Without
         // the species filter a plain embed keeps fishless reports on the map.
-        val fishEmbed = if (filters.speciesId != null) {
+        val fishEmbed = if (filters.speciesIds.isNotEmpty()) {
             "fishing_fish!inner(id,fishing_id,name,species_id,fish_species(canonical_name))"
         } else {
             "fishing_fish(id,fishing_id,name,species_id,fish_species(canonical_name))"
@@ -215,7 +215,11 @@ class SupabaseReportRemoteQueries @Inject constructor(
                 if (filters.trophyOnly) eq("type", FishingType.HAUL.name)
                 if (filters.paidOnly) eq("water_paid", true)
                 filters.method?.let { eq("fishing_method", it.name) }
-                filters.speciesId?.let { eq("fishing_fish.species_id", it) }
+                when (filters.speciesIds.size) {
+                    1 -> eq("fishing_fish.species_id", filters.speciesIds.first())
+                    in 2..Int.MAX_VALUE ->
+                        isIn("fishing_fish.species_id", filters.speciesIds.toList())
+                }
             }
             // One extra row tells the caller whether the viewport was truncated.
             limit((limit + 1).toLong())

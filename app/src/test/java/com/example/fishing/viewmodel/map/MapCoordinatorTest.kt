@@ -6,6 +6,7 @@ import com.example.fishing.model.FishingType
 import com.example.fishing.model.MapBounds
 import com.example.fishing.model.MapMarkerFilters
 import com.example.fishing.model.MarkerDomain
+import com.example.fishing.model.SelectedFish
 import com.example.fishing.testutil.FakeAuthRepository
 import com.example.fishing.testutil.FakeFishingRepository
 import com.example.fishing.viewmodel.filter.ReportFilters
@@ -164,7 +165,7 @@ class MapCoordinatorTest {
 
         val filters = ReportFilters(
             isTrophySelected = true,
-            selectedSpeciesId = "esox_lucius",
+            selectedFish = listOf(SelectedFish("Щука", "esox_lucius")),
             selectedMethod = FishingMethod.SPINNING
         )
         coordinator.onFiltersApplied(filters)
@@ -175,7 +176,7 @@ class MapCoordinatorTest {
             MapMarkerFilters(
                 trophyOnly = true,
                 method = FishingMethod.SPINNING,
-                speciesId = "esox_lucius"
+                speciesIds = setOf("esox_lucius")
             ),
             request.filters
         )

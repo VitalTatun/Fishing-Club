@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.example.fishing.model.FishSpecies
 import com.example.fishing.model.FishingMethod
+import com.example.fishing.model.SelectedFish
 import com.example.fishing.ui.theme.FishingTheme
 import com.example.fishing.viewmodel.filter.ReportFilters
 import org.junit.Assert.assertEquals
@@ -121,17 +122,23 @@ class MapFiltersScreenUiTest {
     }
 
     @Test
-    fun `fish picker stores both canonical name and species id`() {
+    fun `fish picker collects multiple species with their ids`() {
         var applied: ReportFilters? = null
         setContent(onApply = { applied = it })
 
         composeRule.onNodeWithTag("map_filter_fish_field").performClick()
         composeRule.onNodeWithText("Все виды", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("Щука", useUnmergedTree = true).performClick()
+        composeRule.onNodeWithText("Окунь", useUnmergedTree = true).performClick()
         composeRule.onNodeWithTag("map_filters_apply").performClick()
 
-        assertEquals("Щука", applied?.selectedCatch)
-        assertEquals("esox_lucius", applied?.selectedSpeciesId)
+        assertEquals(
+            listOf(
+                SelectedFish("Щука", "esox_lucius"),
+                SelectedFish("Окунь", "perca_fluviatilis")
+            ),
+            applied?.selectedFish
+        )
     }
 
     private fun setContent(

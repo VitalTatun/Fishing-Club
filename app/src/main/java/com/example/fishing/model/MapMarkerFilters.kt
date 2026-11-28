@@ -8,9 +8,9 @@ data class MapMarkerFilters(
     val trophyOnly: Boolean = false,
     val paidOnly: Boolean = false,
     val method: FishingMethod? = null,
-    /** Catalog `fish_species.id`; the filter is single-select. */
-    val speciesId: String? = null
+    /** Catalog `fish_species.id` values; an empty set means "any fish". */
+    val speciesIds: Set<String> = emptySet()
 ) {
     val isActive: Boolean
-        get() = trophyOnly || paidOnly || method != null || speciesId != null
+        get() = trophyOnly || paidOnly || method != null || speciesIds.isNotEmpty()
 }
