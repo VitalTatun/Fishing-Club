@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -41,7 +42,6 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -124,6 +124,19 @@ internal fun MapFiltersContent(
                     }
                 },
                 actions = {
+                    if (draft.isActive) {
+                        IconButton(
+                            onClick = { draft = ReportFilters() },
+                            modifier = Modifier.testTag("map_filters_reset")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = stringResource(
+                                    R.string.map_filters_reset
+                                )
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = { onApply(draft) },
                         enabled = hasChanges,
@@ -215,22 +228,6 @@ internal fun MapFiltersContent(
                                 },
                                 label = stringResource(method.labelRes)
                             )
-                        }
-                    }
-                }
-
-                if (draft.isActive) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.CenterEnd
-                    ) {
-                        TextButton(
-                            onClick = { draft = ReportFilters() },
-                            modifier = Modifier.testTag("map_filters_reset")
-                        ) {
-                            Text(stringResource(R.string.map_filters_reset))
                         }
                     }
                 }
