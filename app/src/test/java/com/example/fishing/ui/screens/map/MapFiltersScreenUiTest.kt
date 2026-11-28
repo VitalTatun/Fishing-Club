@@ -110,17 +110,21 @@ class MapFiltersScreenUiTest {
     }
 
     @Test
-    fun `reset clears every chip and disables apply`() {
+    fun `reset is disabled until a filter is selected and clears the draft`() {
         setContent()
+
+        composeRule.onNodeWithTag("map_filters_reset").assertIsNotEnabled()
 
         composeRule.onNodeWithText("Платный водоем").performClick()
         composeRule.onNodeWithText("Платный водоем").assertIsSelected()
         composeRule.onNodeWithTag("map_filters_apply").assertIsEnabled()
+        composeRule.onNodeWithTag("map_filters_reset").assertIsEnabled()
 
         composeRule.onNodeWithTag("map_filters_reset").performClick()
 
         composeRule.onNodeWithText("Платный водоем").assertIsNotSelected()
         composeRule.onNodeWithTag("map_filters_apply").assertIsNotEnabled()
+        composeRule.onNodeWithTag("map_filters_reset").assertIsNotEnabled()
     }
 
     @Test

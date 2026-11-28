@@ -123,18 +123,17 @@ internal fun MapFiltersContent(
                     }
                 },
                 actions = {
-                    if (draft.isActive) {
-                        IconButton(
-                            onClick = { draft = ReportFilters() },
-                            modifier = Modifier.testTag("map_filters_reset")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = stringResource(
-                                    R.string.map_filters_reset
-                                )
+                    IconButton(
+                        onClick = { draft = ReportFilters() },
+                        enabled = draft.isActive,
+                        modifier = Modifier.testTag("map_filters_reset")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(
+                                R.string.map_filters_reset
                             )
-                        }
+                        )
                     }
                     IconButton(
                         onClick = { onApply(draft) },
