@@ -436,7 +436,24 @@ private fun MapFilterChip(
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label) }
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge
+            )
+        },
+        leadingIcon = if (selected) {
+            {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        } else {
+            null
+        },
+        shape = RoundedCornerShape(8.dp)
     )
 }
 
