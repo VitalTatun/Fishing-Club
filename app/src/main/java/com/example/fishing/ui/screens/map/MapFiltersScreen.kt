@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
@@ -251,6 +252,7 @@ private fun FishFilterField(
 ) {
     val searchLabel = stringResource(R.string.search)
     val limitReached = selectedFish.size >= MAX_SELECTED_FISH
+    val fieldShape = RoundedCornerShape(8.dp)
     val focusRequester = remember { FocusRequester() }
     val scrollState = rememberScrollState()
     var expanded by remember { mutableStateOf(false) }
@@ -299,15 +301,16 @@ private fun FishFilterField(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 56.dp)
+                        .clip(fieldShape)
                         .border(
                             width = 1.dp,
                             color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = RoundedCornerShape(8.dp)
+                            shape = fieldShape
                         )
                         .horizontalScroll(scrollState)
                         .testTag("map_filter_fish_field")
                         .clickable { focusRequester.requestFocus() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
