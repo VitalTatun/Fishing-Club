@@ -294,15 +294,7 @@ fun MapScreen(
             // stays clean, markers are simply hidden until the camera changes.
             MapOverlayState.ZoomedOut,
             MapOverlayState.ViewportEmpty -> Unit
-            MapOverlayState.Empty -> {
-                MapStateOverlayCard(modifier = Modifier.align(Alignment.Center)) {
-                    Text(
-                        text = stringResource(R.string.map_no_reports),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            MapOverlayState.Empty -> Unit
             MapOverlayState.FilteredEmpty -> Unit
             MapOverlayState.None -> Unit
         }
