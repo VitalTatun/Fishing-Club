@@ -31,6 +31,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -149,7 +150,7 @@ internal fun MapFiltersContent(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                SectionGroup(showDivider = true) {
+                SectionGroup(showDivider = false) {
                     FishFilterField(
                         species = species,
                         selectedFish = draft.selectedFish,
@@ -172,24 +173,24 @@ internal fun MapFiltersContent(
                     showDivider = false
                 ) {
                     FilterChipRow {
-                        FilterChip(
+                        MapFilterChip(
                             selected = draft.isOwnOnly,
                             onClick = { draft = draft.copy(isOwnOnly = !draft.isOwnOnly) },
-                            label = { Text(stringResource(R.string.map_filter_own)) }
+                            label = stringResource(R.string.map_filter_own)
                         )
-                        FilterChip(
+                        MapFilterChip(
                             selected = draft.isTrophySelected,
                             onClick = {
                                 draft = draft.copy(isTrophySelected = !draft.isTrophySelected)
                             },
-                            label = { Text(stringResource(R.string.trophy)) }
+                            label = stringResource(R.string.trophy)
                         )
-                        FilterChip(
+                        MapFilterChip(
                             selected = draft.isPaidSelected,
                             onClick = {
                                 draft = draft.copy(isPaidSelected = !draft.isPaidSelected)
                             },
-                            label = { Text(stringResource(R.string.paid_water)) }
+                            label = stringResource(R.string.paid_water)
                         )
                     }
                 }
@@ -200,18 +201,19 @@ internal fun MapFiltersContent(
                 ) {
                     FilterChipRow {
                         METHOD_ORDER.forEach { method ->
-                            FilterChip(
-                                selected = draft.selectedMethod == method,
+                            val selected = method in draft.selectedMethods
+                            MapFilterChip(
+                                selected = selected,
                                 onClick = {
                                     draft = draft.copy(
-                                        selectedMethod = if (draft.selectedMethod == method) {
-                                            null
+                                        selectedMethods = if (selected) {
+                                            draft.selectedMethods - method
                                         } else {
-                                            method
+                                            draft.selectedMethods + method
                                         }
                                     )
                                 },
-                                label = { Text(stringResource(method.labelRes)) }
+                                label = stringResource(method.labelRes)
                             )
                         }
                     }
@@ -429,6 +431,32 @@ private fun SelectedCheckIcon() {
     )
 }
 
+@Composable
+private fun MapFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        shapes = FilterChipDefaults.shapes(),
+        colors = FilterChipDefaults.filterChipColors(),
+        leadingIcon = if (selected) {
+            {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                )
+            }
+        } else {
+            null
+        }
+    )
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FilterChipRow(content: @Composable () -> Unit) {
@@ -459,7 +487,8 @@ private fun MapFiltersContentWithFishPreview() {
                 selectedFish = listOf(
                     SelectedFish("Щука", "esox_lucius"),
                     SelectedFish("Окунь", "perca_fluviatilis")
-                )
+                ),
+                selectedMethods = setOf(FishingMethod.SPINNING, FishingMethod.FEEDER)
             ),
             species = listOf(
                 FishSpecies("esox_lucius", "Щука", isPopular = true, sortOrder = 1),

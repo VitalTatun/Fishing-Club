@@ -78,18 +78,19 @@ class MapFiltersScreenUiTest {
     }
 
     @Test
-    fun `apply sends own-only and a fishing method`() {
+    fun `apply sends own-only and multiple fishing methods`() {
         var applied: ReportFilters? = null
         setContent(onApply = { applied = it })
 
         composeRule.onNodeWithText("Мои отчёты").performClick()
         composeRule.onNodeWithText("Спиннинг").performClick()
+        composeRule.onNodeWithText("Фидер").performClick()
         composeRule.onNodeWithTag("map_filters_apply").performClick()
 
         assertEquals(
             ReportFilters(
                 isOwnOnly = true,
-                selectedMethod = FishingMethod.SPINNING
+                selectedMethods = setOf(FishingMethod.SPINNING, FishingMethod.FEEDER)
             ),
             applied
         )

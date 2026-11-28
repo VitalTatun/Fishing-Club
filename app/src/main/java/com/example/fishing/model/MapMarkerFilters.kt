@@ -7,10 +7,10 @@ package com.example.fishing.model
 data class MapMarkerFilters(
     val trophyOnly: Boolean = false,
     val paidOnly: Boolean = false,
-    val method: FishingMethod? = null,
+    val methods: Set<FishingMethod> = emptySet(),
     /** Catalog `fish_species.id` values; an empty set means "any fish". */
     val speciesIds: Set<String> = emptySet()
 ) {
     val isActive: Boolean
-        get() = trophyOnly || paidOnly || method != null || speciesIds.isNotEmpty()
+        get() = trophyOnly || paidOnly || methods.isNotEmpty() || speciesIds.isNotEmpty()
 }

@@ -214,7 +214,11 @@ class SupabaseReportRemoteQueries @Inject constructor(
                 lte("water_lng", bounds.east)
                 if (filters.trophyOnly) eq("type", FishingType.HAUL.name)
                 if (filters.paidOnly) eq("water_paid", true)
-                filters.method?.let { eq("fishing_method", it.name) }
+                when (filters.methods.size) {
+                    1 -> eq("fishing_method", filters.methods.first().name)
+                    in 2..Int.MAX_VALUE ->
+                        isIn("fishing_method", filters.methods.map { it.name })
+                }
                 when (filters.speciesIds.size) {
                     1 -> eq("fishing_fish.species_id", filters.speciesIds.first())
                     in 2..Int.MAX_VALUE ->

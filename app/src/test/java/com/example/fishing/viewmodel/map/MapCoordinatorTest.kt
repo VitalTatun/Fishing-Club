@@ -166,7 +166,7 @@ class MapCoordinatorTest {
         val filters = ReportFilters(
             isTrophySelected = true,
             selectedFish = listOf(SelectedFish("Щука", "esox_lucius")),
-            selectedMethod = FishingMethod.SPINNING
+            selectedMethods = setOf(FishingMethod.SPINNING)
         )
         coordinator.onFiltersApplied(filters)
         advanceTimeBy(500)
@@ -175,7 +175,7 @@ class MapCoordinatorTest {
         assertEquals(
             MapMarkerFilters(
                 trophyOnly = true,
-                method = FishingMethod.SPINNING,
+                methods = setOf(FishingMethod.SPINNING),
                 speciesIds = setOf("esox_lucius")
             ),
             request.filters

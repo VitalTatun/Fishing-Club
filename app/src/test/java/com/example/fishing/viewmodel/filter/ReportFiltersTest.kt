@@ -49,7 +49,7 @@ class ReportFiltersTest {
             isTrophySelected = true,
             isPaidSelected = true,
             selectedFish = listOf(SelectedFish("Pike")),
-            selectedMethod = FishingMethod.SPINNING
+            selectedMethods = setOf(FishingMethod.SPINNING)
         )
 
         assertTrue(filters.matches(trophy, emptySet()))
@@ -170,7 +170,7 @@ class ReportFiltersTest {
             filters = ReportFilters(
                 isTrophySelected = true,
                 isPaidSelected = true,
-                selectedMethod = FishingMethod.SPINNING
+                selectedMethods = setOf(FishingMethod.SPINNING)
             )
         )
 

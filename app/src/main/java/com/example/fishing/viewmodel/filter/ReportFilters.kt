@@ -24,7 +24,8 @@ data class ReportFilters(
     val isOwnOnly: Boolean = false,
     /** Selected fish; an empty list means "any fish". */
     val selectedFish: List<SelectedFish> = emptyList(),
-    val selectedMethod: FishingMethod? = null
+    /** Map filters are multi-select; the search screen uses a single value. */
+    val selectedMethods: Set<FishingMethod> = emptySet()
 ) {
     val isActive: Boolean
         get() = isFavoritesSelected ||
@@ -32,7 +33,7 @@ data class ReportFilters(
             isPaidSelected ||
             isOwnOnly ||
             selectedFish.isNotEmpty() ||
-            selectedMethod != null
+            selectedMethods.isNotEmpty()
 
     /** Number of active map conditions, used by the map badge. */
     val activeCount: Int
@@ -41,7 +42,7 @@ data class ReportFilters(
             isTrophySelected,
             isPaidSelected,
             selectedFish.isNotEmpty(),
-            selectedMethod != null
+            selectedMethods.isNotEmpty()
         ).count { it }
 
     fun matches(report: FishingReport, favoriteIds: Set<UUID>): Boolean {
@@ -55,7 +56,7 @@ data class ReportFilters(
         ) {
             return false
         }
-        if (selectedMethod != null && report.fishingMethod != selectedMethod) return false
+        if (selectedMethods.isNotEmpty() && report.fishingMethod !in selectedMethods) return false
         return true
     }
 
@@ -64,7 +65,7 @@ data class ReportFilters(
         if (isTrophySelected && marker.type != FishingType.HAUL) return false
         if (isPaidSelected && !marker.isPaidWater) return false
         if (!matchesFish(marker.fishNames, marker.fishSpeciesIds)) return false
-        if (selectedMethod != null && marker.fishingMethod != selectedMethod) return false
+        if (selectedMethods.isNotEmpty() && marker.fishingMethod !in selectedMethods) return false
         return true
     }
 
@@ -85,7 +86,7 @@ data class ReportFilters(
 fun ReportFilters.toMapMarkerFilters(): MapMarkerFilters = MapMarkerFilters(
     trophyOnly = isTrophySelected,
     paidOnly = isPaidSelected,
-    method = selectedMethod,
+    methods = selectedMethods,
     speciesIds = selectedFish.mapNotNull { it.speciesId }.toSet()
 )
 

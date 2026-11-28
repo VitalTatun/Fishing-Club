@@ -23,7 +23,7 @@ class SearchCoordinatorTest {
         val coordinator = SearchCoordinator()
         val filters = ReportFilters(
             isFavoritesSelected = true,
-            selectedMethod = FishingMethod.SPINNING
+            selectedMethods = setOf(FishingMethod.SPINNING)
         )
 
         coordinator.setState(
@@ -45,7 +45,7 @@ class SearchCoordinatorTest {
         assertEquals("pike", state.query)
         assertEquals(123L, state.selectedDateMillis)
         assertEquals("Pike", state.filters.selectedFish.single().name)
-        assertEquals(FishingMethod.SPINNING, state.filters.selectedMethod)
+        assertEquals(setOf(FishingMethod.SPINNING), state.filters.selectedMethods)
         assertTrue(state.filters.isFavoritesSelected)
     }
 

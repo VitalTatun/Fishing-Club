@@ -172,17 +172,21 @@ fun ReportSearchScreen(
                             current.copy(filters = current.filters.copy(selectedFish = emptyList()))
                         }
                     },
-                    selectedMethod = filters.selectedMethod,
+                    selectedMethod = filters.selectedMethods.firstOrNull(),
                     onMethodSelected = { method ->
                         onStateChange { current ->
                             current.copy(
-                                filters = current.filters.copy(selectedMethod = method)
+                                filters = current.filters.copy(
+                                    selectedMethods = setOf(method)
+                                )
                             )
                         }
                     },
                     onClearMethod = {
                         onStateChange { current ->
-                            current.copy(filters = current.filters.copy(selectedMethod = null))
+                            current.copy(
+                                filters = current.filters.copy(selectedMethods = emptySet())
+                            )
                         }
                     },
                     uniqueFish = uniqueFish,
