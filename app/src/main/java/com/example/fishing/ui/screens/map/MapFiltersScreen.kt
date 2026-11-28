@@ -1,6 +1,5 @@
 package com.example.fishing.ui.screens.map
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -33,7 +32,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -438,23 +436,7 @@ private fun MapFilterChip(
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label) },
-        shapes = FilterChipDefaults.shapes(),
-        colors = FilterChipDefaults.filterChipColors(),
-        leadingIcon = if (selected) {
-            {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(FilterChipDefaults.IconSize)
-                )
-            }
-        } else {
-            null
-        },
-        // The checkmark adds width; animate it instead of snapping the
-        // FlowRow reflow.
-        modifier = Modifier.animateContentSize()
+        label = { Text(label) }
     )
 }
 
